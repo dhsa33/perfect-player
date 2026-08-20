@@ -1213,6 +1213,325 @@
     return [{ kind: 'drb', tag: '后场板', tone: 'stop', teamSide: ctx.defSide, text: nm(reb.player) + ' 保护后场篮板' }];
   }
 
+  /* ============================================================
+   * 回合过程文案
+   * 先由算法抽出对位、协防、干扰档、动作，再拼一句过程+结果。
+   * 干扰档会微调制成率/盖帽率，均值尽量为 0，避免观看和跳过分差跑飞。
+   *
+   * 干扰档：open 无人 / close 贴身 / contest 对位干扰 / help 协防 / heavy 夹击
+   * 动作库：三分 catch/spot/cut/pull3/stepback；
+   *         中距 pullup/jumper/fade/hook/float；
+   *         篮下 layup/euro/hop/upunder/slash/dunk/lob/coast
+   * 禁则：人名必须在当场五人；颜射仅三分命中+对位干扰；
+   *       无人防守不得写干扰；隔扣仅扣篮命中；空接必须有传球人。
+   * ============================================================ */
+  var POS_RANK = { PG: 0, SG: 1, SF: 2, PF: 3, C: 4 };
+  var CONTEST_PCT = { open: 0.048, close: 0.010, contest: -0.024, help: -0.040, heavy: -0.062 };
+  var CONTEST_PCT_CENTER = 0.004;
+  var CONTEST_BLK = { open: 0.42, close: 0.82, contest: 1.00, help: 1.38, heavy: 1.72 };
+
+  function pickWeightedId(pairs) {
+    var list = (pairs || []).filter(function (x) { return x && x[1] > 0; });
+    if (!list.length) return null;
+    var total = 0, i, r;
+    for (i = 0; i < list.length; i++) total += list[i][1];
+    r = rand() * total;
+    for (i = 0; i < list.length; i++) {
+      r -= list[i][1];
+      if (r <= 0) return list[i][0];
+    }
+    return list[list.length - 1][0];
+  }
+
+  function eventActionHint(ev, fx) {
+    fx = fx || {};
+    var blob = '';
+    if (ev) blob = String(ev.name || '') + ' ' + String(ev.text || '') + ' ' + String((ev._bind && ev._bind.text) || '');
+    var hint = { action: null, contest: null, dunk: !!fx.dunk, trans: false };
+    if (/欧洲步/.test(blob)) hint.action = 'euro';
+    else if (/金鸡|勾手/.test(blob)) hint.action = 'hook';
+    else if (/后仰/.test(blob)) hint.action = 'fade';
+    else if (/梦幻脚步/.test(blob)) hint.action = 'upunder';
+    else if (/无球空切/.test(blob)) hint.action = 'cut';
+    else if (/一条龙/.test(blob)) hint.action = 'coast';
+    else if (/空接/.test(blob)) hint.action = 'lob';
+    else if (fx.dunk || /补扣|扣完|暴扣/.test(blob)) hint.action = 'dunk';
+    else if (/Floppy|底角|出角|Hammer/.test(blob)) hint.action = 'spot';
+    else if (/电梯门|抢射|接球就拔/.test(blob)) hint.action = 'catch';
+    else if (/变向过/.test(blob)) hint.action = 'slash';
+    if (/放空|真正空位|弱侧.{0,6}空/.test(blob)) hint.contest = 'open';
+    if (/贴身干扰/.test(blob)) hint.contest = 'contest';
+    if (/协防到位/.test(blob)) hint.contest = 'help';
+    if (/协防过度/.test(blob)) hint.contest = 'open';
+    if (/转换|快攻/.test(blob)) hint.trans = true;
+    return hint;
+  }
+
+  function pickMatchup(shooter, defCourt) {
+    var court = (defCourt || []).filter(Boolean);
+    if (!court.length) return null;
+    var pos = posOf(shooter);
+    var same = court.filter(function (p) { return posOf(p) === pos; });
+    if (same.length) {
+      return pickWeighted(same, function (p) {
+        return 0.45 + skill01(attr(p, 'PDEF')) * 1.1 + skill01(ovrOf(p)) * 0.25;
+      });
+    }
+    return pickWeighted(court, function (p) {
+      var d = Math.abs((POS_RANK[posOf(p)] || 2) - (POS_RANK[pos] || 2));
+      var prox = d === 1 ? 3.2 : (d === 2 ? 1.4 : 0.55);
+      return prox * (0.4 + skill01(ovrOf(p)));
+    });
+  }
+
+  function pickHelp(shot, matchup, defCourt, hint) {
+    var pool = (defCourt || []).filter(function (p) {
+      return p && (!matchup || pid(p) !== pid(matchup));
+    });
+    if (!pool.length) return null;
+    var helpP = shot === 'FIN' ? 0.22 : (shot === 'MID' ? 0.14 : 0.08);
+    if (matchup) {
+      var defA = shot === 'FIN' ? attr(matchup, 'IDEF') : attr(matchup, 'PDEF');
+      if (defA < 62) helpP += 0.12;
+      if (defA > 84) helpP -= 0.08;
+    }
+    if (hint && hint.contest === 'open') return null;
+    if (hint && hint.contest === 'help') helpP = 1;
+    if (!chance(clamp(helpP, 0.04, 0.78))) return null;
+    if (shot === 'FIN') {
+      return pickWeighted(pool, function (p) {
+        return 0.18 + skill01(attr(p, 'BLK')) * 1.5 + skill01(attr(p, 'IDEF')) * 1.15;
+      });
+    }
+    return pickWeighted(pool, function (p) {
+      return 0.18 + skill01(attr(p, 'PDEF')) * 1.2 + skill01(attr(p, 'ATH')) * 0.45;
+    });
+  }
+
+  function rollContest(shot, shooter, matchup, help, hint) {
+    if (hint && hint.contest === 'open') return 'open';
+    if (!matchup && !help) return 'open';
+    if (hint && hint.contest === 'help') return help ? (chance(0.32) ? 'heavy' : 'help') : 'contest';
+    if (hint && hint.contest === 'contest') return help ? 'help' : 'contest';
+    var defA, offA;
+    if (!matchup) return help ? 'help' : 'open';
+    if (shot === 'FIN') {
+      defA = attr(matchup, 'IDEF') * 0.52 + attr(matchup, 'BLK') * 0.24 + attr(matchup, 'STR') * 0.24;
+      offA = attr(shooter, 'HAN') * 0.42 + attr(shooter, 'ATH') * 0.34 + attr(shooter, 'FIN') * 0.24;
+    } else {
+      defA = attr(matchup, 'PDEF') * 0.66 + attr(matchup, 'ATH') * 0.34;
+      offA = attr(shooter, 'ATH') * 0.32 + attr(shooter, shot === 'threePT' ? 'threePT' : 'MID') * 0.28 + attr(shooter, 'HAN') * 0.40;
+    }
+    var score = skill01(defA) - skill01(offA) * 0.70 + gauss(0, 0.10);
+    if (shot === 'threePT') score -= 0.04;
+    if (help) score += 0.08 + skill01(attr(help, shot === 'FIN' ? 'IDEF' : 'PDEF')) * 0.16;
+    if (help && score >= 0.46) return 'heavy';
+    if (help && score >= 0.00) return 'help';
+    if (score >= 0.24) return 'contest';
+    if (score >= -0.02) return 'close';
+    return 'open';
+  }
+
+  function pickAction(shooter, shot, passer, contest, trans, hint, fx) {
+    var forced = hint && hint.action;
+    var pos = posOf(shooter);
+    if (forced) {
+      if (shot === 'threePT' && /^(euro|dunk|hook|upunder|lob|hop|slash|layup)$/.test(forced)) {
+        if (forced === 'cut') return 'cut';
+        return passer ? ((contest === 'open' || contest === 'close') ? 'cut' : 'catch') : 'pull3';
+      }
+      if (shot === 'MID' && /^(dunk|lob|coast|euro|hop)$/.test(forced)) return forced === 'euro' ? 'float' : 'fade';
+      if (shot === 'FIN' && /^(catch|spot|pull3|stepback)$/.test(forced)) {
+        return attr(shooter, 'DNK') >= 78 ? 'dunk' : 'layup';
+      }
+      if (shot !== 'FIN' && forced === 'coast') return shot === 'threePT' ? 'pull3' : 'pullup';
+      return forced;
+    }
+    if (shot === 'threePT') {
+      var t3 = [['pull3', 2.1], ['stepback', attr(shooter, 'HAN') >= 74 ? 2.3 : 0.5]];
+      if (passer) {
+        t3.push(['catch', 4.0], ['spot', 2.6]);
+        if (contest === 'open' || contest === 'close') t3.push(['cut', 4.6]);
+      }
+      return pickWeightedId(t3) || 'pull3';
+    }
+    if (shot === 'MID') {
+      var t2 = [['pullup', 3], ['jumper', 2.1], ['fade', 1.1 + skill01(attr(shooter, 'MID')) * 1.6]];
+      if (pos === 'C' || pos === 'PF') t2.push(['hook', 2.2 + skill01(attr(shooter, 'FIN'))], ['fade', 1.8]);
+      else t2.push(['float', attr(shooter, 'HAN') >= 70 ? 2.1 : 0.35]);
+      return pickWeightedId(t2) || 'jumper';
+    }
+    var dnk = attr(shooter, 'DNK');
+    var han = attr(shooter, 'HAN');
+    if ((trans || (hint && hint.trans)) && !passer && (dnk >= 70 || han >= 72) && chance(0.40 + skill01(dnk) * 0.18)) {
+      return 'coast';
+    }
+    if (passer && dnk >= 82 && chance(0.032 + skill01(dnk) * 0.04)) {
+      return 'lob';
+    }
+    var t1 = [['layup', 3.1]];
+    if (dnk >= 74) t1.push(['dunk', 1.5 + skill01(dnk) * 2.3]);
+    if (han >= 76 && pos !== 'C') t1.push(['euro', 2.5]);
+    else if (han >= 80) t1.push(['euro', 0.8]);
+    if (han >= 70) t1.push(['hop', 1.6]);
+    if ((pos === 'PF' || pos === 'C' || pos === 'SF') && attr(shooter, 'FIN') >= 72) t1.push(['upunder', 1.7]);
+    if (han >= 72 && pos !== 'C') t1.push(['slash', 1.5]);
+    if (fx && fx.dunk) t1.push(['dunk', 6]);
+    return pickWeightedId(t1) || 'layup';
+  }
+
+  function actionIsDunk(action, shooter, fx) {
+    if (action === 'dunk' || action === 'lob') return true;
+    if (action === 'coast' && attr(shooter, 'DNK') >= 78) return true;
+    return !!(fx && fx.dunk && action !== 'euro' && action !== 'hop');
+  }
+
+  function movePhrase(action, dunk) {
+    if (action === 'euro') return '欧洲步上篮';
+    if (action === 'hop') return '跳步上篮';
+    if (action === 'upunder') return '上下步上篮';
+    if (action === 'slash') return '突破上篮';
+    if (action === 'layup') return '上篮';
+    if (action === 'dunk' || dunk && (action === 'coast' || action === 'lob')) return '扣篮';
+    if (action === 'lob') return '空接扣篮';
+    if (action === 'coast') return dunk ? '一条龙暴扣' : '一条龙上篮';
+    if (action === 'float') return '抛投';
+    if (action === 'fade') return '背身后仰';
+    if (action === 'hook') return '勾手';
+    if (action === 'pullup') return '急停跳投';
+    if (action === 'jumper') return '中距离跳投';
+    if (action === 'stepback') return '后撤步三分';
+    if (action === 'pull3') return '持球拔三分';
+    if (action === 'spot' || action === 'catch' || action === 'cut') return '投三分';
+    return dunk ? '扣篮' : '跳投';
+  }
+
+  function driveAction(action) {
+    return /^(euro|hop|upunder|slash|layup|dunk)$/.test(action);
+  }
+
+  function pickBlocker(shot, matchup, help, rim, userDef, game) {
+    var cands = [];
+    function add(p, w) { if (p) cands.push([p, w]); }
+    if (help && shot === 'FIN') add(help, 3.4 + skill01(attr(help, 'BLK')) * 2);
+    if (rim && (!help || pid(rim) !== pid(help))) add(rim, 2.2 + skill01(attr(rim, 'BLK')) * 2.4);
+    if (matchup) add(matchup, shot === 'FIN' ? 0.9 : 0.45);
+    if (userDef && (st(game.styles, 'rim_protector') > 1.01 || st(game.styles, 'dunk_threat') > 1.01)) {
+      var userBlkW = 0.16 * st(game.styles, 'rim_protector') * (1 + (st(game.styles, 'dunk_threat') - 1) * 0.25);
+      if (posOf(userDef) === 'C' || posOf(userDef) === 'PF') userBlkW += 0.18;
+      add(userDef, 1.2 + clamp(userBlkW, 0.06, 0.72) * 4);
+    }
+    if (!cands.length) return rim || matchup || help;
+    var total = 0, i, r;
+    for (i = 0; i < cands.length; i++) total += cands[i][1];
+    r = rand() * total;
+    for (i = 0; i < cands.length; i++) {
+      r -= cands[i][1];
+      if (r <= 0) return cands[i][0];
+    }
+    return cands[cands.length - 1][0];
+  }
+
+  function composeShotText(s) {
+    var a = nm(s.shooter);
+    var m = s.matchup ? nm(s.matchup) : '';
+    var h = s.help ? nm(s.help) : '';
+    var p = s.passer ? nm(s.passer) : '';
+    var dunk = !!s.dunk;
+    var move = movePhrase(s.action, dunk);
+    var core;
+    if (s.action === 'cut' && p) core = a + '跑出空档接' + p + '传球，' + move;
+    else if (s.action === 'spot' && p) core = p + '找到底角' + a + '，' + move;
+    else if (s.action === 'catch' && p) core = a + '接' + p + '传球，' + move;
+    else if (s.beat && s.matchup && driveAction(s.action)) core = a + '过掉' + m + '，' + move;
+    else core = a + move;
+
+    if (s.action === 'lob' && p) {
+      if (s.outcome === 'blk' && s.blocker) return p + '空接，' + nm(s.blocker) + '帽掉' + a;
+      if (s.outcome === 'make') return p + '空接给' + a + '砸筐';
+      if (s.outcome === 'andone') return p + '空接给' + a + '，打成2+1，加罚' + (s.ftMade ? '命中' : '不中');
+      if (s.outcome === 'foul') return p + '空接给' + a + '，造成犯规，罚球 ' + s.ftMade + '/' + s.fta;
+      return p + '空接给' + a + '，没扣进';
+    }
+    if (s.action === 'coast') {
+      if (s.outcome === 'blk' && s.blocker) return a + '快攻一条龙，被' + nm(s.blocker) + '追上帽掉';
+      if (s.outcome === 'make') return a + (dunk ? '快攻一条龙暴扣' : '快攻一条龙上篮得手');
+      if (s.outcome === 'andone') return a + '快攻一条龙打成2+1，加罚' + (s.ftMade ? '命中' : '不中');
+      if (s.outcome === 'foul') return a + '快攻一条龙造犯，罚球 ' + s.ftMade + '/' + s.fta;
+      return a + '快攻一条龙，' + (dunk ? '扣篮' : '上篮') + '不中';
+    }
+    if (s.poster && s.outcome === 'make') {
+      if (s.matchup && s.help && pid(s.matchup) !== pid(s.help)) return a + '过掉' + m + '后隔扣' + h;
+      if (s.help) return a + '隔扣' + h;
+      if (s.matchup) return a + '隔扣' + m;
+    }
+    if (s.face && s.outcome === 'make' && m) return a + '三分颜射' + m;
+
+    if (s.outcome === 'blk' && s.blocker) return core + '，被' + nm(s.blocker) + '盖帽';
+    if (s.outcome === 'andone') return core + '打成2+1，加罚' + (s.ftMade ? '命中' : '不中');
+    if (s.outcome === 'foul') return core + '造成犯规，罚球 ' + s.ftMade + '/' + s.fta;
+
+    var def = '';
+    if (s.contest === 'open' && s.action !== 'cut') def = '无人防守';
+    else if (s.contest === 'contest' && m && !(s.beat && driveAction(s.action))) def = m + '举手干扰';
+    else if (s.contest === 'help' && h) def = h + '协防干扰';
+    else if (s.contest === 'heavy' && m && h) def = m + '和' + h + '夹击';
+    else if (s.contest === 'close' && m && !s.beat && s.action !== 'cut') def = '面对' + m;
+
+    var end = s.outcome === 'make' ? '命中' : '不中';
+    if (def === '无人防守') return core.replace(move, '无人防守' + move) + end;
+    if (def) return core + '，' + def + '，' + end;
+    return core + end;
+  }
+
+  function composeTurnoverText(loser, stealer, fx, ev) {
+    var a = nm(loser);
+    var blob = ev ? String(ev.name || '') + String(ev.text || '') : '';
+    if (stealer) {
+      var s = nm(stealer);
+      if (/推进|运/.test(blob) || chance(0.62)) return s + '抄掉' + a + '的运球';
+      return s + '断下' + a + '的传球';
+    }
+    if (/24秒/.test(blob)) return a + '这攻耗到24秒违例';
+    if (/界外/.test(blob)) return a + '界外球发歪';
+    if (/欧洲/.test(blob)) return a + '欧洲步没迈开，球丢了';
+    if (/传穿|传球太炫/.test(blob)) return a + '传球出界';
+    if (attr(loser, 'HAN') < 68 && chance(0.45)) return a + '运球失误';
+    if (chance(0.34)) return a + '传球出界';
+    return a + '处理球失误';
+  }
+
+  function shortenPbp(text) {
+    text = String(text || '');
+    if (text.length <= 40) return text;
+    return text.replace(/，[^，]{2,6}干扰/, '').replace(/面对[^，]{1,6}，/, '');
+  }
+
+  function attachPbp(row, scene) {
+    if (PP_LIVE._collectPbp && scene) row._pbp = scene;
+    row.text = shortenPbp(row.text);
+    return row;
+  }
+
+  function auditPbpScene(scene, text) {
+    var errs = [];
+    if (!scene || !text) return errs;
+    if (scene.face && (scene.shot !== 'threePT' || scene.outcome !== 'make' || scene.contest === 'open' || !scene.matchup)) {
+      errs.push('face');
+    }
+    if (/颜射/.test(text) && (scene.contest === 'open' || scene.shot !== 'threePT')) errs.push('face-text');
+    if (/无人防守/.test(text) && scene.contest !== 'open') errs.push('open-text');
+    if (scene.contest === 'open' && /举手干扰|协防干扰|夹击/.test(text)) errs.push('open-contest');
+    if (/隔扣/.test(text) && (scene.outcome !== 'make' || !scene.dunk)) errs.push('poster');
+    if (/空接/.test(text) && !scene.passer) errs.push('lob');
+    if (scene.help && scene.matchup && pid(scene.help) === pid(scene.matchup)) errs.push('help=matchup');
+    if (/协防/.test(text) && !scene.help) errs.push('help-text');
+    if (/跑出空档/.test(text) && /面对|举手干扰|夹击|协防/.test(text)) errs.push('cut-contest');
+    if (/背身后仰|勾手|后撤步|急停/.test(text) && /无人防守/.test(text)) errs.push('iso-open');
+    if (/欧洲步|跳步上篮|上下步|突破上篮/.test(text) && /无人防守/.test(text)) errs.push('drive-open');
+    return errs;
+  }
+
   function userHunger(game, ctx) {
     var bp = game.bp;
     var user = bp.rosterA.filter(function (p) { return p && p._isUser; })[0];
@@ -1283,15 +1602,15 @@
         if (stealer) lineOf(game, stealer).stl++;
       }
       if (stealer) {
-        rows.push({
+        rows.push(attachPbp({
           kind: 'stl', tag: '防守成功', tone: 'stop', teamSide: ctx.defSide,
-          text: nm(stealer) + ' 抢断 ' + nm(loser)
-        });
+          text: composeTurnoverText(loser, stealer, fx, ev)
+        }, { kind: 'stl', shooter: loser, stealer: stealer }));
       } else {
-        rows.push({
+        rows.push(attachPbp({
           kind: 'tov', tag: '进攻失败', tone: 'miss', teamSide: side,
-          text: nm(loser) + ' 失误'
-        });
+          text: composeTurnoverText(loser, null, fx, ev)
+        }, { kind: 'tov', shooter: loser }));
       }
       return { clock: clock, orb: false, rows: rows };
     }
@@ -1313,7 +1632,31 @@
     var hint = fx.shot === 'three' ? 'threePT' : fx.shot;
     var shot = hint || pickShotType(shooter, null, game.styles);
     if (shot === 'three') shot = 'threePT';
-    var verb = shotVerb(shot, fx);
+    var evHint = eventActionHint(ev, fx);
+    var trans = clock <= 9 || hasTag(game, 'transition') || !!(evHint && evHint.trans);
+    var matchup = pickMatchup(shooter, ctx.defCourt);
+    var help = pickHelp(shot, matchup, ctx.defCourt, evHint);
+    var contest = rollContest(shot, shooter, matchup, help, evHint);
+    var action = pickAction(shooter, shot, passer, contest, trans, evHint, fx);
+    if (action === 'lob' && !passer) action = attr(shooter, 'DNK') >= 78 ? 'dunk' : 'layup';
+    if ((action === 'cut' || action === 'spot' || action === 'catch') && !passer) action = shot === 'threePT' ? 'pull3' : 'jumper';
+    if (passer && shot === 'threePT' && (action === 'catch' || action === 'spot' || action === 'cut')) {
+      if (contest === 'heavy') contest = 'help';
+      else if (contest === 'contest' && chance(0.55)) contest = 'close';
+      else if (contest === 'close' && chance(0.50)) contest = 'open';
+      else if (contest === 'contest' && chance(0.22)) contest = 'open';
+    }
+    if (/^(fade|hook|stepback|pullup)$/.test(action) && contest === 'open') contest = 'close';
+    if (contest === 'open' && /^(euro|hop|upunder|slash)$/.test(action)) {
+      action = attr(shooter, 'DNK') >= 82 && chance(0.4) ? 'dunk' : 'layup';
+    }
+    if (action === 'cut' && contest !== 'open' && contest !== 'close') action = passer ? 'catch' : 'pull3';
+    if (contest === 'open') help = null;
+    var dunk = actionIsDunk(action, shooter, fx);
+    var scene = {
+      shooter: shooter, passer: passer, matchup: matchup, help: help,
+      shot: shot, contest: contest, action: action, dunk: dunk
+    };
 
     var rim = (ev && ev._bind && ev._bind.actor && ctx.defCourt.indexOf(ev._bind.actor) >= 0)
       ? ev._bind.actor
@@ -1324,21 +1667,22 @@
     if (userDef && (st(game.styles, 'rim_protector') > 1.01 || st(game.styles, 'dunk_threat') > 1.01)) {
       blkP *= 1 + (st(game.styles, 'rim_protector') - 1) * 0.35 + (st(game.styles, 'dunk_threat') - 1) * 0.12;
     }
+    blkP *= CONTEST_BLK[contest] || 1;
     if (fx.blk || chance(blkP)) {
       if (fx.blk || chance(0.62)) {
-        var blocker = rim;
-        if (userDef && (st(game.styles, 'rim_protector') > 1.01 || st(game.styles, 'dunk_threat') > 1.01)) {
-          var userBlkW = 0.16 * st(game.styles, 'rim_protector') * (1 + (st(game.styles, 'dunk_threat') - 1) * 0.25);
-          if (posOf(userDef) === 'C' || posOf(userDef) === 'PF') userBlkW += 0.18;
-          if (chance(clamp(userBlkW, 0.06, 0.72))) blocker = userDef;
-        }
+        var blocker = fx.blk && ev && ev._bind && ev._bind.actor && ctx.defCourt.indexOf(ev._bind.actor) >= 0
+          ? ev._bind.actor
+          : pickBlocker(shot, matchup, help, rim, userDef, game);
+        if (!blocker) blocker = rim || ctx.defCourt[0];
         lineOf(game, blocker).blk++;
         lineOf(game, shooter).fga++;
         if (shot === 'threePT') lineOf(game, shooter).threeA++;
-        rows.push({
+        scene.outcome = 'blk';
+        scene.blocker = blocker;
+        rows.push(attachPbp({
           kind: 'blk', tag: '防守成功', tone: 'stop', teamSide: ctx.defSide,
-          text: nm(blocker) + ' 盖帽 ' + nm(shooter) + ' 的' + verb
-        });
+          text: composeShotText(scene)
+        }, scene));
         var blkReb = doRebound(game, ctx, orbRate * 0.72);
         rows = rows.concat(reboundRows(ctx, blkReb));
         return { clock: clock, orb: !!blkReb.orb, rows: rows };
@@ -1362,6 +1706,7 @@
     if (ctx.home) pct += 0.005;
     pct += rush;
     if (hasTag(game, 'transition') && shot === 'FIN') pct += 0.06;
+    pct += (CONTEST_PCT[contest] || 0) - CONTEST_PCT_CENTER;
     pct = clampHalf(pct, 0.16, 0.80, 0.90);
 
     var ftRate = clamp(0.07 + skill01(attr(shooter, 'FIN')) * 0.20 + skill01(attr(shooter, 'STR')) * 0.11 + skill01(attr(shooter, 'HAN')) * 0.06, 0.07, 0.62);
@@ -1393,28 +1738,36 @@
           madeFt++;
         }
       }
-      var foulTone = madeFt ? 'make' : 'miss';
-      var foulText;
-      if (andOne) foulText = nm(shooter) + ' 打成2+1，加罚' + (madeFt ? '命中' : '不中');
-      else foulText = nm(shooter) + ' 造成犯规，罚球 ' + madeFt + '/' + fta;
-      rows.push({ kind: 'foul', tag: '造杀伤', tone: foulTone, teamSide: side, text: foulText });
+      scene.ftMade = madeFt;
+      scene.fta = fta;
+      scene.outcome = andOne ? 'andone' : 'foul';
+      scene.beat = driveAction(action) && (andOne || contest === 'help' || contest === 'heavy');
+      rows.push(attachPbp({
+        kind: 'foul', tag: '造杀伤', tone: madeFt ? 'make' : 'miss', teamSide: side,
+        text: composeShotText(scene)
+      }, scene));
       return { clock: clock, orb: false, rows: rows };
     }
 
     var made = chance(pct);
     var pts = shot === 'threePT' ? 3 : 2;
     recordShot(game, shooter, shot, made, pts, passer, side, ctx.qIdx, ctx.isOT);
-    if (made) {
-      rows.push({
-        kind: 'make', tag: '进攻成功', tone: 'make', teamSide: side,
-        text: nm(shooter) + ' ' + verb + '命中' + (passer ? '（' + nm(passer) + '助攻）' : '')
-      });
-      return { clock: clock, orb: false, rows: rows };
-    }
-    rows.push({
-      kind: 'miss', tag: '进攻失败', tone: 'miss', teamSide: side,
-      text: nm(shooter) + ' ' + verb + '不中'
-    });
+    scene.outcome = made ? 'make' : 'miss';
+    scene.beat = !!(driveAction(action) && matchup && (contest === 'help' || contest === 'heavy' || (made && contest !== 'open')));
+    scene.poster = !!(made && dunk && action === 'dunk' && (
+      contest === 'heavy' ||
+      (contest === 'help' && attr(shooter, 'DNK') >= 76) ||
+      (contest === 'contest' && attr(shooter, 'DNK') >= 84 && chance(0.40))
+    ));
+    scene.face = !!(made && shot === 'threePT' && matchup && contest === 'contest' && (action === 'stepback' || action === 'pull3') && chance(0.24));
+    rows.push(attachPbp({
+      kind: made ? 'make' : 'miss',
+      tag: made ? '进攻成功' : '进攻失败',
+      tone: made ? 'make' : 'miss',
+      teamSide: side,
+      text: composeShotText(scene)
+    }, scene));
+    if (made) return { clock: clock, orb: false, rows: rows };
     var missReb = doRebound(game, ctx, orbRate);
     rows = rows.concat(reboundRows(ctx, missReb));
     return { clock: clock, orb: !!missReb.orb, rows: rows };
@@ -1444,6 +1797,10 @@
       scoreA: game.scoreA,
       scoreB: game.scoreB
     };
+    if (PP_LIVE._collectPbp && row._pbp) {
+      play._pbp = row._pbp;
+      play._pbpErrs = auditPbpScene(row._pbp, play.text);
+    }
     game.plays.push(play);
     game.feed.push(play);
     sess.tickPlays.push(play);
@@ -2286,6 +2643,64 @@
         userPts: l.userPts - s.userPts, userReb: l.userReb - s.userReb, userAst: l.userAst - s.userAst,
         win: l.win - s.win
       }
+    };
+  };
+
+  PP_LIVE.benchPbp = function (games) {
+    games = Math.max(8, Math.min(80, parseInt(games, 10) || 24));
+    PP_LIVE._collectPbp = true;
+    var teamA = (typeof STATE !== 'undefined' && STATE.careerTeam) || 'LAL';
+    var teamB = 'BOS';
+    var contest = {};
+    var actions = {};
+    var errs = {};
+    var samples = [];
+    var lens = 0;
+    var nPbp = 0;
+    var scores = { a: 0, b: 0 };
+    var flavor = { face: 0, poster: 0, open: 0, help: 0, lob: 0, coast: 0, euro: 0 };
+    var i, j, pack, plays, p, e, tx;
+    for (i = 0; i < games; i++) {
+      pack = run(teamA, teamB, { teamAHome: i % 2 === 0, neutralState: true, fatigueA: 0 });
+      scores.a += pack.result.scoreA;
+      scores.b += pack.result.scoreB;
+      plays = (pack.live && pack.live.plays) || [];
+      for (j = 0; j < plays.length; j++) {
+        p = plays[j];
+        if (!p || p.type === 'meta' || p.kind === 'flavor' || p.kind === 'orb' || p.kind === 'drb') continue;
+        if (!p._pbp) continue;
+        nPbp++;
+        tx = String(p.text || '');
+        lens += tx.length;
+        contest[p._pbp.contest || p.kind] = (contest[p._pbp.contest || p.kind] || 0) + 1;
+        actions[p._pbp.action || p.kind] = (actions[p._pbp.action || p.kind] || 0) + 1;
+        if (/颜射/.test(tx)) flavor.face++;
+        if (/隔扣/.test(tx)) flavor.poster++;
+        if (/无人防守/.test(tx)) flavor.open++;
+        if (/协防/.test(tx)) flavor.help++;
+        if (/空接/.test(tx)) flavor.lob++;
+        if (/一条龙/.test(tx)) flavor.coast++;
+        if (/欧洲步/.test(tx)) flavor.euro++;
+        if (p._pbpErrs && p._pbpErrs.length) {
+          for (e = 0; e < p._pbpErrs.length; e++) errs[p._pbpErrs[e]] = (errs[p._pbpErrs[e]] || 0) + 1;
+        }
+        if (samples.length < 24 && /颜射|无人|协防|隔扣|空接|一条龙|欧洲步|后仰|勾手|跑出空档/.test(tx)) {
+          samples.push(tx);
+        }
+      }
+    }
+    PP_LIVE._collectPbp = false;
+    return {
+      games: games,
+      avgA: scores.a / games,
+      avgB: scores.b / games,
+      nPbp: nPbp,
+      avgLen: nPbp ? lens / nPbp : 0,
+      contest: contest,
+      actions: actions,
+      flavor: flavor,
+      errs: errs,
+      samples: samples
     };
   };
 })();
