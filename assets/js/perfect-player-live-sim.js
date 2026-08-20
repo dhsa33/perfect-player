@@ -8,14 +8,7 @@
   'use strict';
 
   var PP_LIVE = window.PP_LIVE = window.PP_LIVE || {};
-  var REGULAR_OFFER_CAP = 9;
-  var DERBY = {
-    LAL: 'LAC', LAC: 'LAL', NYK: 'BKN', BKN: 'NYK', GSW: 'SAC', SAC: 'GSW',
-    BOS: 'PHI', PHI: 'BOS', MIA: 'ORL', ORL: 'MIA', CHI: 'MIL', MIL: 'CHI',
-    DAL: 'HOU', HOU: 'DAL', DEN: 'UTA', UTA: 'DEN', SAS: 'MEM', MEM: 'SAS',
-    PHX: 'LAC', OKC: 'MIN', MIN: 'OKC', POR: 'GSW', ATL: 'CHA', CHA: 'ATL',
-    CLE: 'DET', DET: 'CLE', IND: 'MIL', TOR: 'BOS', WAS: 'PHI', NOP: 'HOU'
-  };
+  var REGULAR_OFFER_CAP = 10;
 
   function clamp(v, a, b) { return Math.max(a, Math.min(b, Number(v) || 0)); }
   function clampHalf(v, lo, hi, hard) {
@@ -1881,69 +1874,61 @@
   PP_LIVE.EVENT_COUNT = LIVE_EVENTS.length;
 
   /* ---------- 关键场次 ---------- */
-  function derbyOpp(team) { return DERBY[team] || null; }
-
   function describeRegular(game, index, total) {
     var opp = teamName(game.opponent);
     var loc = game.home ? '主场对' : '客场挑战';
     if (index === 0) return '赛季揭幕战，' + loc + opp + '。';
-    if (isChristmas(game)) return '圣诞大战，' + loc + opp + '。';
-    if (isHomeOpener(game, index)) return '主场揭幕，' + loc + opp + '。';
-    if (isDerbyGame(game)) return '德比夜，' + loc + opp + '。';
-    if (isRivalGame(game)) return '和宿敌的对话，' + loc + opp + '。';
-    if (isRaceGame(index, total)) return '排名边缘的关键战，' + loc + opp + '。';
-    if (isNationalGame(index)) return '全国转播夜，' + loc + opp + '。';
-    return loc + opp + '，值得自己看完。';
+    if (index === total - 1) return '常规赛收官战，' + loc + opp + '。';
+    if (isRivalGame(game)) return '死敌所在的 ' + opp + ' 来了，' + loc + '他们。';
+    if (isMvpHeatGame(game)) return '上届 MVP 所在的 ' + opp + '，联盟焦点战。';
+    if (isRaceGame(game, index, total)) return '排名咬得很紧，' + loc + opp + ' 可能改写排位。';
+    return loc + opp + '。';
   }
 
-  function isChristmas(game) { return game && game.day >= 62 && game.day <= 68; }
-  function isHomeOpener(game, index) {
-    if (!game || !game.home) return false;
-    var sch = STATE.season && STATE.season.schedule || [];
-    for (var i = 0; i < sch.length; i++) {
-      if (sch[i].home) return sch[i] === game || i === index;
-    }
-    return false;
-  }
-  function isDerbyGame(game) {
-    var me = STATE.careerTeam;
-    var d = (STATE.career && STATE.career.flags && STATE.career.flags.storyDerby && STATE.career.flags.storyDerby.team) || derbyOpp(me);
-    return !!(d && game && game.opponent === d);
-  }
   function isRivalGame(game) {
     var r = STATE.career && STATE.career.flags && STATE.career.flags.storyRival;
     return !!(r && r.team && game && game.opponent === r.team);
   }
-  function isNationalGame(index) {
-    var fame = 0, ovr = STATE.finalOVR || 0;
-    try { fame = Number(getCareerProfile().fame) || 0; } catch (e) {}
-    if (fame >= 7 || ovr >= 88) return index >= 11 && (index + 1) % 11 === 0;
-    return index >= 21 && (index + 1) % 14 === 0;
+  function lastMvpInfo() {
+    var m = STATE.career && STATE.career.lastMvp;
+    if (m && m.team) return m;
+    if (!STATE.career || !STATE.career.seasonCount) return { team: 'OKC', isUser: false };
+    return null;
   }
-  function isRaceGame(index, total) {
-    if (total - index > 12) return false;
-    if (typeof getConferenceSeed !== 'function') return false;
-    var seed = getConferenceSeed(STATE.careerTeam);
-    return seed >= 5 && seed <= 12;
+  function isMvpHeatGame(game) {
+    var m = lastMvpInfo();
+    if (!m || m.isUser || !m.team) return false;
+    return !!(game && game.opponent === m.team);
   }
-  function isEliteOpp(game) {
-    if (!game || typeof calcTeamPowerWithPlayer !== 'function') return false;
-    var p = calcTeamPowerWithPlayer(game.opponent);
-    return (p.depth || 0) >= 84;
+  function isRaceGame(game, index, total) {
+    if (!game || total - index > 18) return false;
+    if (typeof getConference !== 'function' || typeof getConferenceSeed !== 'function') return false;
+    var me = STATE.careerTeam;
+    var opp = game.opponent;
+    if (!me || !opp || getConference(me) !== getConference(opp)) return false;
+    var mySeed = getConferenceSeed(me);
+    var oppSeed = getConferenceSeed(opp);
+    if (mySeed > 12 && oppSeed > 12) return false;
+    return Math.abs(mySeed - oppSeed) <= 2;
   }
 
   function shouldOfferRegular(game, index, total) {
     if (!game || game._livePrompted) return false;
     var season = STATE.season || {};
     if (season._skipLiveRegular) return false;
-    if ((season._liveOffers || 0) >= REGULAR_OFFER_CAP) return false;
-    var hit = index === 0 || isChristmas(game) || isHomeOpener(game, index) || isDerbyGame(game)
-      || isRivalGame(game) || isNationalGame(index) || isRaceGame(index, total);
-    if (!hit && isEliteOpp(game) && (season._liveElite || 0) < 2) hit = true;
-    if (!hit) return false;
+    var opener = index === 0;
+    var closer = index === total - 1;
+    if (!opener && !closer && (season._liveOffers || 0) >= REGULAR_OFFER_CAP) return false;
+    var reason = null;
+    if (opener) reason = 'opener';
+    else if (closer) reason = 'closer';
+    else if (isRivalGame(game)) reason = 'rival';
+    else if (isMvpHeatGame(game)) reason = 'mvp';
+    else if (isRaceGame(game, index, total) && (season._liveRace || 0) < 3) reason = 'race';
+    if (!reason) return false;
     game._livePrompted = true;
     season._liveOffers = (season._liveOffers || 0) + 1;
-    if (isEliteOpp(game)) season._liveElite = (season._liveElite || 0) + 1;
+    if (reason === 'race') season._liveRace = (season._liveRace || 0) + 1;
     return true;
   }
   PP_LIVE.shouldOfferRegular = shouldOfferRegular;

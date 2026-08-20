@@ -5615,6 +5615,13 @@ function calcSeasonAwards() {
     isUser:!!mvpPick.isUser,
     userRank:mvpUserRank
   });
+  if (STATE.career) {
+    STATE.career.lastMvp = {
+      team: mvpPick.team || (mvpPick.isUser ? STATE.careerTeam : '') || '',
+      isUser: !!mvpPick.isUser,
+      winner: mvpPick.cname || ''
+    };
+  }
 
   var defSum = avg.stl + avg.blk;
   var dpoyFx = typeof getCareerProfileEffects === 'function' ? getCareerProfileEffects() : {};
@@ -25870,7 +25877,7 @@ if (window._sdkReady && document.getElementById('career-area')) {
 <script src="assets/js/perfect-player-hupu-extensions.js?v=20260820-award-narrative"></script>
 <script src="assets/js/perfect-player-story-events.js?v=20260820-rival-pool"></script>
 <script src="assets/js/perfect-player-skills.js?v=20260820-skill-no-slot"></script>
-<script src="assets/js/perfect-player-live-sim.js?v=20260820-live-sim-v19"></script>
+<script src="assets/js/perfect-player-live-sim.js?v=20260820-live-sim-v20"></script>
 <script src="assets/js/perfect-player-enhancements.js?v=20260820-legacy-create"></script>
 </body>
 </html>
