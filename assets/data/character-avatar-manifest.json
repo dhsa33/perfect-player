@@ -1,0 +1,123 @@
+{
+  "version": 1,
+  "count": 18,
+  "format": "PNG",
+  "width": 512,
+  "height": 512,
+  "transparent": true,
+  "groups": {
+    "亚洲": 6,
+    "白人": 6,
+    "黑人": 6
+  },
+  "avatars": [
+    {
+      "id": "avatar-01",
+      "group": "亚洲",
+      "photoLocal": "assets/images/Player/ai-avatars/avatar-asia-01.png",
+      "sha256": "abb7905bc10f4a6a01752f87f7aebfd3d7e1839aef3fb2a3867be3f28693c079"
+    },
+    {
+      "id": "avatar-02",
+      "group": "亚洲",
+      "photoLocal": "assets/images/Player/ai-avatars/avatar-02.png",
+      "sha256": "e5bb79afa8eeac1881e6f2fa7381f83ed3b51fd871457ea370243a30905d0ca9"
+    },
+    {
+      "id": "avatar-03",
+      "group": "亚洲",
+      "photoLocal": "assets/images/Player/ai-avatars/avatar-03.png",
+      "sha256": "87b30814ef50101c92cf779a46b67448e96c4747eb1a04094421ed6287fd54aa"
+    },
+    {
+      "id": "avatar-04",
+      "group": "亚洲",
+      "photoLocal": "assets/images/Player/ai-avatars/avatar-04.png",
+      "sha256": "0c40fa5af7f2672e4e52ba8e534609fc6745def9fc9e9d72e3b912cc88910c60"
+    },
+    {
+      "id": "avatar-05",
+      "group": "亚洲",
+      "photoLocal": "assets/images/Player/ai-avatars/avatar-05.png",
+      "sha256": "d8aab1893d3f78b30753dfba8a8c53201eb48db303abf20951fceb950b789ee2"
+    },
+    {
+      "id": "avatar-06",
+      "group": "亚洲",
+      "photoLocal": "assets/images/Player/ai-avatars/avatar-06.png",
+      "sha256": "7a83aca0cd76d1aa229a696b23c6f90504e91ab00d9ffc8f7192e612f6567ea0"
+    },
+    {
+      "id": "avatar-07",
+      "group": "白人",
+      "photoLocal": "assets/images/Player/ai-avatars/avatar-07.png",
+      "sha256": "d280862ed921de6ff99d1a226d6e05965f85acf27869502367f59809432dabc6"
+    },
+    {
+      "id": "avatar-08",
+      "group": "白人",
+      "photoLocal": "assets/images/Player/ai-avatars/avatar-08.png",
+      "sha256": "e411c1a4b9aee492d4a7096e303f275b766dbb23eb330c7cdfacca8944b263ff"
+    },
+    {
+      "id": "avatar-09",
+      "group": "白人",
+      "photoLocal": "assets/images/Player/ai-avatars/avatar-09.png",
+      "sha256": "884122fc061a4470e66da3c6fdf18d1d494f3ff4ac7e01ae2ff582e192585df5"
+    },
+    {
+      "id": "avatar-10",
+      "group": "白人",
+      "photoLocal": "assets/images/Player/ai-avatars/avatar-10.png",
+      "sha256": "59e9085541640801b120c24c523ffc1908b68213c30d1cb3bb3174c391617a99"
+    },
+    {
+      "id": "avatar-11",
+      "group": "白人",
+      "photoLocal": "assets/images/Player/ai-avatars/avatar-11.png",
+      "sha256": "2d85538523b62e566da1801c4d5b4661c6ae779d1f14b4db6f43c8136222bf20"
+    },
+    {
+      "id": "avatar-12",
+      "group": "白人",
+      "photoLocal": "assets/images/Player/ai-avatars/avatar-12.png",
+      "sha256": "8a63a5f9dcc2efb1855dbdd99d2dcb3fb03e74b08f26363133a1022508939f16"
+    },
+    {
+      "id": "avatar-13",
+      "group": "黑人",
+      "photoLocal": "assets/images/Player/ai-avatars/avatar-13.png",
+      "sha256": "5fe0e880d389b342f66f9a5f200754bc8c4389b2872d6d3bad18d36961ed2a7d"
+    },
+    {
+      "id": "avatar-14",
+      "group": "黑人",
+      "photoLocal": "assets/images/Player/ai-avatars/avatar-14.png",
+      "sha256": "80ce704b9364175356e83e4853debec27c7395e106b9234146de0504bc9e26fe"
+    },
+    {
+      "id": "avatar-15",
+      "group": "黑人",
+      "photoLocal": "assets/images/Player/ai-avatars/avatar-15.png",
+      "sha256": "d9e39c4c2dc88dbcd9fefc67353ee339a617339fd649d7365e4145a7e5a37a8b"
+    },
+    {
+      "id": "avatar-16",
+      "group": "黑人",
+      "photoLocal": "assets/images/Player/ai-avatars/avatar-16.png",
+      "sha256": "20db216f07576e1cbf01a7965116b9fe79f2aac843aeba5f7acc82061aa677fc"
+    },
+    {
+      "id": "avatar-17",
+      "group": "黑人",
+      "photoLocal": "assets/images/Player/ai-avatars/avatar-17.png",
+      "sha256": "76a0f52b58d1ec7ed9fec8997d3a34b929b479f309264344d4d70e2647778b5e"
+    },
+    {
+      "id": "avatar-18",
+      "group": "黑人",
+      "photoLocal": "assets/images/Player/ai-avatars/avatar-18.png",
+      "sha256": "fa4a136761dbcae01cb032435fc44ddca5b3a453d1d4dd3535730b06dde6d3e0"
+    }
+  ]
+}

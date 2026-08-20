@@ -1,0 +1,20 @@
+.env
+.env.*
+__pycache__/
+*.pyc
+output/
+*.log
+
+# local benches / tooling
+_local_live_bench/
+node_modules/
+
+# duplicate local export
+我创造的完美球员.html
+我创造的完美球员_files/
+
+# editor / OS
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

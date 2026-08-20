@@ -1,0 +1,511 @@
+{
+  "version": 1,
+  "count": 100,
+  "format": "PNG",
+  "width": 216,
+  "height": 216,
+  "transparent": true,
+  "usage": "future-generated-rookies",
+  "headshots": [
+    {
+      "id": "generated-rookie-001",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-001.png",
+      "sha256": "543f00764a95603d8f329db78086266a333c80eebad9faec80d9dfcba770b26f"
+    },
+    {
+      "id": "generated-rookie-002",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-002.png",
+      "sha256": "e23788589daed1d2433be319c8a5035f9fc24b76d767d33f7f66e714c6f97c49"
+    },
+    {
+      "id": "generated-rookie-003",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-003.png",
+      "sha256": "9ca70d8ffb58a8b66cabdf99c815750406f58a1f7bf425ecfb54724b18484d80"
+    },
+    {
+      "id": "generated-rookie-004",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-004.png",
+      "sha256": "5a07eb9d4935e7c4b27cd7dd01be1d863f8a09329b390691f48b87dc91e7c28a"
+    },
+    {
+      "id": "generated-rookie-005",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-005.png",
+      "sha256": "8e6041f387b035e3ea17e038b0e03ab7873279605aef92951080cb72d30b7366"
+    },
+    {
+      "id": "generated-rookie-006",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-006.png",
+      "sha256": "cb9d1409a8ca210898892b76ccfcaa6cabd4a8f07561728dd9a3e090efce2dfe"
+    },
+    {
+      "id": "generated-rookie-007",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-007.png",
+      "sha256": "3533e750d09d99c4248859e1c88decd7abe283de30a26fe64e888c9370fe8135"
+    },
+    {
+      "id": "generated-rookie-008",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-008.png",
+      "sha256": "beb9899b821ccf8ced861aa58a9ee590c1248d1bf66e55796652283222f2b2ac"
+    },
+    {
+      "id": "generated-rookie-009",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-009.png",
+      "sha256": "5d8ebf262f9021abacf2f077df5078c083118cb5f914522c244b1748dbba5b80"
+    },
+    {
+      "id": "generated-rookie-010",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-010.png",
+      "sha256": "1be74540e74125c8ae75485c006f48f022f914932f6b717780ce65e1acc8c6a3"
+    },
+    {
+      "id": "generated-rookie-011",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-011.png",
+      "sha256": "301e2290f4eb90cdca20e1787896ef0a67416f69adf7c96c4060f7885ae3b58e"
+    },
+    {
+      "id": "generated-rookie-012",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-012.png",
+      "sha256": "2697a45f1db48da3c5371617d0a48cf888123c1d97626f2ae66709afcde15175"
+    },
+    {
+      "id": "generated-rookie-013",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-013.png",
+      "sha256": "1175ff8f4d8197de78ab8b4c06afea81d9ebbc0a817cfd85c8ad3f5cdd2d435b"
+    },
+    {
+      "id": "generated-rookie-014",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-014.png",
+      "sha256": "43b991ca53293645fa87a674ff0cfefa45ace00b125a7aef9ebd65803514aa9f"
+    },
+    {
+      "id": "generated-rookie-015",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-015.png",
+      "sha256": "9b13964e22e09534adf1baad15890f577f10026f720cc4d371694f30941c1beb"
+    },
+    {
+      "id": "generated-rookie-016",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-016.png",
+      "sha256": "7d9addb7573a88f2b764a531cbccf84b5e20ab016eda767bc5c07d4d576f420f"
+    },
+    {
+      "id": "generated-rookie-017",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-017.png",
+      "sha256": "38bc60234e2d4298fbb9de341e18368fea8fdafddc0a7e1a1981d00ac6429ae8"
+    },
+    {
+      "id": "generated-rookie-018",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-018.png",
+      "sha256": "b2f131d2eb8c5f776dd89d8b012b62598a10f0e5414ca6168a282b5c03da122e"
+    },
+    {
+      "id": "generated-rookie-019",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-019.png",
+      "sha256": "b7e25e1919888460c85216d28d529d865eeb4a01505e1f82586e32a9faab7120"
+    },
+    {
+      "id": "generated-rookie-020",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-020.png",
+      "sha256": "1f03478074b97d04b229813cf8cf0f74f7327c4689718903cee9ad158dcb4cd7"
+    },
+    {
+      "id": "generated-rookie-021",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-021.png",
+      "sha256": "4200b1244e03c44a97e5c2bbc8ab732ff0e6a994db88f399eb0a6a3af3272dbe"
+    },
+    {
+      "id": "generated-rookie-022",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-022.png",
+      "sha256": "6e8fb1b5fa3a5b761b12d40c0d7456637b8b80fd3cb94f7ce868cdaaa82fd3cd"
+    },
+    {
+      "id": "generated-rookie-023",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-023.png",
+      "sha256": "2ffc42d74f87c339d435dbb1df61f2233866782ab84893a40585bc21e97b9528"
+    },
+    {
+      "id": "generated-rookie-024",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-024.png",
+      "sha256": "73c6150b5fecbfbc4837147b2e393f54ac03f70d52be3897e615ffffe4784e64"
+    },
+    {
+      "id": "generated-rookie-025",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-025.png",
+      "sha256": "b09cd94cfa2884bca08f6c6dd65002485ac639cb770e0328aa52dcee9829af2c"
+    },
+    {
+      "id": "generated-rookie-026",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-026.png",
+      "sha256": "6d5635ec7c6d2cb550024649162769db0f7acee9f8800dff53c9dd5dc2f98ec3"
+    },
+    {
+      "id": "generated-rookie-027",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-027.png",
+      "sha256": "c0436643e470524bc07003db8414f8142f66bd2c3e28c607dd312bb9da34c2ae"
+    },
+    {
+      "id": "generated-rookie-028",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-028.png",
+      "sha256": "a9610bc4a28b7738fab6e9273f2bdd88faa50327058b2378ff48224d5085b1e9"
+    },
+    {
+      "id": "generated-rookie-029",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-029.png",
+      "sha256": "cad80def1c74a2bdf5ce7e0f1e1c3e3f1e28ed1586570ca2529e6494f060cab3"
+    },
+    {
+      "id": "generated-rookie-030",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-030.png",
+      "sha256": "7b1756c92ebbe33b1a0ca11ea0f476232448fea1c9a98b88b13f39c7c1a4c993"
+    },
+    {
+      "id": "generated-rookie-031",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-031.png",
+      "sha256": "c25240d245cc8faa38f85bb77d388f76682bd0009effe64cb080a4fbcd442cb6"
+    },
+    {
+      "id": "generated-rookie-032",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-032.png",
+      "sha256": "f2ab76dc561733eb84437249931889e4d24620b843c226d82e6fc4978d3093fe"
+    },
+    {
+      "id": "generated-rookie-033",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-033.png",
+      "sha256": "3ad428bfbdcc094af949f53c9f742bebf84f643e1b6dc9b48c0e8a5547a25399"
+    },
+    {
+      "id": "generated-rookie-034",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-034.png",
+      "sha256": "bd3bec3256bfa878b4d68d87080c9c0f54d6ab5844d514376e6481fa2715bd4b"
+    },
+    {
+      "id": "generated-rookie-035",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-035.png",
+      "sha256": "3c36114a8c5daac18938f3f786c0c2ab75cadd2e520f187eb666403dd1777834"
+    },
+    {
+      "id": "generated-rookie-036",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-036.png",
+      "sha256": "9ef482dccc64272015ae28c7fcf6bed147058f1ab808e2b3eefd7c0c3a275d4f"
+    },
+    {
+      "id": "generated-rookie-037",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-037.png",
+      "sha256": "0425c2f4c9ccec0a11a7542fbc64035b39baa290239afecba6414b793fe2b212"
+    },
+    {
+      "id": "generated-rookie-038",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-038.png",
+      "sha256": "fed92d35ed5256f2bbc8aac616bebf18275ec6027547ce4dc7b9497a4931a950"
+    },
+    {
+      "id": "generated-rookie-039",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-039.png",
+      "sha256": "99b653582c5ce00cf96b2fbe1643523e45570d84bd9c3c4afa39dc53c92c0f90"
+    },
+    {
+      "id": "generated-rookie-040",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-040.png",
+      "sha256": "8345eba0280144a34b1e3b3a4f3226703e91dbf1acc641ec8b9c94db61050842"
+    },
+    {
+      "id": "generated-rookie-041",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-041.png",
+      "sha256": "c0fc7233b8ef6d5298c464d2a820c67c3ec0affff4a112f594dd35aab350d87d"
+    },
+    {
+      "id": "generated-rookie-042",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-042.png",
+      "sha256": "50286ae03c2856a80bd6cc1761e69e03e592630207941dfc6472d413f0065a89"
+    },
+    {
+      "id": "generated-rookie-043",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-043.png",
+      "sha256": "6ddfe26c3afa433c8e123b2651e69f6ee45739a31dacb3b53af280a1c1ea7f85"
+    },
+    {
+      "id": "generated-rookie-044",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-044.png",
+      "sha256": "8b5dc3c0a56356cbd5af14ad3ddcac49a9a814250c459eee8a14e9f556c9b729"
+    },
+    {
+      "id": "generated-rookie-045",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-045.png",
+      "sha256": "af34e890b2474fb8dd743acb958e856c6fc7844510bceb5a7f27a28787083b8d"
+    },
+    {
+      "id": "generated-rookie-046",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-046.png",
+      "sha256": "0be7b8de3d9d569d706521417b4fee6b806e4a346237535a30af7170303921c1"
+    },
+    {
+      "id": "generated-rookie-047",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-047.png",
+      "sha256": "a775d43af25cc6c9e00aea90ad8adfcb465b1a27b1a3d0eca852498460b3936e"
+    },
+    {
+      "id": "generated-rookie-048",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-048.png",
+      "sha256": "d43b27ac54e8cf6154335b66db5a97ba825c51a8a99c24c6eaab455276f1c4b0"
+    },
+    {
+      "id": "generated-rookie-049",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-049.png",
+      "sha256": "4c41105d3f4526b570b7e934381df44b82198ba7edc56c547726129b28e0e18f"
+    },
+    {
+      "id": "generated-rookie-050",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-050.png",
+      "sha256": "09e1d0cae031568eaa9052795644c0c6e9224882785010299bb563af8f13f765"
+    },
+    {
+      "id": "generated-rookie-051",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-051.png",
+      "sha256": "2857ebb9a234176fff2cc591a7b3f26442843ad25f72b780342dbc492285f402"
+    },
+    {
+      "id": "generated-rookie-052",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-052.png",
+      "sha256": "10bda9341f12eb2af39705bc51b064c0b91978932f303717f8372c3b5df954c0"
+    },
+    {
+      "id": "generated-rookie-053",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-053.png",
+      "sha256": "e77082e9795dd7a1d116ee08888aeba09fb44239af65affe9d903d952ab1e86e"
+    },
+    {
+      "id": "generated-rookie-054",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-054.png",
+      "sha256": "dd1132f39ade30878d898cd067cef3dbb36219b698b4ec1d875a98072db8f0ae"
+    },
+    {
+      "id": "generated-rookie-055",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-055.png",
+      "sha256": "54eed29aa08935cc4a7fa76c6c6ce829863088812e15ac35f1fc9732239422d3"
+    },
+    {
+      "id": "generated-rookie-056",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-056.png",
+      "sha256": "3f47e5fe50bf4fb0fca3cdf1a9374cbb267e95d04e05293b3774275a524b3858"
+    },
+    {
+      "id": "generated-rookie-057",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-057.png",
+      "sha256": "3054ec88f98bcf08b14039dbef82c20b4582693386dbac147655727b00b86b6e"
+    },
+    {
+      "id": "generated-rookie-058",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-058.png",
+      "sha256": "1d68ae5135b93ec1b380537d53517ee8956cab0a33e798258a3a9edbaa1f20ea"
+    },
+    {
+      "id": "generated-rookie-059",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-059.png",
+      "sha256": "e148037069217ec49352746833ba789efee59e7026a0493f0a767a47be1055ea"
+    },
+    {
+      "id": "generated-rookie-060",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-060.png",
+      "sha256": "9d686d63b449bd9833dfc56a234d8bf82b771f66d18180765a743de44f39ebd0"
+    },
+    {
+      "id": "generated-rookie-061",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-061.png",
+      "sha256": "6c5482b4dbd1d24b6a9469ac1a803f4c0eb164376036fc982e830b0f60225419"
+    },
+    {
+      "id": "generated-rookie-062",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-062.png",
+      "sha256": "71b0dd6890e7f2254c016f6dbcc794ba01fa3cc18315e9c99ba8e335935f829c"
+    },
+    {
+      "id": "generated-rookie-063",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-063.png",
+      "sha256": "f27b73d5daef5057c5ce583d0131948fed42e3558fa41952d311f522c2a1fd91"
+    },
+    {
+      "id": "generated-rookie-064",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-064.png",
+      "sha256": "2b7d78a3af0f2c16a321dbe15142e77251d44c5701e465157472aa4c41b05682"
+    },
+    {
+      "id": "generated-rookie-065",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-065.png",
+      "sha256": "d3d9d7d6bca54620c9021105d6a3323b0149facb9efbfe0030aa7005aa98d0ac"
+    },
+    {
+      "id": "generated-rookie-066",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-066.png",
+      "sha256": "1aa1b924bec52c02fea9301e7bcd979f944dfffdfd01f9ded8afbb21aaf158d4"
+    },
+    {
+      "id": "generated-rookie-067",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-067.png",
+      "sha256": "a6dfd0088701d5d19ea237d18996472266b9f2d075a461930a886437dcd89424"
+    },
+    {
+      "id": "generated-rookie-068",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-068.png",
+      "sha256": "28f903a38d0153defb048e86ae8f2b80f79eb20ea4c74a1b1209f80dac26bd3d"
+    },
+    {
+      "id": "generated-rookie-069",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-069.png",
+      "sha256": "aab0109d2b0aaf3f484f3a7e3376bd064a56e6e271711ab1be735ed880c1d85d"
+    },
+    {
+      "id": "generated-rookie-070",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-070.png",
+      "sha256": "242322fb7af89e93ca75c8f3191ecff354afb18c4d54b5f640ae6e7baed7b7a3"
+    },
+    {
+      "id": "generated-rookie-071",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-071.png",
+      "sha256": "d57eb3ce7ed21f33a04dbf14769c72748b8c89036ce86b1018640480a04b6231"
+    },
+    {
+      "id": "generated-rookie-072",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-072.png",
+      "sha256": "ccb56186bfd5c3769f2e6c34399cbed7be14afb83c40d95adf708a32796ec85a"
+    },
+    {
+      "id": "generated-rookie-073",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-073.png",
+      "sha256": "5201295eeaec6ca004b8703490c4198ceb89702841247b3f08f596c0885682ee"
+    },
+    {
+      "id": "generated-rookie-074",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-074.png",
+      "sha256": "1dde69e71b16136669fe87ae8039a1a8fd7093170a059dae8173ed60b931bf62"
+    },
+    {
+      "id": "generated-rookie-075",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-075.png",
+      "sha256": "fe7c25b647d476a3cf3289eb5ae1a9bc91aa35bb5ebfc9334c9b25dbf966ab57"
+    },
+    {
+      "id": "generated-rookie-076",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-076.png",
+      "sha256": "2a3daaedf002d83eba6c4ad1dc0d539f9a0e02e118518b6c62ceed76d1d7e6fd"
+    },
+    {
+      "id": "generated-rookie-077",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-077.png",
+      "sha256": "504eecb4e0c37109646b9f7c4a7b88634f5f2ad07c45effd3ba80c299f5a49d8"
+    },
+    {
+      "id": "generated-rookie-078",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-078.png",
+      "sha256": "61caf1e2777abec6d99ec4b8b0b8a5acbf829753961d35b59dd060b6c349f4f5"
+    },
+    {
+      "id": "generated-rookie-079",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-079.png",
+      "sha256": "991ebaec11dea79ff0e02aa6226a7e27a64bdd153597b413b9cf51b21224fa33"
+    },
+    {
+      "id": "generated-rookie-080",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-080.png",
+      "sha256": "7034117d8a125e4a23ca0ac913dd43c825aa097b54f540b94eb5474495d1946a"
+    },
+    {
+      "id": "generated-rookie-081",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-081.png",
+      "sha256": "d7d1ec0a8e48afa0235b9d4e99c9cd7f1944852a8fb6cd489df5998c1515c7b1"
+    },
+    {
+      "id": "generated-rookie-082",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-082.png",
+      "sha256": "271a63aaecf04d60b80223488aaef34a53695f8e6facb007feb72a70cd9a8688"
+    },
+    {
+      "id": "generated-rookie-083",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-083.png",
+      "sha256": "a12c1e5fd6d922facdc43ca2e4597e54cf97e76a05aaf50f37ba4ffada5bd40b"
+    },
+    {
+      "id": "generated-rookie-084",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-084.png",
+      "sha256": "97af3ad3368e02c3bf4a117d1e06377894422f60f6afb88145ffeb6e39eb825a"
+    },
+    {
+      "id": "generated-rookie-085",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-085.png",
+      "sha256": "89c2c3f244060c1f002de8f677d01957cd1f5a3f8ba0ff467af5a5f7edfc590a"
+    },
+    {
+      "id": "generated-rookie-086",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-086.png",
+      "sha256": "6c9b77fcbd87b4c0e5c8164de457ef2cd6188b12474e2aa74e20acd4516620be"
+    },
+    {
+      "id": "generated-rookie-087",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-087.png",
+      "sha256": "fbeb8e6a3e21070f31f03ec31e1f4a703e130153aacf00d694414eec461bbc55"
+    },
+    {
+      "id": "generated-rookie-088",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-088.png",
+      "sha256": "9ff3799f49bb779e11f833918f306692d6d087136e4b5b383d3b3d0238a04790"
+    },
+    {
+      "id": "generated-rookie-089",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-089.png",
+      "sha256": "0146b0075ea9a0c4d84b6ddc08056ab2ecbb328c6dc1a182fc9efc5032fb601f"
+    },
+    {
+      "id": "generated-rookie-090",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-090.png",
+      "sha256": "474db1c69b1f60f19789ed64c82487ed4bfccc0cba98e1c682e1bd28bde71603"
+    },
+    {
+      "id": "generated-rookie-091",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-091.png",
+      "sha256": "78c88d7eaf39b001a4e6b83713196274b88579ef73b75318ba67640000061897"
+    },
+    {
+      "id": "generated-rookie-092",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-092.png",
+      "sha256": "d309a426ff81dec8d1af4985a4ff047519305643ef0fee84e76e7e7b793f3035"
+    },
+    {
+      "id": "generated-rookie-093",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-093.png",
+      "sha256": "7b39ee9ab4a5ecfeca99966949aaed93aa2e547c7ba1fa8d24770909c14e45d4"
+    },
+    {
+      "id": "generated-rookie-094",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-094.png",
+      "sha256": "6d06163ad5bf6f1e2f845dcaa11e5c844d6f0c5d5bb0fec557c148796e672b0a"
+    },
+    {
+      "id": "generated-rookie-095",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-095.png",
+      "sha256": "417923ec2f8ffbb4dd78960c48599c7946cd787fbc764c443a0f74615d0b0bad"
+    },
+    {
+      "id": "generated-rookie-096",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-096.png",
+      "sha256": "52de7a6d93378f502638910a76e1a79de33414ba794d8d3920ec0b548cec1d31"
+    },
+    {
+      "id": "generated-rookie-097",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-097.png",
+      "sha256": "e95240379138a9537a83f6171debcee0c6c8311306352d312349ed28d67f34c3"
+    },
+    {
+      "id": "generated-rookie-098",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-098.png",
+      "sha256": "06641454029a3735e2d29ab10c3a21924222928aa211322d3f35d565f9c2f7c8"
+    },
+    {
+      "id": "generated-rookie-099",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-099.png",
+      "sha256": "3d17cdfe2f424060d98afa1401dcc27fc23814b048a86d291632d65a67a2e951"
+    },
+    {
+      "id": "generated-rookie-100",
+      "photoLocal": "assets/images/Player/generated-rookies/generated-rookie-100.png",
+      "sha256": "78489cd57924d7c599fbe25cdd3a781852beef28bf72eb4fd2bb061795ea5aa0"
+    }
+  ]
+}
