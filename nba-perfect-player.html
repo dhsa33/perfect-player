@@ -35,8 +35,8 @@ html.pp-booting #app{visibility:hidden}
   40%{content:"28%"}50%{content:"32%"}62%{content:"36%"}75%{content:"40%"}88%{content:"44%"}100%{content:"48%"}
 }
   </style>
-  <link rel="preload" href="assets/js/perfect-player-boot.js?v=20260821-boot-v13" as="script">
-  <script defer src="assets/js/perfect-player-boot.js?v=20260821-boot-v13"></script>
+  <link rel="preload" href="assets/js/perfect-player-boot.js?v=20260821-boot-v14" as="script">
+  <script defer src="assets/js/perfect-player-boot.js?v=20260821-boot-v14"></script>
   <style>
 /* ============================================================
    BuildPlayer — Mobile-First Game Edition
@@ -10366,7 +10366,7 @@ function consumeEventTrainingBank() {
 
 function formatTrainingPointGrant(n) {
   if (!n) return '';
-  return '训练点+' + n + '（计入休赛期训练营，本季事件最多 +' + EVENT_TRAINING_BANK_CAP + '）。';
+  return '训练点+' + n + '，休赛期加点时可用（本季事件最多 +' + EVENT_TRAINING_BANK_CAP + '）。';
 }
 
 function applyEventTrainingGrant(result, n) {

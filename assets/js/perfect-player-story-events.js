@@ -55,7 +55,7 @@
     ],
     PF: [
       { id: 'duncan', name: '蒂姆·邓肯', city: '圣安东尼奥', teams: ['SAS'], line: '基本功、护筐和无声领袖', quote: '赢球的动作往往不好看，但每晚都能做出来。', attr: 'IDEF', attr2: 'REB' },
-      { id: 'dirk', name: '德克·诺维茨基', city: '达拉斯', teams: ['DAL'], line: '金鸡独立和空间型四号位', quote: '你要有一个别人学不像的结束动作。', attr: 'MID', attr2: 'threePT' },
+      { id: 'dirk', name: '德克·诺维茨基', city: '达拉斯', teams: ['DAL'], line: '金鸡独立和空间型四号位', quote: '你要有一个别人学不像的终结动作。', attr: 'MID', attr2: 'threePT' },
       { id: 'kg', name: '凯文·加内特', city: '明尼苏达', teams: ['MIN', 'BOS'], line: '强度、沟通和篮板', quote: '你不大声，对面就会当这片油漆区没人。', attr: 'REB', attr2: 'PDEF' },
       { id: 'barkley', name: '查尔斯·巴克利', city: '凤凰城', teams: ['PHX', 'PHI', 'HOU'], line: '卡位和二次进攻', quote: '篮板不是跳得高，是先把人挡住。', attr: 'REB', attr2: 'STR' },
       { id: 'gasol', name: '保罗·加索尔', city: '孟菲斯', teams: ['MEM', 'LAL'], line: '高位策应和内线手感', quote: '大个能传球，禁区就会自己打开。', attr: 'PAS', attr2: 'FIN' }
@@ -1048,16 +1048,16 @@
     return '球风点+1。';
   }
 
-  // ——— 技术指纹线：赛季发现 → 夏天打磨 → 比赛验证 → 收束给球风点 ———
+  // ——— 招牌动作线：赛季发现 → 夏天打磨 → 比赛验证 → 收束给球风点 ———
   pushEvent({
     id: 'story_craft_notice',
     branch: 'craft', phase: 'season', slot: 'main', weight: 12, topicId: 'craft_notice',
-    title: '技术指纹：助教按下暂停',
+    title: '招牌动作：助教定格这一帧',
     scenes: [
       '录像室里，助教把你连续十一次终结停在同一帧：习惯脚、习惯肩、习惯出手点。',
-      '他说：联盟已经开始按这张图防你。你要不要给自己留一个别人学不像的结束动作。'
+      '他说：联盟已经开始按这张图防你。你要不要给自己留一个别人学不像的终结动作。'
     ],
-    body: '这不是一次加练邀请，而是在问你要不要拥有可辨认的技术指纹。',
+    body: '这不是一次加练邀请，而是在问你要不要练出一眼能认出是你的打法。',
     requires: function () {
       if (getBranchNode('craft') !== 'start') return false;
       if (gamesPlayed() < 14) return false;
@@ -1065,13 +1065,13 @@
       return true;
     },
     choices: [
-      { label: '留下来把动作拆开', hint: '开启技术指纹线，中投提升', apply: function () {
+      { label: '留下来把动作拆开', hint: '开启招牌动作线，中投提升', apply: function () {
         setBranchNode('craft', 'craft_notice', { path: 'lab' });
         return applyStoryFx({ attrs: { MID: 1 }, profile: { coachTrust: 1 }, result: '你把那一帧看了二十遍。助教没有教新招，只让你先承认自己有多可预测。<br><br>效果：中投+1；教练信任+1。' });
       }},
       { label: '先靠身体解决问题', hint: '力量提升，不开启这条线', apply: function () {
         setBranchNode('craft', 'craft_skip', { path: 'skip' });
-        return applyStoryFx({ attrs: { STR: 1 }, result: '你说：他们知道又怎样。下一场你把人扛进去打成了。助教把那叠纸收了起来。<br><br>效果：力量+1。这条技术线到此结束。' });
+        return applyStoryFx({ attrs: { STR: 1 }, result: '你说：他们知道又怎样。下一场你把人扛进去打成了。助教把那叠纸收了起来。<br><br>效果：力量+1。这条线到此结束。' });
       }}
     ]
   });
@@ -1079,11 +1079,11 @@
   pushEvent({
     id: 'story_craft_lab',
     branch: 'craft', phase: 'offseason', slot: 'training', weight: 16,
-    title: '技术指纹：夏天实验室',
+    title: '招牌动作：夏天加练馆',
     scenes: [
       '空馆只开了半排灯。助教在地板上用胶带标出三只脚的位置，说这个夏天只练你会在十月用到的东西。'
     ],
-    body: '把可预测的习惯，改成你自己才能稳定做出来的结束动作。',
+    body: '把可预测的习惯，改成你自己才能稳定做出来的终结动作。',
     requires: function () { return getBranchNode('craft') === 'craft_notice'; },
     choices: [
       { label: '打磨中距离脚步', hint: '中投和控球提升，训练点+1', apply: function () {
@@ -1104,16 +1104,16 @@
   pushEvent({
     id: 'story_craft_test',
     branch: 'craft', phase: 'season', slot: 'main', weight: 15, topicId: 'craft_test',
-    title: '技术指纹：被点名的一晚',
+    title: '招牌动作：被点名的一晚',
     scenes: [
       '全国转播里，对面把你的新动作写进了战术板。第一节你还在犹豫该不该用夏天那一下。'
     ],
-    body: '实验室里的东西，只有在被针对时才算真正学成。',
+    body: '夏天练出来的东西，只有在被针对时才算真正学成。',
     requires: function () { return getBranchNode('craft') === 'craft_lab' && gamesPlayed() >= 8; },
     choices: [
-      { label: '在包夹里用新动作', hint: '关键球提升，波动上升', apply: function () {
+      { label: '在包夹里用新动作', hint: '关键球提升，状态更不稳', apply: function () {
         setBranchNode('craft', 'craft_test', { test: 'clutch' });
-        return applyStoryFx({ attrs: { CLU: 1 }, mods: { formVariance: 1 }, result: '你没有退回旧习惯。进了两球，也丢了一球，但对面再也不能按去年的图防你。<br><br>效果：关键球+1；状态波动+1。' });
+        return applyStoryFx({ attrs: { CLU: 1 }, mods: { formVariance: 1 }, result: '你没有退回旧习惯。进了两球，也丢了一球，但对面再也不能按去年的图防你。<br><br>效果：关键球+1；状态更不稳。' });
       }},
       { label: '先把新动作给队友创造', hint: '传球提升，更衣室更稳', apply: function () {
         setBranchNode('craft', 'craft_test', { test: 'pass' });
@@ -1125,11 +1125,11 @@
   pushEvent({
     id: 'story_craft_master',
     branch: 'craft', phases: ['season', 'offseason'], slot: 'main', weight: 18,
-    title: '技术指纹：有人开始学你',
+    title: '招牌动作：有人开始学你',
     scenes: [
-      '一名更年轻的球员在训练馆模仿你的结束动作，模仿得并不像。助教在旁边看你：这下，它是你的了。'
+      '一名更年轻的球员在训练馆模仿你的终结动作，模仿得并不像。助教在旁边看你：行了，这招算你的了。'
     ],
-    body: '技术被学会，才算真正留下指纹。收束这一条线，会留下一个球风点。',
+    body: '技术被人学着练，才算真正留下来。收束这一条线，会留下一个球风点。',
     requires: function () { return getBranchNode('craft') === 'craft_test' && seasonCount() >= 1; },
     choices: [
       { label: '把细节教给他', hint: '领导力提升，并获得球风点', apply: function () {
@@ -1140,7 +1140,7 @@
       { label: '留下自己的版本', hint: '关键球提升，并获得球风点', apply: function () {
         setBranchNode('craft', 'craft_master', { ending: 'own' });
         var point = grantStoryStylePoint('craftStylePoint');
-        return applyStoryFx({ attrs: { CLU: 1 }, result: '你让他去找自己的结束动作。属于你的那一下，不必被复制得一模一样。<br><br>效果：关键球+1。' + (point ? '<br><br>' + point : '') });
+        return applyStoryFx({ attrs: { CLU: 1 }, result: '你让他去找自己的终结动作。属于你的那一下，不必被复制得一模一样。<br><br>效果：关键球+1。' + (point ? '<br><br>' + point : '') });
       }}
     ]
   });
@@ -1205,7 +1205,7 @@
     scenes: [
       '核心层约在一家没有记者的餐厅。没有战术板，只有一句：下赛季更衣室听谁的？'
     ],
-    body: '常规赛里的声音，会在休赛期被重新计价。',
+    body: '常规赛里说出口的话，到了休赛期会被重新掂量。',
     requires: function () { return getBranchNode('voice') === 'voice_split'; },
     choices: [
       { label: '答应做沟通的人', hint: '领导力提升', apply: function () {
@@ -1246,11 +1246,11 @@
   pushEvent({
     id: 'story_bench_cut',
     branch: 'bench', phase: 'season', slot: 'main', weight: 12, topicId: 'bench_cut',
-    title: '轮换：你的名字被往下移',
+    title: '板凳：你的名字被往下移',
     scenes: [
       '赛前投篮结束后，教练把轮换表往下折了一行。你的名字还在，只是更靠近第二波。'
     ],
-    body: '这不是被放弃，是被重新计价。你要决定怎么把分钟数要回来。',
+    body: '这不是被放弃，是被重新评估。你要决定怎么把上场时间要回来。',
     requires: function () {
       if (getBranchNode('bench') !== 'start') return false;
       if (getBranchNode('torch') !== 'start') return false;
@@ -1266,7 +1266,7 @@
       }},
       { label: '不问，只用下场证明', hint: '开启板凳线，波动上升', apply: function () {
         setBranchNode('bench', 'bench_cut', { ask: false });
-        return applyStoryFx({ profile: { leadership: 1 }, mods: { formVariance: 1 }, result: '你把清单留给自己。下一场你坐得更久，眼神也更亮。<br><br>效果：领导力+1；状态波动+1。' });
+        return applyStoryFx({ profile: { leadership: 1 }, mods: { formVariance: 1 }, result: '你把清单留给自己。下一场你坐得更久，眼神也更亮。<br><br>效果：领导力+1；状态更不稳。' });
       }},
       { label: '接受这就是角色', hint: '不开启此线', apply: function () {
         setBranchNode('bench', 'bench_skip', { ask: 'accept' });
@@ -1278,7 +1278,7 @@
   pushEvent({
     id: 'story_bench_window',
     branch: 'bench', phase: 'season', slot: 'main', weight: 15, topicId: 'bench_window',
-    title: '轮换：伤病打开的窗口',
+    title: '板凳：伤病打开的窗口',
     scenes: [
       '一名轮换球员在热身时侧身，队医摇头。教练看向你：今晚你顶他的分钟。'
     ],
@@ -1291,7 +1291,7 @@
       }},
       { label: '用得分把窗口撑开', hint: '人气提升，波动上升', apply: function () {
         setBranchNode('bench', 'bench_window', { way: 'score' });
-        return applyStoryFx({ profile: { fame: 1 }, mods: { formVariance: 1, moraleBonus: 1 }, result: '你连进两球，看台第一次为替补席上的你起身。教练既高兴，也开始盯你的选择。<br><br>效果：人气+1；士气+1；状态波动+1。' });
+        return applyStoryFx({ profile: { fame: 1 }, mods: { formVariance: 1, moraleBonus: 1 }, result: '你连进两球，看台第一次为替补席上的你起身。教练既高兴，也开始盯你的选择。<br><br>效果：人气+1；士气+1；状态更不稳。' });
       }}
     ]
   });
@@ -1299,7 +1299,7 @@
   pushEvent({
     id: 'story_bench_summer',
     branch: 'bench', phase: 'offseason', slot: 'training', weight: 14,
-    title: '轮换：夏天把位置练实',
+    title: '板凳：夏天把位置练实',
     scenes: [
       '训练师问你：这个夏天是把夏联当成证明场，还是跟着一队补你被点名的那些细节。'
     ],
@@ -1320,7 +1320,7 @@
   pushEvent({
     id: 'story_bench_role',
     branch: 'bench', phase: 'season', slot: 'main', weight: 16, topicId: 'bench_role',
-    title: '轮换：位置被重新写上',
+    title: '板凳：位置被重新写上',
     scenes: [
       '训练营名单公布，你的名字回到了固定轮换。教练说：不是因为夏天热闹，是因为我们能把你放进某几分钟并且放心。'
     ],
@@ -1340,13 +1340,13 @@
     ]
   });
 
-  // ——— 负荷管理线：年龄或年资到位，不与退役倒计时并行 ———
+  // ——— 身体管理线：年龄或年资到位，不与退役倒计时并行 ———
   pushEvent({
     id: 'story_load_plan',
     branch: 'load', phase: 'offseason', slot: 'training', weight: 12,
-    title: '负荷：队医的夏天计划',
+    title: '身体管理：队医的夏天计划',
     scenes: [
-      '体检报告没有大伤，却有一排黄灯。队医把背靠背和夏联场次摊开，问你要不要从今年夏天开始管负荷。'
+      '体检报告没有大伤，却有一排黄灯。队医把背靠背和夏联场次摊开，问你要不要从今年夏天开始管身体。'
     ],
     body: '这是保养，不是认输。可媒体不一定这么写。',
     requires: function () {
@@ -1356,7 +1356,7 @@
       return true;
     },
     choices: [
-      { label: '接受科学负荷计划', hint: '开启负荷线，伤病风险下降，训练点+1', apply: function () {
+      { label: '接受科学恢复计划', hint: '开启身体管理线，伤病风险下降，训练点+1', apply: function () {
         setBranchNode('load', 'load_plan', { plan: 'science' });
         return applyStoryFx({ mods: { injuryRiskBonus: -1, staminaLoad: -1 }, tp: 1, result: '你把夏联场次砍掉两场，把恢复写进日历。训练师第一次没和你争论。<br><br>效果：伤病风险-1；体能负荷-1。' });
       }},
@@ -1370,7 +1370,7 @@
   pushEvent({
     id: 'story_load_b2b',
     branch: 'load', phase: 'season', slot: 'main', weight: 15, topicId: 'load_b2b',
-    title: '负荷：背靠背被写成态度',
+    title: '身体管理：背靠背被写成态度',
     scenes: [
       '背靠背第二场你轮休。本地电台把这说成“他开始躲比赛”。队友已经在更衣室里听到了。'
     ],
@@ -1391,17 +1391,17 @@
   pushEvent({
     id: 'story_load_habit',
     branch: 'load', phase: 'offseason', slot: 'training', weight: 13,
-    title: '负荷：把保养写成习惯',
+    title: '身体管理：把保养写成习惯',
     scenes: [
       '第二个夏天，体能组不再问你“要不要管”，只问你“管到什么程度”。'
     ],
-    body: '负荷管理要变成习惯，才会在赛季里不被情绪冲掉。',
+    body: '保养要变成习惯，才会在赛季里不被情绪冲掉。',
     requires: function () { return getBranchNode('load') === 'load_b2b'; },
     choices: [
       { label: '把恢复课设成不可取消', hint: '伤病风险再降，训练点+1', apply: function () {
         setBranchNode('load', 'load_habit', { habit: 'fixed' });
         ensureFlags().bodyManagement = true;
-        return applyStoryFx({ mods: { injuryRiskBonus: -1, formVariance: -1 }, tp: 1, result: '商业拍摄要改时间。恢复课不再给任何人让路。<br><br>效果：伤病风险-1；状态波动-1。' });
+        return applyStoryFx({ mods: { injuryRiskBonus: -1, formVariance: -1 }, tp: 1, result: '商业拍摄要改时间。恢复课不再给任何人让路。<br><br>效果：伤病风险-1；状态更稳。' });
       }},
       { label: '保留少量硬仗日', hint: '关键球提升，风险折中，训练点+1', apply: function () {
         setBranchNode('load', 'load_habit', { habit: 'flex' });
@@ -1413,7 +1413,7 @@
   pushEvent({
     id: 'story_load_model',
     branch: 'load', phase: 'season', slot: 'main', weight: 16, topicId: 'load_model',
-    title: '负荷：年轻队友来问你',
+    title: '身体管理：年轻队友来问你',
     scenes: [
       '一名两年级球员在训练后拦住你：他们也开始让我轮休。我该听队医，还是听那些说我不够拼的人？'
     ],
@@ -1449,7 +1449,7 @@
       }},
       { label: '回家练，但每周回传录像', hint: '忠诚提升，波动略降，训练点+1', apply: function () {
         setBranchNode('pp_off_rookie', 'done', { plan: 'home' });
-        return applyStoryFx({ profile: { loyalty: 1, chinaPopularity: 1 }, mods: { formVariance: -1 }, tp: 1, result: '你在熟悉的球馆出汗，也按约定把录像发回。两边都觉得你还在线上。<br><br>效果：忠诚+1；中国人气+1；状态波动-1。' });
+        return applyStoryFx({ profile: { loyalty: 1, chinaPopularity: 1 }, mods: { formVariance: -1 }, tp: 1, result: '你在熟悉的球馆出汗，也按约定把录像发回。两边都觉得你还在线上。<br><br>效果：忠诚+1；中国人气+1；状态更稳。' });
       }}
     ]
   });
@@ -1477,7 +1477,7 @@
       }},
       { label: '全部推掉，留给训练', hint: '教练信任提升，训练点+2', apply: function () {
         setBranchNode('pp_off_euro', 'done', { tour: 'none' });
-        return applyStoryFx({ profile: { coachTrust: 1, businessValue: -1 }, mods: { formVariance: -1 }, tp: 2, result: '品牌不高兴。助教把你的名字写进了第一周加练名单。<br><br>效果：教练信任+1；商业价值-1；状态波动-1。' });
+        return applyStoryFx({ profile: { coachTrust: 1, businessValue: -1 }, mods: { formVariance: -1 }, tp: 2, result: '品牌不高兴。助教把你的名字写进了第一周加练名单。<br><br>效果：教练信任+1；商业价值-1；状态更稳。' });
       }}
     ]
   });
@@ -1489,7 +1489,7 @@
     scenes: [
       '家人把七月标成“不许训练馆”。你的体能教练把七月标成“力量窗口”。两张日历在同一张桌子上。'
     ],
-    body: '成家或即将成家的夏天，训练和关系会抢同一段日光。',
+    body: '成家或即将成家的夏天，训练和家庭会抢同一段时间。',
     requires: function () {
       if (getBranchNode('pp_off_july') !== 'start') return false;
       if (currentAge() < 26) return false;
@@ -1500,7 +1500,7 @@
     choices: [
       { label: '把早晨留给训练，下午留给家', hint: '两边都在，两边都不满，训练点+1', apply: function () {
         setBranchNode('pp_off_july', 'done', { split: true });
-        return applyStoryFx({ profile: { loyalty: 1 }, mods: { staminaLoad: 1, formVariance: -1 }, tp: 1, result: '你把自己劈成两段。家人说你还是心不在，训练师说你还是练不够。但七月没有崩。<br><br>效果：忠诚+1；状态波动-1；体能负荷+1。' });
+        return applyStoryFx({ profile: { loyalty: 1 }, mods: { staminaLoad: 1, formVariance: -1 }, tp: 1, result: '你两边都顾。家人说你还是心不在，训练师说你还是练不够。但七月没有崩。<br><br>效果：忠诚+1；状态更稳；体能负荷+1。' });
       }},
       { label: '真正休七天，再进入力量期', hint: '关系更稳，短期状态更松', apply: function () {
         setBranchNode('pp_off_july', 'done', { split: false });
@@ -1558,7 +1558,7 @@
       body: '冲击、改中投或拉开三分，会把你的进攻形状扳向不同方向。',
       choices: [
         { label: '继续冲击', hint: '终结和力量提升，伤病风险上升', attrs: { FIN: 2, STR: 1 }, mods: { injuryRiskBonus: 1 }, result: '你还是往里打。裁判开始给你吹到 2+1，膝盖也开始抗议。<br><br>效果：终结+2；力量+1；伤病风险+1。' },
-        { label: '改中投', hint: '中投提升，教练更放心', attrs: { MID: 2 }, profile: { coachTrust: 1 }, result: '你把结束动作提前到肘区。助教说：这才像能打到五月的人。<br><br>效果：中投+2；教练信任+1。' },
+        { label: '改中投', hint: '中投提升，教练更放心', attrs: { MID: 2 }, profile: { coachTrust: 1 }, result: '你把终结动作提前到肘区。助教说：这才像能打到五月的人。<br><br>效果：中投+2；教练信任+1。' },
         { label: '拉开投三分', hint: '三分提升，负荷略降', attrs: { threePT: 1 }, mods: { staminaLoad: -1 }, result: '你站到线外，让内线去打架。出手变轻了，责任没有。<br><br>效果：三分+1；体能负荷-1。' }
       ]
     }),

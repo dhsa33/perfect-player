@@ -886,7 +886,7 @@
     E('b23', 'Pin-in钉掩护', 'tactics', 10, { need: 'shooter' }, '底角钉住，{actor}往上弹出来接球。', { off: 0.10, shot: 'three' }),
     E('b24', 'Chicago手递手', 'tactics', 9, { need: 'pg,shooter' }, 'Chicago：{helper}手递手后再挡，{actor}走出来。', { off: 0.10, shot: 'three', helperAst: true }),
     E('b25', 'Ram提前挡', 'tactics', 9, { need: 'pg,big' }, '{helper}提前给持球人挡住，{actor}走中路。', { off: 0.09, shot: 'MID' }),
-    E('b26', 'Ghost虚挡', 'tactics', 8, { need: 'shooter' }, '{actor}假挡真弹到三分线。', { off: 0.09, shot: 'three' }),
+    E('b26', '假掩护弹开', 'tactics', 8, { need: 'shooter' }, '{actor}假挡真弹到三分线。', { off: 0.09, shot: 'three' }),
     E('b27', '掩护滑脱', 'tactics', 9, { need: 'big', forbid: 'hack_a' }, '{actor}刚要挡就下滑，口袋传球来了。', { off: 0.11, shot: 'FIN' }),
     E('b28', '二次掩护', 'tactics', 8, { need: 'pg,big' }, '第一挡没挡住。{helper}再给{actor}挡一次。', { off: 0.08, shot: 'MID' }),
     E('b29', 'Double Drag', 'tactics', 10, { tags: 'transition', need: 'pg,big' }, '转换里连续两个拖挡。{actor}选择往里走。', { off: 0.10, shot: 'FIN' }),
@@ -905,7 +905,7 @@
 
     E('d13', 'drive-and-kick', 'shot', 11, { need: 'shooter' }, '突破把人带走，球到{actor}这一侧。', { off: 0.10, shot: 'three' }),
     E('d14', '弱侧Skip', 'shot', 10, { need: 'shooter' }, '大对角传到{actor}，这记是空位。', { off: 0.11, shot: 'three', helperAst: true }),
-    E('d15', '转换Trailer三分', 'shot', 9, { tags: 'transition', need: 'shooter' }, '前面把人吸进去，拖车{actor}在后面拔。', { off: 0.10, shot: 'three' }),
+    E('d15', '快攻跟进三分', 'shot', 9, { tags: 'transition', need: 'shooter' }, '前面把人吸进禁区，跟进的{actor}在后面拔三分。', { off: 0.10, shot: 'three' }),
     E('d16', 'Drift底角', 'shot', 9, { need: 'shooter' }, '{actor}从45度漂到底角，接球就有空档。', { off: 0.09, shot: 'three' }),
     E('d17', 'Closeout假动作', 'shot', 9, { need: 'star' }, '防守人扑出来。{actor}一个假动作过掉。', { off: 0.08, shot: 'FIN' }),
     E('d18', '接球就拔', 'shot', 10, { need: 'shooter', three: 80 }, '{actor}脚还没站稳就拔了。', { off: 0.07, shot: 'three' }),
@@ -1437,7 +1437,7 @@
     if (action === 'stepback') return '后撤步三分';
     if (action === 'snatch') return '后撤一步拔三分';
     if (action === 'pull3') return '持球拔三分';
-    if (action === 'trail') return '转换拖车三分';
+    if (action === 'trail') return '快攻跟进三分';
     if (action === 'flare') return '投三分';
     if (action === 'pin') return '投三分';
     if (action === 'dho') return '投三分';

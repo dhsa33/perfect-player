@@ -729,7 +729,7 @@
         { label:'咬牙完成训练', hint:'争取教练认可，承担疲劳风险', profile:{coachTrust:2}, mods:{staminaLoad:2}, result:'你完成了最后一组折返跑。队友为你鼓掌，训练师却把冰袋直接塞进你手里。<br><br>效果：教练信任+2；体能负荷+2。' }
       ]},
       { id:'empty_gym', title:'赛季日常：空馆加练', scene:'赛后球馆已经熄掉一半灯，你的最后一次投篮偏得很远。助教问你：还练，还是明天再说？', body:'一次普通的失准，也可能改变你接下来一周的节奏。', choices:[
-        { label:'再投一百球', hint:'用重复找回手感，训练点+1', profile:{coachTrust:1}, mods:{staminaLoad:1,formVariance:-1}, tp:1, result:'最后二十球，你只丢了两个。离开时保安已经在等你关灯。<br><br>效果：教练信任+1；状态波动-1；体能负荷+1。' },
+        { label:'再投一百球', hint:'用重复找回手感，训练点+1', profile:{coachTrust:1}, mods:{staminaLoad:1,formVariance:-1}, tp:1, result:'最后二十球，你只丢了两个。离开时保安已经在等你关灯。<br><br>效果：教练信任+1；状态更稳；体能负荷+1。' },
         { label:'收拾东西回家', hint:'接受一场普通的失准', mods:{staminaLoad:-1,moraleBonus:1}, result:'你没有惩罚自己，回家吃饭睡觉。第二天第一球空心入网。<br><br>效果：体能负荷-1；士气+1。' }
       ]},
       { id:'film_detail', title:'赛季日常：录像里的一帧', scene:'录像师停在第三节的一帧：弱侧队友已经空了，而你还盯着篮筐。房间里所有人都在等你解释。', body:'这不是一次失误复盘，而是球队在判断你愿不愿意改变。', choices:[
@@ -761,12 +761,12 @@
         { label:'争取保留持球回合', hint:'维护自己的比赛节奏', profile:{leadership:1,coachTrust:-1}, mods:{moraleBonus:1}, result:'你和教练谈了十五分钟，最终保留了几套持球战术。机会还在，要求也更高。<br><br>效果：领导力+1；士气+1；教练信任-1。' }
       ]},
       { id:'community_clinic', title:'赛季日常：社区篮球课', scene:'球队临时邀请你去社区球馆给孩子们上课，活动时间正好占用原定恢复下午。', body:'这不是大型公益项目，只是一群真的想见到你的孩子。', choices:[
-        { label:'亲自去球馆', hint:'用时间换取真实连接', profile:{fanSupport:2,chinaPopularity:1}, mods:{staminaLoad:1}, result:'你把四十五分钟的活动上成了两个小时。孩子们离开时还在模仿你的脚步。<br><br>效果：球迷支持+2；中国人气+1；体能负荷+1。' },
+        { label:'亲自去球馆', hint:'花时间陪孩子们见面', profile:{fanSupport:2,chinaPopularity:1}, mods:{staminaLoad:1}, result:'你把四十五分钟的活动上成了两个小时。孩子们离开时还在模仿你的脚步。<br><br>效果：球迷支持+2；中国人气+1；体能负荷+1。' },
         { label:'捐装备并视频连线', hint:'保留恢复时间', profile:{businessValue:1,fanSupport:1}, mods:{staminaLoad:-1}, result:'新篮球和球鞋先到了，你在恢复室里完成连线。距离远了一点，承诺没有缺席。<br><br>效果：商业价值+1；球迷支持+1；体能负荷-1。' }
       ]},
-      { id:'social_challenge', title:'赛季日常：投篮挑战走红', scene:'队友发起的中圈投篮挑战突然走红，并点名让你接力。品牌团队希望你马上拍，训练师希望你别增加无效负荷。', body:'一段轻松视频也可能改变公众对你的印象。', choices:[
+      { id:'social_challenge', title:'赛季日常：投篮挑战走红', scene:'队友发起的中圈投篮挑战突然走红，并点名让你接力。品牌团队希望你马上拍，训练师希望你别为拍视频多耗体力。', body:'一段轻松视频也可能改变公众对你的印象。', choices:[
         { label:'接受挑战', hint:'和球迷一起玩', profile:{fame:2,fanSupport:1}, mods:{mediaPressure:1}, result:'你第六次终于投进，前五次打铁反而成了最受欢迎的片段。<br><br>效果：人气+2；球迷支持+1；媒体压力+1。' },
-        { label:'转发但不参加', hint:'保留训练安排', profile:{mediaTrust:1}, mods:{formVariance:-1}, result:'你在评论区给队友加油，然后继续自己的训练计划。<br><br>效果：媒体信任+1；状态波动-1。' }
+        { label:'转发但不参加', hint:'别为了拍视频多耗体力', profile:{mediaTrust:1}, mods:{formVariance:-1}, result:'你在评论区给队友加油，然后继续自己的训练计划。<br><br>效果：媒体信任+1；状态更稳。' }
       ]},
       { id:'sponsor_schedule', title:'赛季日常：商业拍摄撞车', scene:'赞助商把拍摄临时提前，和球队恢复课完全重叠。合同允许你请假，但教练组会知道。', body:'职业球员的时间也会被场外价值争夺。', choices:[
         { label:'完成商业拍摄', hint:'兑现合同，牺牲恢复', profile:{businessValue:2,coachTrust:-1}, mods:{staminaLoad:2}, result:'拍摄效果很好，广告很快上线。第二天训练时，你的腿比镜头里沉得多。<br><br>效果：商业价值+2；教练信任-1；体能负荷+2。' },
@@ -820,12 +820,12 @@
         { label:'先把防守对位讲清', hint:'用沟通稳住更衣室', profile:{leadership:2,coachTrust:1}, result:'你把三个轮转讲完，替补席才开始吵。这一节没有再被点穿。<br><br>效果：领导力+2；教练信任+1。' },
         { label:'要一次错位单打', hint:'用进攻把气势拉回来', profile:{fame:1}, mods:{moraleBonus:1,formVariance:1}, result:'下一回合球到了你手里。进了，看台才出声；没进，你也把责任揽了下来。<br><br>效果：人气+1；士气+1；状态波动+1。' }
       ]},
-      { id:'hot_night_encore', stateContext:'hot_night', title:'赛季日常：手热之后的加练', scene:'你刚打出本季最高分，球馆还没散尽。助教问你要不要再投一组，摄影师已经架好了灯。', body:'高潮之后加练，拍到的是职业，也可能是负担。', choices:[
-        { label:'关灯再投二十球', hint:'把高潮收进习惯里，训练点+1', profile:{coachTrust:1}, mods:{staminaLoad:1,formVariance:-1}, tp:1, result:'你把摄影师请出去，自己投完。保安后来只看见空馆和一声关门。<br><br>效果：教练信任+1；状态波动-1；体能负荷+1。' },
-        { label:'今天到此为止', hint:'让高峰停留在比赛里', mods:{staminaLoad:-1,moraleBonus:1}, result:'你把球放回架上。明天还有下一场，不必用加练证明今晚是真的。<br><br>效果：体能负荷-1；士气+1。' }
+      { id:'hot_night_encore', stateContext:'hot_night', title:'赛季日常：手热之后的加练', scene:'你刚打出本季最高分，球馆还没散尽。助教问你要不要再投一组，摄影师已经架好了灯。', body:'大赛后加练，拍到的是职业态度，也可能是额外负担。', choices:[
+        { label:'关灯再投二十球', hint:'趁手感定住一组，训练点+1', profile:{coachTrust:1}, mods:{staminaLoad:1,formVariance:-1}, tp:1, result:'你把摄影师请出去，自己投完。保安后来只看见空馆和一声关门。<br><br>效果：教练信任+1；状态更稳；体能负荷+1。' },
+        { label:'今天到此为止', hint:'让高峰留在比赛里', mods:{staminaLoad:-1,moraleBonus:1}, result:'你把球放回架上。明天还有下一场，不必用加练证明今晚是真的。<br><br>效果：体能负荷-1；士气+1。' }
       ]},
-      { id:'load_warning', stateContext:'fatigue', title:'赛季日常：负荷红灯', scene:'晨检平板跳出红色：跳跃高度下降、睡眠不足、肌肉紧张。教练组仍把你写进今晚首发。', body:'数据已经报警，轮换表还没有改。', choices:[
-        { label:'申请缩短首发时间', hint:'今晚少打，换后续更稳', profile:{coachTrust:-1}, mods:{staminaLoad:-2,injuryRiskBonus:-1}, result:'你被换成了限时出场。解说讨论你的“态度”，队医在记录里写了感谢。<br><br>效果：体能负荷-2；伤病风险-1；教练信任-1。' },
+      { id:'load_warning', stateContext:'fatigue', title:'赛季日常：身体亮红灯', scene:'晨检平板跳出红色：跳跃高度下降、睡眠不足、肌肉紧张。教练组仍把你写进今晚首发。', body:'数据已经报警，轮换表还没有改。', choices:[
+        { label:'申请缩短首发时间', hint:'今晚少打，换后续更稳', profile:{coachTrust:-1}, mods:{staminaLoad:-2,injuryRiskBonus:-1}, result:'你被换成了限制上场时间。解说讨论你的“态度”，队医在记录里写了感谢。<br><br>效果：体能负荷-2；伤病风险-1；教练信任-1。' },
         { label:'按原计划打完再处理', hint:'守住位置，承担风险', profile:{coachTrust:1,leadership:1}, mods:{staminaLoad:2,injuryRiskBonus:1}, result:'你打满了原定分钟。下场时小腿已经在抽筋，冰桶比往常更早出现。<br><br>效果：教练信任+1；领导力+1；体能负荷+2；伤病风险+1。' }
       ]},
       { id:'bench_spark_night', stateContext:'bench_role', title:'赛季日常：替补席上的火花', scene:'你已经坐了半节。场上连续停球，教练看向替补席。助理把你的名字写在下一波轮换里。', body:'板凳上的机会往往只有一次，而且很短。', choices:[
