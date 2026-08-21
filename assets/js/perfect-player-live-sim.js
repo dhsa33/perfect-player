@@ -2465,7 +2465,7 @@
 
     function delay() {
       if (sess.fastForward) return 0;
-      return fast ? 280 : 700;
+      return fast ? 280 : 1400;
     }
     function stopTimer() {
       if (timer) { clearTimeout(timer); timer = null; }
@@ -2582,7 +2582,7 @@
       currentClockFromPlay(p);
       appendPlays([p]);
       renderBoard(fakeSess, null);
-      timer = setTimeout(pump, fast ? 280 : 700);
+      timer = setTimeout(pump, fast ? 280 : 1400);
     }
     document.getElementById('pp-live-pause').onclick = function () {
       paused = !paused;
