@@ -31,8 +31,8 @@ html.pp-booting #app{visibility:hidden}
   40%{content:"28%"}50%{content:"32%"}62%{content:"36%"}75%{content:"40%"}88%{content:"44%"}100%{content:"48%"}
 }
   </style>
-  <link rel="preload" href="assets/js/perfect-player-boot.js?v=20260821-boot-v6" as="script">
-  <script defer src="assets/js/perfect-player-boot.js?v=20260821-boot-v6"></script>
+  <link rel="preload" href="assets/js/perfect-player-boot.js?v=20260821-boot-v7" as="script">
+  <script defer src="assets/js/perfect-player-boot.js?v=20260821-boot-v7"></script>
   <style>
 /* ============================================================
    BuildPlayer — Mobile-First Game Edition
@@ -312,6 +312,31 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);min-hei
 .st-row span:nth-child(2){flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .st-row span{width:28px;text-align:center}.st-w{color:var(--green)}.st-l{color:var(--red)}
 .st-streak{font-size:11px;color:var(--text-dim)}
+.pp-pulse{margin:6px 0 10px;padding:8px 8px 6px;background:var(--bg-card);border:2px solid var(--border);border-radius:var(--radius)}
+.pp-pulse-tabs{display:flex;gap:6px;margin-bottom:6px}
+.pp-pulse-tab{flex:1;padding:7px 8px;border:1.5px solid var(--border);border-radius:10px;background:var(--bg);font-family:var(--font-display);font-size:12px;font-weight:700;color:var(--text-dim);cursor:pointer}
+.pp-pulse-tab.is-on{border-color:var(--orange);background:var(--orange-bg);color:var(--orange)}
+.pp-pulse-note{padding:0 4px 5px;font-size:10px;color:var(--text-muted);line-height:1.35}
+.pp-pulse-hdr,.pp-pulse-row{display:grid;grid-template-columns:22px minmax(0,1.35fr) 22px 22px 26px 34px 34px 38px;gap:2px;align-items:center;font-family:var(--font-display)}
+.pp-pulse-hdr{padding:0 6px 4px;font-size:9px;color:var(--text-muted)}
+.pp-pulse-hdr span,.pp-pulse-row>span{text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pp-pulse-hdr span:nth-child(2),.pp-pulse-name{text-align:left}
+.pp-pulse-list{position:relative}
+.pp-pulse-row{padding:5px 6px;margin-bottom:2px;background:var(--bg);border:1px solid var(--border-light);border-radius:8px;font-size:11px;will-change:transform;backface-visibility:hidden}
+.pp-pulse-row.is-mine{border-color:var(--orange);background:var(--orange-bg)}
+.pp-pulse-row.is-cut{box-shadow:inset 0 1px 0 var(--border)}
+.pp-pulse-row.is-up{box-shadow:inset 3px 0 0 var(--green)}
+.pp-pulse-row.is-down{box-shadow:inset 3px 0 0 var(--red)}
+.pp-pulse-row.is-cut.is-up{box-shadow:inset 3px 0 0 var(--green),inset 0 1px 0 var(--border)}
+.pp-pulse-row.is-cut.is-down{box-shadow:inset 3px 0 0 var(--red),inset 0 1px 0 var(--border)}
+.pp-pulse-rank{position:relative;color:var(--text-dim);font-weight:700;min-height:26px;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.05}
+.pp-pulse-delta{display:block;font-size:8px;line-height:1;font-weight:800}
+.pp-pulse-row.is-up .pp-pulse-delta{color:var(--green)}
+.pp-pulse-row.is-down .pp-pulse-delta{color:var(--red)}
+.pp-pulse-net.is-pos{color:var(--green);font-weight:700}
+.pp-pulse-net.is-neg{color:var(--red);font-weight:700}
+.pp-pulse-name{display:flex;align-items:center;gap:4px;min-width:0}
+.pp-pulse-name em{font-style:normal;overflow:hidden;text-overflow:ellipsis}
 .bv-wrap{padding:0 6px 20px}
 .bv-header{text-align:center;padding:8px 0 6px;border-bottom:2px solid var(--border);margin-bottom:8px}
 .bv-header-title{font-family:var(--font-display);font-size:clamp(16px,4vw,20px);font-weight:700}
@@ -4930,8 +4955,11 @@ function startSeason() {
         '<div class="loading-balls"><span class="loading-ball"></span><span class="loading-ball"></span><span class="loading-ball"></span></div>' +
       '</div>' +
     '</div>' +
-    '<div style="text-align:center;padding:4px 0 8px;font-size:12px;color:var(--text-dim);" id="simStatus"></div>';
+    '<div style="text-align:center;padding:4px 0 8px;font-size:12px;color:var(--text-dim);" id="simStatus"></div>' +
+    '<div id="pp-pulse" class="pp-pulse"></div>';
 
+  ensurePulseBoard();
+  refreshPulseBoard(true);
   setTimeout(quickSimAllGames, 1200);
 }
 
@@ -5028,6 +5056,8 @@ function quickSimAllGames() {
   }
   html('simDotGrid').innerHTML = placeholderDots;
   html('simStatus').innerHTML = '模拟中 0/' + games.length;
+  ensurePulseBoard();
+  refreshPulseBoard(true);
 
   var gi = 0;
   function simNextWithDelay() {
@@ -5040,7 +5070,7 @@ function quickSimAllGames() {
       var seed2 = getConferenceSeed(STATE.careerTeam);
       var pct2 = w2 + l2 > 0 ? (w2 / (w2 + l2) * 100).toFixed(1) + '%' : '—';
       var actionBtn = '';
-      actionBtn = '<button class="btn btn-secondary btn-sm" onclick="showAwardsScreen()" style="margin-bottom:6px;">📊 常规赛奖项</button>';
+      actionBtn = '<button type="button" class="btn btn-secondary btn-sm" onclick="showAwardsScreen()" style="margin-bottom:6px;">📊 常规赛奖项</button>';
       document.getElementById('simStatus').innerHTML = '';
       document.getElementById('simRecord').innerHTML = '<span class="sh-wins">' + w2 + '</span><span class="sh-dash">-</span><span class="sh-losses">' + l2 + '</span><div class="sh-pct">' + pct2 + '</div>';
 
@@ -5056,31 +5086,6 @@ function quickSimAllGames() {
           '<span>场均 ' + fPts + '分 ' + fReb + '板 ' + fAst + '助</span>' +
           '<span>' + (STATE.season.standings[STATE.careerTeam]?.streakLen > 0 ? (STATE.season.standings[STATE.careerTeam]?.streak === 'W' ? 'W' : 'L') + (STATE.season.standings[STATE.careerTeam]?.streakLen || '') : '') + '</span>';
       }
-
-      // 分区排行榜
-      var conf = getConference(STATE.careerTeam);
-      var confName2 = conf === 'EAST' ? '东部' : '西部';
-      var allTeams = (conf === 'EAST' ? SIM_CONFIG.CONFERENCE.EAST : SIM_CONFIG.CONFERENCE.WEST);
-      var sorted = allTeams.map(function(t) { return { team: t, ...STATE.season.standings[t] }; }).sort(function(a, b) { return (b.wins - b.losses) - (a.wins - a.losses) || b.wins - a.wins; });
-      var leaderW = sorted.length > 0 ? sorted[0].wins : 0, leaderL = sorted.length > 0 ? sorted[0].losses : 0;
-      var tableHtml = '<div style="margin:8px 12px 12px;"><div style="font-family:var(--font-display);font-size:15px;font-weight:700;color:var(--text);padding:4px 0 6px;">🏆 ' + confName2 + ' 排行榜</div><div class="st-hdr"><span>#</span><span>球队</span><span>胜</span><span>负</span><span>胜差</span><span>近况</span></div>';
-      var zoneLabels = ['🏀 季后赛区', '🔥 附加赛区', '📋 乐透区'];
-      var zi = 0;
-      for (var si = 0; si < sorted.length; si++) {
-        if (si === 0) {
-          tableHtml += '<div style="height:1px;background:var(--border);margin:4px 0 6px;"></div><div style="font-size:11px;color:var(--text-muted);padding:2px 6px 4px;letter-spacing:1px;font-weight:600;">' + zoneLabels[zi] + '</div>';
-          zi++;
-        }
-        if (si === 6 || si === 10) {
-          tableHtml += '<div style="height:1px;background:var(--border);margin:6px 0;"></div><div style="font-size:11px;color:var(--text-muted);padding:2px 6px 4px;letter-spacing:1px;font-weight:600;">' + zoneLabels[zi] + '</div>';
-          zi++;
-        }
-        var s = sorted[si];
-        var gb = si === 0 ? '-' : ((leaderW - s.wins + s.losses - leaderL) / 2).toFixed(1);
-        var isMy = s.team === STATE.careerTeam;
-        tableHtml += '<div class="st-row ' + (isMy ? 'st-my' : '') + '"><span>' + (si + 1) + '</span><span>' + getTeamLogo(s.team, 16) + ' ' + getTeamName(s.team) + (isMy ? ' ⭐' : '') + '</span><span class="st-w">' + (s.wins || 0) + '</span><span class="st-l">' + (s.losses || 0) + '</span><span>' + gb + '</span><span class="st-streak">' + (s.streakLen > 0 ? s.streak + s.streakLen : '-') + '</span></div>';
-      }
-      tableHtml += '</div>';
 
       // 球员赛季数据卡
       var ps = STATE.season.playerStats;
@@ -5107,7 +5112,8 @@ function quickSimAllGames() {
           '</div>' +
         '</div>';
 
-      var footer = document.getElementById('simDotGrid');
+      refreshPulseBoard(true);
+      var footer = document.getElementById('pp-pulse') || document.getElementById('simDotGrid');
       // 最佳比赛：pts + reb + ast 最高的一场
       var bestGame = null, bestTotal = 0;
       var allGames = STATE.season.games || [];
@@ -5137,7 +5143,6 @@ function quickSimAllGames() {
       if (footer) footer.insertAdjacentHTML('afterend',
         '<div class="section-card">' + playerCardHtml + '</div>' +
         '<div class="section-card" style="animation-delay:0.8s">' + bestHtml + '</div>' +
-        '<div class="section-card" style="animation-delay:1.6s">' + tableHtml + '</div>' +
         '<div style="text-align:center;padding:0 12px 16px;" id="simActions">' + actionBtn + '</div>');
       trackExposureOnce(document.getElementById('simActions'), {act:"exposure",blk:"BMC099",pos:"T1",label:"赛季结果"});
       setTimeout(function() { maybeShowFirstSixtyWinCelebration(); }, 260);
@@ -5165,8 +5170,10 @@ function quickSimAllGames() {
           var oppS2 = STATE.season.standings[g.opponent];
           if (oppS2) { if (skipResult.won) oppS2.losses++; else oppS2.wins++; updateStreak(g.opponent, !skipResult.won); }
           updateStreak(STATE.careerTeam, skipResult.won);
+          recordUserMatchupBox(skipResult, g.opponent);
           STATE.season.games.push({ result: skipResult, stats: null, game: g, suspended: true });
           simDayLeagueGames(g.day);
+          refreshPulseBoard();
           var dotEl2 = document.getElementById('gdot-' + gi);
           if (dotEl2) {
             dotEl2.className = 'dot dot-x';
@@ -5202,6 +5209,7 @@ function quickSimAllGames() {
           var oppH = STATE.season.standings[g.opponent];
           if (oppH) { if (hurtResult.won) oppH.losses++; else oppH.wins++; updateStreak(g.opponent, !hurtResult.won); }
           updateStreak(STATE.careerTeam, hurtResult.won);
+          recordUserMatchupBox(hurtResult, g.opponent);
           var hurtStats = scaleHurtStats(generatePlayerStatsNew(buildHurtAttrs(STATE.attrs, severity), hurtResult, false), severity);
           var psH = STATE.season.playerStats;
           psH.pts += hurtStats.pts; psH.reb += hurtStats.reb; psH.ast += hurtStats.ast;
@@ -5214,6 +5222,7 @@ function quickSimAllGames() {
           STATE.season.games.push({ result: hurtResult, stats: hurtStats, game: g, playedThroughInjury: true });
           var worsenText = maybeWorsenInjuryAfterPlaying(ev, severity);
           simDayLeagueGames(g.day);
+          refreshPulseBoard();
           var dotH = document.getElementById('gdot-' + gi);
           if (dotH) {
             dotH.className = 'dot ' + (hurtResult.won ? 'dot-w' : 'dot-l');
@@ -5258,6 +5267,7 @@ function quickSimAllGames() {
         var oppS = STATE.season.standings[g.opponent];
         if (oppS) { if (result.won) oppS.losses++; else oppS.wins++; updateStreak(g.opponent, !result.won); }
         updateStreak(STATE.careerTeam, result.won);
+        recordUserMatchupBox(result, g.opponent);
 
         var ps = STATE.season.playerStats;
         ps.pts += stats.pts; ps.reb += stats.reb; ps.ast += stats.ast;
@@ -5270,6 +5280,7 @@ function quickSimAllGames() {
 
         STATE.season.games.push({ result: result, stats: stats, game: g, liveSim: !!result.liveSim });
         simDayLeagueGames(g.day);
+        refreshPulseBoard();
 
         var evData = null;
         try { evData = checkRandomEvents(g, result, stats); } catch(ex) {}
@@ -5337,11 +5348,16 @@ function quickSimAllGames() {
 function reconcileStandings() {
   var st = STATE.season.standings;
   if (!st) return;
-  // 重置
   for (var team in st) {
-    if (st.hasOwnProperty(team)) { st[team].wins = 0; st[team].losses = 0; }
+    if (st.hasOwnProperty(team)) {
+      st[team].wins = 0;
+      st[team].losses = 0;
+      st[team].gp = 0;
+      st[team].pts = 0;
+      st[team].oppPts = 0;
+      st[team].poss = 0;
+    }
   }
-  // 统计用户已模拟的比赛
   var allGames = STATE.season.games || [];
   for (var i = 0; i < allGames.length; i++) {
     var g = allGames[i];
@@ -5350,13 +5366,16 @@ function reconcileStandings() {
     var opp = g.game.opponent;
     if (g.result.won) { if (st[myTeam]) st[myTeam].wins++; if (st[opp]) st[opp].losses++; }
     else { if (st[myTeam]) st[myTeam].losses++; if (st[opp]) st[opp].wins++; }
+    recordTeamBox(myTeam, g.result.scoreA, g.result.scoreB, g.result.pace);
+    recordTeamBox(opp, g.result.scoreB, g.result.scoreA, g.result.pace);
   }
-  // 统计联盟其他比赛
   var leagueGames = STATE.season._leagueGameLog || [];
   for (var j = 0; j < leagueGames.length; j++) {
     var lg = leagueGames[j];
     if (st[lg.home]) { if (lg.won) st[lg.home].wins++; else st[lg.home].losses++; }
     if (st[lg.away]) { if (!lg.won) st[lg.away].wins++; else st[lg.away].losses++; }
+    recordTeamBox(lg.home, lg.scoreA, lg.scoreB, lg.pace);
+    recordTeamBox(lg.away, lg.scoreB, lg.scoreA, lg.pace);
   }
 }
 
@@ -5970,11 +5989,20 @@ function showAwardsScreen() {
   })) {
     return;
   }
-  if (!STATE.season.awards || STATE.season.awards.length === 0) calcSeasonAwards();
-  var awards = STATE.season.awards;
-  if (!awards || awards.length === 0) return;
-
   showScreen('screen-awards');
+  try {
+    if (!STATE.season.awards || STATE.season.awards.length === 0) calcSeasonAwards();
+  } catch (e) { console.error('[Awards] calcSeasonAwards', e); }
+  var awards = STATE.season.awards;
+  if (!awards || awards.length === 0) {
+    html('awards-content').innerHTML =
+      '<div style="text-align:center;padding:28px 16px;">' +
+        '<div style="font-size:15px;font-weight:700;margin-bottom:8px;">奖项还没统计出来</div>' +
+        '<div style="font-size:12px;color:var(--text-dim);margin-bottom:14px;">点下面再试一次；若仍没有，强刷后再进这一页。</div>' +
+        '<button type="button" class="btn btn-secondary btn-sm" onclick="showAwardsScreen()">重新统计</button>' +
+      '</div>';
+    return;
+  }
   html('awards-content').innerHTML =
     '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100dvh - 120px);">' +
       '<div class="loading-balls"><span class="loading-ball"></span><span class="loading-ball"></span><span class="loading-ball"></span></div>' +
@@ -6004,9 +6032,10 @@ function showAwardsScreen() {
     var idx = rowsRendered++;
     var emoji = emojiMap[a.act] || '🏅';
     var cat = catMap[a.act] || a.label;
+    var rankText = a.userRank == null ? '—' : String(a.userRank);
     var rankCls = 'dim';
-    if (a.userRank.indexOf('🥇') >= 0) rankCls = 'gold';
-    else if (a.userRank.indexOf('🥉') >= 0) rankCls = 'orange';
+    if (rankText.indexOf('🥇') >= 0) rankCls = 'gold';
+    else if (rankText.indexOf('🥉') >= 0) rankCls = 'orange';
 
     // 头像
     var headshotHtml = '';
@@ -6070,7 +6099,7 @@ function showAwardsScreen() {
         // 排名
         '<div style="width:110px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:6px;border-left:1px solid var(--border-light);">' +
           '<div style="font-size:10px;color:var(--text-muted);letter-spacing:1px;margin-bottom:2px;font-weight:600;">你的排名</div>' +
-          '<div class="award-rank ' + rankCls + '">' + a.userRank + '</div>' +
+          '<div class="award-rank ' + rankCls + '">' + rankText + '</div>' +
         '</div>' +
       '</div>';
   }
@@ -6132,15 +6161,193 @@ function renderDotGrid() {
       '<span>' + (function(){ var ps=STATE.season.playerStats,g=ps.games||1; return '场均 ' + Math.round(ps.pts/g*10)/10 + '分 ' + Math.round(ps.reb/g*10)/10 + '板 ' + Math.round(ps.ast/g*10)/10 + '助'; })() + '</span>' +
     '</div>' +
     renderEventStatus() +
-    '<div class="dot-grid">' + dotsHtml + '</div>' +
+    '<div class="dot-grid" id="simDotGrid">' + dotsHtml + '</div>' +
+    '<div id="pp-pulse" class="pp-pulse"></div>' +
     '<div style="text-align:center;padding:0 12px 16px;">' + actionBtn + '</div>';
+  ensurePulseBoard();
+  refreshPulseBoard(true);
   } catch(e) { console.error('[Grid] renderDotGrid 异常:', e); }
 }
 
 // ==================== 联盟排名初始化 ====================
 function initStandings() {
   NBA2K_TEAMS.forEach(t => {
-    STATE.season.standings[t] = { wins: 0, losses: 0, streak: '', streakLen: 0 };
+    STATE.season.standings[t] = { wins: 0, losses: 0, streak: '', streakLen: 0, gp: 0, pts: 0, oppPts: 0, poss: 0 };
+  });
+  STATE._pulseConf = getConference(STATE.careerTeam) === 'WEST' ? 'WEST' : 'EAST';
+  STATE._pulseRanks = {};
+}
+
+function recordTeamBox(team, pts, oppPts, pace) {
+  var s = STATE.season && STATE.season.standings && STATE.season.standings[team];
+  if (!s) return;
+  var p = Number(pace);
+  if (!isFinite(p) || p < 70) p = 99.4;
+  s.gp = (s.gp || 0) + 1;
+  s.pts = (s.pts || 0) + (Number(pts) || 0);
+  s.oppPts = (s.oppPts || 0) + (Number(oppPts) || 0);
+  s.poss = (s.poss || 0) + p;
+}
+
+function recordUserMatchupBox(result, opponent) {
+  if (!result) return;
+  recordTeamBox(STATE.careerTeam, result.scoreA, result.scoreB, result.pace);
+  recordTeamBox(opponent, result.scoreB, result.scoreA, result.pace);
+}
+
+function teamEff(s) {
+  var poss = Number(s && s.poss) || 0;
+  if (poss < 1) return { off: '—', def: '—', net: '—', netN: 0 };
+  var off = (Number(s.pts) || 0) / poss * 100;
+  var def = (Number(s.oppPts) || 0) / poss * 100;
+  var net = off - def;
+  return {
+    off: off.toFixed(1),
+    def: def.toFixed(1),
+    net: (net >= 0 ? '+' : '') + net.toFixed(1),
+    netN: net
+  };
+}
+
+function sortedConferenceRows(conf) {
+  var teams = (SIM_CONFIG.CONFERENCE && SIM_CONFIG.CONFERENCE[conf]) || [];
+  var st = (STATE.season && STATE.season.standings) || {};
+  return teams.map(function(t) {
+    var s = st[t] || { wins: 0, losses: 0, streak: '', streakLen: 0 };
+    return { team: t, wins: s.wins || 0, losses: s.losses || 0, s: s };
+  }).sort(function(a, b) {
+    return (b.wins - b.losses) - (a.wins - a.losses) || b.wins - a.wins || a.team.localeCompare(b.team);
+  });
+}
+
+function switchPulseConf(conf) {
+  STATE._pulseConf = conf === 'WEST' ? 'WEST' : 'EAST';
+  STATE._standingsTab = STATE._pulseConf;
+  var wrap = document.getElementById('pp-pulse');
+  if (wrap) {
+    var tabs = wrap.querySelectorAll('.pp-pulse-tab');
+    for (var i = 0; i < tabs.length; i++) {
+      tabs[i].classList.toggle('is-on', tabs[i].getAttribute('data-conf') === STATE._pulseConf);
+    }
+  }
+  refreshPulseBoard(true);
+}
+
+function ensurePulseBoard() {
+  var wrap = document.getElementById('pp-pulse');
+  if (!wrap) {
+    var host = document.getElementById('simStatus');
+    if (!host) return null;
+    wrap = document.createElement('div');
+    wrap.id = 'pp-pulse';
+    wrap.className = 'pp-pulse';
+    host.insertAdjacentElement('afterend', wrap);
+  }
+  if (!STATE._pulseConf) STATE._pulseConf = getConference(STATE.careerTeam) === 'WEST' ? 'WEST' : 'EAST';
+  if (!wrap.getAttribute('data-ready')) {
+    wrap.setAttribute('data-ready', '1');
+    wrap.innerHTML =
+      '<div class="pp-pulse-tabs">' +
+        '<button type="button" class="pp-pulse-tab' + (STATE._pulseConf === 'EAST' ? ' is-on' : '') + '" data-conf="EAST" onclick="switchPulseConf(\'EAST\')">东部</button>' +
+        '<button type="button" class="pp-pulse-tab' + (STATE._pulseConf === 'WEST' ? ' is-on' : '') + '" data-conf="WEST" onclick="switchPulseConf(\'WEST\')">西部</button>' +
+      '</div>' +
+      '<div class="pp-pulse-note">百回合效率 · 净效率 = 进攻 − 防守 · 第 6 / 10 名处分季后赛与附加赛线</div>' +
+      '<div class="pp-pulse-hdr"><span>#</span><span>球队</span><span>胜</span><span>负</span><span>差</span><span>进攻</span><span>防守</span><span>净</span></div>' +
+      '<div class="pp-pulse-list" id="pp-pulse-list"></div>';
+  }
+  return wrap;
+}
+
+function refreshPulseBoard(instant) {
+  var wrap = ensurePulseBoard();
+  if (!wrap) return;
+  var list = document.getElementById('pp-pulse-list');
+  if (!list) return;
+  var conf = STATE._pulseConf || 'EAST';
+  var rows = sortedConferenceRows(conf);
+  if (!rows.length) return;
+  var leaderW = rows[0].wins, leaderL = rows[0].losses;
+  var ranks = STATE._pulseRanks || (STATE._pulseRanks = {});
+  var firstTops = {};
+  if (!instant) {
+    for (var i = 0; i < list.children.length; i++) {
+      firstTops[list.children[i].getAttribute('data-team')] = list.children[i].getBoundingClientRect().top;
+    }
+  }
+  var byTeam = {};
+  for (var j = 0; j < list.children.length; j++) {
+    byTeam[list.children[j].getAttribute('data-team')] = list.children[j];
+  }
+  rows.forEach(function(s, idx) {
+    var rank = idx + 1;
+    var el = byTeam[s.team];
+    var created = !el;
+    if (created) {
+      el = document.createElement('div');
+      el.setAttribute('data-team', s.team);
+      el.innerHTML = '<span class="pp-pulse-rank"></span><span class="pp-pulse-name"></span><span class="st-w"></span><span class="st-l"></span><span class="pp-gb"></span><span class="pp-off"></span><span class="pp-def"></span><span class="pp-pulse-net"></span>';
+      el.children[1].innerHTML = getTeamLogo(s.team, 16) + '<em>' + getTeamName(s.team) + (s.team === STATE.careerTeam ? ' ★' : '') + '</em>';
+    }
+    var gb = idx === 0 ? '—' : ((leaderW - s.wins + s.losses - leaderL) / 2).toFixed(1);
+    var m = teamEff(s.s);
+    var oldRank = ranks[s.team];
+    var delta = (!instant && oldRank != null) ? (oldRank - rank) : 0;
+    var deltaHtml = '';
+    if (delta > 0) deltaHtml = '<span class="pp-pulse-delta">▲' + delta + '</span>';
+    else if (delta < 0) deltaHtml = '<span class="pp-pulse-delta">▼' + Math.abs(delta) + '</span>';
+    el.className = 'pp-pulse-row'
+      + (s.team === STATE.careerTeam ? ' is-mine' : '')
+      + (delta > 0 ? ' is-up' : '')
+      + (delta < 0 ? ' is-down' : '')
+      + (idx === 6 || idx === 10 ? ' is-cut' : '');
+    var netCls = m.net === '—' ? '' : (m.netN >= 0 ? ' is-pos' : ' is-neg');
+    el.children[0].innerHTML = rank + deltaHtml;
+    el.children[2].textContent = s.wins;
+    el.children[3].textContent = s.losses;
+    el.children[4].textContent = gb;
+    el.children[5].textContent = m.off;
+    el.children[6].textContent = m.def;
+    el.children[7].textContent = m.net;
+    el.children[7].className = 'pp-pulse-net' + netCls;
+    list.appendChild(el);
+  });
+  var keep = {};
+  rows.forEach(function(s) { keep[s.team] = 1; });
+  Array.prototype.slice.call(list.children).forEach(function(el) {
+    if (!keep[el.getAttribute('data-team')]) el.parentNode.removeChild(el);
+  });
+  if (!instant) {
+    for (var k = 0; k < list.children.length; k++) {
+      list.children[k].style.transition = 'none';
+      list.children[k].style.transform = 'none';
+    }
+    void list.offsetHeight;
+    for (var n = 0; n < list.children.length; n++) {
+      var el2 = list.children[n];
+      var oldTop = firstTops[el2.getAttribute('data-team')];
+      if (oldTop == null) continue;
+      var dy = oldTop - el2.getBoundingClientRect().top;
+      if (Math.abs(dy) < 0.5) continue;
+      el2.style.transform = 'translateY(' + dy + 'px)';
+    }
+    requestAnimationFrame(function() {
+      requestAnimationFrame(function() {
+        var kids = document.getElementById('pp-pulse-list');
+        if (!kids) return;
+        for (var p = 0; p < kids.children.length; p++) {
+          kids.children[p].style.transition = 'transform .48s cubic-bezier(.22,.82,.24,1), box-shadow .4s ease';
+          kids.children[p].style.transform = 'translateY(0)';
+        }
+      });
+    });
+  } else {
+    for (var q = 0; q < list.children.length; q++) {
+      list.children[q].style.transition = 'none';
+      list.children[q].style.transform = 'none';
+    }
+  }
+  ['EAST', 'WEST'].forEach(function(c) {
+    sortedConferenceRows(c).forEach(function(s, idx) { ranks[s.team] = idx + 1; });
   });
 }
 
@@ -6214,11 +6421,17 @@ function simDayLeagueGames(day) {
       if (leagueResult.won) {
         standings[g.home].wins++; standings[g.away].losses++;
         updateStreak(g.home, true); updateStreak(g.away, false);
-        if (STATE.season._leagueGameLog) STATE.season._leagueGameLog.push({ home: g.home, away: g.away, won: true });
       } else {
         standings[g.away].wins++; standings[g.home].losses++;
         updateStreak(g.away, true); updateStreak(g.home, false);
-        if (STATE.season._leagueGameLog) STATE.season._leagueGameLog.push({ home: g.home, away: g.away, won: false });
+      }
+      recordTeamBox(g.home, leagueResult.scoreA, leagueResult.scoreB, leagueResult.pace);
+      recordTeamBox(g.away, leagueResult.scoreB, leagueResult.scoreA, leagueResult.pace);
+      if (STATE.season._leagueGameLog) {
+        STATE.season._leagueGameLog.push({
+          home: g.home, away: g.away, won: !!leagueResult.won,
+          scoreA: leagueResult.scoreA, scoreB: leagueResult.scoreB, pace: leagueResult.pace
+        });
       }
     });
   });
@@ -19406,7 +19619,10 @@ function renderSeasonScreenDOM() {
         '<div class="loading-balls"><span class="loading-ball"></span><span class="loading-ball"></span><span class="loading-ball"></span></div>' +
       '</div>' +
     '</div>' +
-    '<div style="text-align:center;padding:4px 0 8px;font-size:12px;color:var(--text-dim);" id="simStatus"></div>';
+    '<div style="text-align:center;padding:4px 0 8px;font-size:12px;color:var(--text-dim);" id="simStatus"></div>' +
+    '<div id="pp-pulse" class="pp-pulse"></div>';
+  ensurePulseBoard();
+  refreshPulseBoard(true);
 }
 
 // ==================== 选秀系统 ====================

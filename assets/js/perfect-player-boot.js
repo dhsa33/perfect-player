@@ -84,13 +84,21 @@
     var wrapped = function () {
       var self = this;
       var args = arguments;
+      // 成就等模块会再包一层；若这里再去调 window[name] 会和自己套死，按钮就像没反应。
+      if (wrapped._ppInside) return orig.apply(self, args);
       if (typeof skip === 'function' && skip.apply(self, args)) {
         return orig.apply(self, args);
       }
       return window.__PP_ensure(groups).then(function () {
-        var current = window[name];
-        var fn = (current && current !== wrapped) ? current : orig;
-        return fn.apply(self, args);
+        wrapped._ppInside = true;
+        try {
+          var current = window[name];
+          var fn = orig;
+          if (typeof current === 'function' && current !== wrapped) fn = current;
+          return fn.apply(self, args);
+        } finally {
+          wrapped._ppInside = false;
+        }
       });
     };
     wrapped._ppDeferred = true;
