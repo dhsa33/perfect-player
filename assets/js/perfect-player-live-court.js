@@ -482,11 +482,118 @@
       separate([off, def], 3.2);
       return { t: t, dots: packDots(off, def, input, ballAt(r, input, t)) };
     });
-    return { camera: camera, tactic: tactic, branch: input.branch, zone: input.zone, frames: frames };
+    return { camera: camera, tactic: tactic, branch: input.branch, zone: input.zone, attackRight: input.attackRight !== false, frames: frames };
   };
 
   /* ---------- SVG 球场（NBA 94×50） ---------- */
   var svg, dotsG, ballEl, wrap, raf, enabled = true, dotMap = {};
+  var pose = null;
+  var camBox = null;
+  var flight = null;
+
+  function nsEl(name) { return document.createElementNS('http://www.w3.org/2000/svg', name); }
+
+  function worldDots(dots, attackRight) {
+    return (dots || []).map(function (d) {
+      return {
+        id: d.id,
+        x: attackRight ? d.x : COURT_L - d.x,
+        y: d.y,
+        kind: d.kind,
+        ball: d.ball
+      };
+    });
+  }
+
+  function viewBoxFor(camera, attackRight) {
+    if (camera === 'full') return [-1, -0.8, 96, 51.6];
+    if (attackRight === false) return [-0.8, -0.8, 48.3, 51.6];
+    return [46.5, -0.8, 48.3, 51.6];
+  }
+
+  function lerpBox(a, b, t) {
+    if (!a) return b.slice();
+    return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t, a[3] + (b[3] - a[3]) * t];
+  }
+
+  function applyBox(box) {
+    if (!svg || !box) return;
+    svg.setAttribute('viewBox', box[0] + ' ' + box[1] + ' ' + box[2] + ' ' + box[3]);
+  }
+
+  function maxTravel(a, b) {
+    var map = {}, i, m = 0, dx, dy, dd;
+    for (i = 0; i < (b || []).length; i++) map[b[i].id] = b[i];
+    for (i = 0; i < (a || []).length; i++) {
+      if (!map[a[i].id]) continue;
+      dx = a[i].x - map[a[i].id].x;
+      dy = a[i].y - map[a[i].id].y;
+      dd = Math.sqrt(dx * dx + dy * dy);
+      if (dd > m) m = dd;
+    }
+    return m;
+  }
+
+  function carryDots(prev, dest) {
+    var map = {}, i, d, p, out = [];
+    for (i = 0; i < (prev || []).length; i++) map[prev[i].id] = prev[i];
+    for (i = 0; i < (dest || []).length; i++) {
+      d = dest[i];
+      p = map[d.id];
+      out.push(p ? { id: d.id, x: p.x, y: p.y, kind: d.kind, ball: !!p.ball } : { id: d.id, x: d.x, y: d.y, kind: d.kind, ball: d.ball });
+    }
+    return out;
+  }
+
+  function stitch(prevDots, worldFrames, live) {
+    if (!prevDots || !worldFrames || !worldFrames.length) return worldFrames;
+    var dest0 = worldFrames[0].dots;
+    var start = carryDots(prevDots, dest0);
+    var travel = maxTravel(start, dest0);
+    if (travel < 1.4) return worldFrames;
+    var split = live ? (travel > 32 ? 0.48 : (travel > 12 ? 0.3 : 0.18)) : 0.12;
+    var out = [{ t: 0, dots: start }];
+    var i, fr;
+    for (i = 0; i < worldFrames.length; i++) {
+      fr = worldFrames[i];
+      out.push({ t: split + fr.t * (1 - split), dots: fr.dots });
+    }
+    return out;
+  }
+
+  function sampleFlight(u) {
+    if (!flight || !flight.frames || !flight.frames.length) return null;
+    var frames = flight.frames;
+    var i, a, b, local, dots;
+    u = clamp(u, 0, 1);
+    if (u <= frames[0].t) dots = frames[0].dots;
+    else if (u >= frames[frames.length - 1].t) dots = frames[frames.length - 1].dots;
+    else {
+      for (i = 0; i < frames.length - 1; i++) {
+        if (u >= frames[i].t && u <= frames[i + 1].t) {
+          a = frames[i]; b = frames[i + 1];
+          local = (u - a.t) / Math.max(0.0001, b.t - a.t);
+          dots = mixDots(a.dots, b.dots, local);
+          break;
+        }
+      }
+    }
+    return {
+      dots: dots || frames[frames.length - 1].dots,
+      box: lerpBox(flight.box0, flight.box1, ease(u))
+    };
+  }
+
+  function capturePose() {
+    if (flight) {
+      var u = Math.min(1, (performance.now() - flight.t0) / Math.max(1, flight.duration));
+      var cur = sampleFlight(u);
+      if (cur) {
+        pose = cur.dots;
+        camBox = cur.box;
+      }
+    }
+  }
 
   function nsEl(name) { return document.createElementNS('http://www.w3.org/2000/svg', name); }
 
@@ -641,6 +748,9 @@
     svg.appendChild(ballEl);
     wrap.appendChild(svg);
     dotMap = {};
+    pose = null;
+    camBox = null;
+    flight = null;
     enabled = true;
     return wrap;
   };
@@ -648,14 +758,14 @@
   PP_COURT.setEnabled = function (on) {
     enabled = !!on;
     if (wrap) wrap.classList.toggle('is-off', !enabled);
-    if (!enabled && raf) { cancelAnimationFrame(raf); raf = 0; }
+    if (!on) {
+      capturePose();
+      if (raf) { cancelAnimationFrame(raf); raf = 0; }
+      flight = null;
+      pose = null;
+      camBox = null;
+    }
   };
-
-  function setCamera(camera) {
-    if (!svg) return;
-    if (camera === 'full') svg.setAttribute('viewBox', '-1 -0.8 96 51.6');
-    else svg.setAttribute('viewBox', '46.5 -0.8 48.3 51.6');
-  }
 
   function drawDots(dots) {
     if (!dotsG) return;
@@ -703,16 +813,21 @@
   }
 
   function mixDots(a, b, t) {
-    var map = {}, i, d, o, u = ease(t), out = [];
-    for (i = 0; i < (b || []).length; i++) map[b[i].id] = b[i];
-    for (i = 0; i < (a || []).length; i++) {
-      d = a[i];
-      o = map[d.id];
-      if (o) out.push({
-        id: d.id, kind: d.kind, ball: u > 0.5 ? o.ball : d.ball,
-        x: d.x + (o.x - d.x) * u,
-        y: d.y + (o.y - d.y) * u
-      });
+    var mapA = {}, mapB = {}, ids = {}, i, id, d, o, u = ease(t), out = [];
+    for (i = 0; i < (a || []).length; i++) { mapA[a[i].id] = a[i]; ids[a[i].id] = true; }
+    for (i = 0; i < (b || []).length; i++) { mapB[b[i].id] = b[i]; ids[b[i].id] = true; }
+    for (id in ids) {
+      d = mapA[id];
+      o = mapB[id];
+      if (d && o) {
+        out.push({
+          id: d.id,
+          kind: o.kind || d.kind,
+          ball: u > 0.5 ? o.ball : d.ball,
+          x: d.x + (o.x - d.x) * u,
+          y: d.y + (o.y - d.y) * u
+        });
+      } else if (o) out.push(o);
       else out.push(d);
     }
     return out;
@@ -720,33 +835,63 @@
 
   PP_COURT.play = function (clip, duration) {
     if (!enabled || !clip || !clip.frames || !svg) return;
-    if (raf) cancelAnimationFrame(raf);
-    setCamera(clip.camera || 'half');
+    capturePose();
+    if (raf) { cancelAnimationFrame(raf); raf = 0; }
     duration = Math.max(400, duration || 1400);
-    var frames = clip.frames;
-    var t0 = performance.now();
-    function tick(now) {
-      var u = Math.min(1, (now - t0) / duration);
-      var i, a, b, local;
-      for (i = 0; i < frames.length - 1; i++) {
-        if (u >= frames[i].t && u <= frames[i + 1].t) {
-          a = frames[i]; b = frames[i + 1];
-          local = (u - a.t) / Math.max(0.0001, b.t - a.t);
-          drawDots(mixDots(a.dots, b.dots, local));
-          raf = requestAnimationFrame(tick);
-          return;
-        }
-      }
-      drawDots(frames[frames.length - 1].dots);
-      raf = 0;
-    }
+    var attackRight = clip.attackRight !== false;
+    var world = clip.frames.map(function (fr) {
+      return { t: fr.t, dots: worldDots(fr.dots, attackRight) };
+    });
+    var live = !!clip.chain;
+    var frames = (live && pose) ? stitch(pose, world, true) : world;
+    var travel = pose ? maxTravel(frames[0].dots, frames[frames.length - 1].dots) : 0;
+    var cam = clip.camera || 'half';
+    if (live && travel > 22) cam = 'full';
+    if (!live && travel > 36) cam = 'full';
+    var box1 = viewBoxFor(cam, attackRight);
+    var box0 = camBox ? camBox.slice() : box1.slice();
+    flight = { frames: frames, t0: performance.now(), duration: duration, box0: box0, box1: box1 };
+    applyBox(box0);
     drawDots(frames[0].dots);
+    function tick(now) {
+      if (!flight) return;
+      var u = Math.min(1, (now - flight.t0) / flight.duration);
+      var cur = sampleFlight(u);
+      if (cur) {
+        applyBox(cur.box);
+        drawDots(cur.dots);
+      }
+      if (u >= 1) {
+        pose = frames[frames.length - 1].dots;
+        camBox = box1.slice();
+        flight = null;
+        raf = 0;
+        return;
+      }
+      raf = requestAnimationFrame(tick);
+    }
     raf = requestAnimationFrame(tick);
   };
 
   PP_COURT.snap = function (clip) {
     if (!clip || !clip.frames) return;
-    setCamera(clip.camera || 'half');
-    drawDots(clip.frames[clip.frames.length - 1].dots);
+    capturePose();
+    if (raf) { cancelAnimationFrame(raf); raf = 0; }
+    flight = null;
+    var attackRight = clip.attackRight !== false;
+    var dots = worldDots(clip.frames[clip.frames.length - 1].dots, attackRight);
+    var box = viewBoxFor(clip.camera || 'half', attackRight);
+    pose = dots;
+    camBox = box;
+    applyBox(box);
+    drawDots(dots);
+  };
+
+  PP_COURT.resetPose = function () {
+    capturePose();
+    if (raf) { cancelAnimationFrame(raf); raf = 0; }
+    flight = null;
+    pose = null;
+    camBox = null;
   };
 })();

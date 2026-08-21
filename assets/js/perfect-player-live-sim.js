@@ -404,7 +404,8 @@
       tgtB: bp.tgtB,
       styles: bp.styles || {},
       formA: gauss(0, 0.016 * 1.20 / Math.max(1, st(bp.styles, 'leader_aura'))),
-      formB: gauss(0, 0.016)
+      formB: gauss(0, 0.016),
+      _courtLive: false
     };
   }
 
@@ -1655,6 +1656,9 @@
       beat: scene.beat,
       kind: kind,
       side: ctx.side,
+      q: ctx.q,
+      isOT: !!ctx.isOT,
+      attackRight: attackRightFor(ctx),
       teamAHome: !!(game && game.bp && game.bp.teamAHome),
       shooter: scene.shooter && pid(scene.shooter),
       passer: scene.passer && pid(scene.passer),
@@ -1668,12 +1672,35 @@
     };
   }
 
+  function attackRightFor(ctx) {
+    var q = (ctx && ctx.q) || 1;
+    var aRight = (q % 2 === 1);
+    if (ctx && ctx.isOT) aRight = true;
+    if (!ctx) return true;
+    return ctx.side === 'A' ? aRight : !aRight;
+  }
+
+  function courtLiveAfter(kind) {
+    return kind === 'miss' || kind === 'blk' || kind === 'stl' || kind === 'orb' || kind === 'drb';
+  }
+
   function attachPbp(row, scene, ctx, game) {
     if (PP_LIVE._collectPbp && scene) row._pbp = scene;
     row.text = shortenPbp(row.text);
     if (window.PP_COURT && typeof PP_COURT.compose === 'function' && scene && ctx) {
-      try { row.clip = PP_COURT.compose(courtInputFrom(scene, ctx, game, row.kind)); } catch (err) { row.clip = null; }
+      try {
+        var clip = PP_COURT.compose(courtInputFrom(scene, ctx, game, row.kind));
+        if (clip) {
+          clip.attackRight = attackRightFor(ctx);
+          clip.chain = !!(game && game._courtLive) && !ctx.afterTimeout;
+          if (clip.chain && (row.kind === 'stl' || scene.camera === 'full' || scene.tactic === 'trans_coast' || scene.tactic === 'steal')) {
+            clip.camera = 'full';
+          }
+        }
+        row.clip = clip;
+      } catch (err) { row.clip = null; }
     }
+    if (game) game._courtLive = courtLiveAfter(row.kind);
     return row;
   }
 
@@ -1979,6 +2006,7 @@
   }
 
   function emitMeta(sess, text) {
+    if (sess.game) sess.game._courtLive = false;
     emitPlay(sess, { q: sess.q, isOT: sess.isOT, secLeft: sess.clock }, {
       kind: 'meta', tag: '', tone: '', text: text, secLeft: sess.clock
     });
