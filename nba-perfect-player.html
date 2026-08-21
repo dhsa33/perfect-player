@@ -6275,7 +6275,7 @@ function ensurePulseBoard() {
         '<button type="button" class="pp-pulse-tab' + (STATE._pulseConf === 'EAST' ? ' is-on' : '') + '" data-conf="EAST" onclick="switchPulseConf(\'EAST\')">东部</button>' +
         '<button type="button" class="pp-pulse-tab' + (STATE._pulseConf === 'WEST' ? ' is-on' : '') + '" data-conf="WEST" onclick="switchPulseConf(\'WEST\')">西部</button>' +
       '</div>' +
-      '<div class="pp-pulse-note">胜差 · 百回合进攻 / 防守 / 净效率</div>' +
+      '<div class="pp-pulse-note">半区前10 · 胜差 · 百回合进攻 / 防守 / 净效率</div>' +
       '<div class="pp-pulse-hdr"><span>#</span><span>球队</span><span>胜</span><span>负</span><span>差</span><span>进攻</span><span>防守</span><span>净</span></div>' +
       '<div class="pp-pulse-list" id="pp-pulse-list"></div>';
   }
@@ -6291,6 +6291,20 @@ function refreshPulseBoard(instant) {
   var conf = STATE._pulseConf || 'EAST';
   var rows = sortedConferenceRows(conf);
   if (!rows.length) return;
+  var display = [];
+  var shown = {};
+  for (var ri = 0; ri < rows.length && display.length < 10; ri++) {
+    display.push({ s: rows[ri], rank: ri + 1 });
+    shown[rows[ri].team] = 1;
+  }
+  if (STATE.careerTeam) {
+    for (var uj = 0; uj < rows.length; uj++) {
+      if (rows[uj].team === STATE.careerTeam && !shown[STATE.careerTeam]) {
+        display.push({ s: rows[uj], rank: uj + 1 });
+        break;
+      }
+    }
+  }
   var leaderW = rows[0].wins, leaderL = rows[0].losses;
   var ranks = STATE._pulseRanks || (STATE._pulseRanks = {});
   var firstTops = {};
@@ -6303,8 +6317,9 @@ function refreshPulseBoard(instant) {
   for (var j = 0; j < list.children.length; j++) {
     byTeam[list.children[j].getAttribute('data-team')] = list.children[j];
   }
-  rows.forEach(function(s, idx) {
-    var rank = idx + 1;
+  display.forEach(function(item, idx) {
+    var s = item.s;
+    var rank = item.rank;
     var el = byTeam[s.team];
     var created = !el;
     if (created) {
@@ -6313,7 +6328,7 @@ function refreshPulseBoard(instant) {
       el.innerHTML = '<span class="pp-pulse-rank"></span><span class="pp-pulse-name"></span><span class="st-w"></span><span class="st-l"></span><span class="pp-gb"></span><span class="pp-off"></span><span class="pp-def"></span><span class="pp-pulse-net"></span>';
       el.children[1].innerHTML = getTeamLogo(s.team, 16) + '<em>' + getTeamName(s.team) + (s.team === STATE.careerTeam ? ' ★' : '') + '</em>';
     }
-    var gb = idx === 0 ? '—' : ((leaderW - s.wins + s.losses - leaderL) / 2).toFixed(1);
+    var gb = rank === 1 ? '—' : ((leaderW - s.wins + s.losses - leaderL) / 2).toFixed(1);
     var m = teamEff(s.s);
     var oldRank = ranks[s.team];
     var delta = (!instant && oldRank != null) ? (oldRank - rank) : 0;
@@ -6324,7 +6339,7 @@ function refreshPulseBoard(instant) {
       + (s.team === STATE.careerTeam ? ' is-mine' : '')
       + (delta > 0 ? ' is-up' : '')
       + (delta < 0 ? ' is-down' : '')
-      + (idx === 6 || idx === 10 ? ' is-cut' : '');
+      + (rank === 7 || rank > 10 ? ' is-cut' : '');
     var netCls = m.net === '—' ? '' : (m.netN >= 0 ? ' is-pos' : ' is-neg');
     el.children[0].innerHTML = rank + deltaHtml;
     el.children[2].textContent = s.wins;
@@ -6337,7 +6352,7 @@ function refreshPulseBoard(instant) {
     list.appendChild(el);
   });
   var keep = {};
-  rows.forEach(function(s) { keep[s.team] = 1; });
+  display.forEach(function(item) { keep[item.s.team] = 1; });
   Array.prototype.slice.call(list.children).forEach(function(el) {
     if (!keep[el.getAttribute('data-team')]) el.parentNode.removeChild(el);
   });
