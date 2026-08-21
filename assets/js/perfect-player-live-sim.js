@@ -147,7 +147,7 @@
       '.pp-live-ev b{color:var(--orange)}' +
       '.pp-live-qrow{display:flex;justify-content:space-between;font-family:var(--font-display);font-size:12px;padding:3px 14px;color:var(--text-dim)}' +
       '.pp-live-final{margin:8px 12px 12px;padding:10px;border-radius:10px;text-align:center;font-family:var(--font-display)}' +
-      '.pp-live-court-wrap{height:220px;background:var(--bg-card);border-bottom:1px solid var(--border);flex-shrink:0}' +
+      '.pp-live-court-wrap{height:220px;background:var(--bg-card);border-bottom:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:center;overflow:hidden}' +
       '.pp-live-court-wrap.is-off{display:none}';
     document.head.appendChild(s);
   }

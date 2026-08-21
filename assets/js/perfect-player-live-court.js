@@ -87,6 +87,21 @@
     for (id in b) if (!o[id]) o[id] = clone(b[id]);
     return o;
   }
+  function sampleMaps(maps, t) {
+    var n = maps.length - 1;
+    var u, i, local;
+    if (n <= 0) return cloneMap(maps[0]);
+    u = clamp(t, 0, 1) * n;
+    i = Math.min(n - 1, Math.floor(u));
+    local = u - i;
+    return catmullMap(
+      maps[Math.max(0, i - 1)],
+      maps[i],
+      maps[i + 1] || maps[i],
+      maps[Math.min(maps.length - 1, i + 2)],
+      local
+    );
+  }
   function put(map, p, xy) {
     if (p && xy) map[p.id] = clone(xy);
   }
@@ -100,6 +115,30 @@
   function clamp(v, a, b) { return v < a ? a : (v > b ? b : v); }
   function ease(t) {
     return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+  }
+  function catmull1(p0, p1, p2, p3, t) {
+    var t2 = t * t, t3 = t2 * t;
+    return 0.5 * ((2 * p1) + (-p0 + p2) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2 + (-p0 + 3 * p1 - 3 * p2 + p3) * t3);
+  }
+  function catmullMap(p0, p1, p2, p3, t) {
+    var o = {}, id, a, b, c, d;
+    for (id in p1) {
+      a = p0[id] || p1[id];
+      b = p1[id];
+      c = (p2 && p2[id]) || b;
+      d = (p3 && p3[id]) || c;
+      o[id] = [
+        clamp(catmull1(a[0], b[0], c[0], d[0], t), 1.3, COURT_L - 1.3),
+        clamp(catmull1(a[1], b[1], c[1], d[1], t), 1.3, COURT_W - 1.3)
+      ];
+    }
+    if (p2) for (id in p2) if (!o[id]) o[id] = clone(p2[id]);
+    return o;
+  }
+  function idHash(id) {
+    var s = String(id || ''), h = 0, i;
+    for (i = 0; i < s.length; i++) h = (h * 33 + s.charCodeAt(i)) | 0;
+    return (h >>> 0) / 4294967296;
   }
   function sid(strong, L, R) { return strong === 'L' ? Z[L] : Z[R]; }
   function wid(strong, L, R) { return strong === 'L' ? Z[R] : Z[L]; }
@@ -349,22 +388,13 @@
     return { set: set, act: act, shot: shot, ballId: m.ball && m.ball.id, ballCurve: ballCurve };
   }
 
-  function sampleOff(plan, t) {
-    var off = t <= 0.42
-      ? lerpMap(plan.set, plan.act, ease(t / 0.42))
-      : lerpMap(plan.act, plan.shot, ease((t - 0.42) / 0.58));
-    if (plan.ballCurve && plan.ballId) {
-      off[plan.ballId] = quad(plan.ballCurve.a, plan.ballCurve.c, plan.ballCurve.b, ease(t));
-    }
-    return off;
-  }
-
   function poseDef(offNow, offSet, r, input, t) {
     var contest = input.contest || 'close';
     var ballId = r.ball && r.ball.id;
     var ballXy = (ballId && offNow[ballId]) || clone(Z.ft);
     var def = {};
-    var id, manNow, manSet, gp, isOn, isHelp, shell, cover, stunt, u, endGap;
+    var id, manNow, manSet, gp, isOn, isHelp, shell, cover, stunt, endGap, coverNow, stuntW;
+    t = clamp(t, 0, 1);
     for (id in r.guardOf) {
       manNow = offNow[id];
       manSet = offSet[id];
@@ -376,24 +406,25 @@
       endGap = isOn ? (contest === 'open' ? 8.2 : (contest === 'close' ? 5.6 : 4.1)) : (id === ballId ? (contest === 'open' ? 8.5 : 5.2) : 6.8);
       cover = toward(manNow, RIM, endGap);
       if (isHelp) cover = toward(ballXy, RIM, contest === 'heavy' ? 3.1 : 5.4);
+      stunt = toward(shell, ballXy, 4.2);
       if (isOn) {
-        def[gp.id] = lerp(shell, cover, ease(t));
-        if (input.beat && t > 0.38) {
-          def[gp.id] = lerp(def[gp.id], away(manNow, RIM, 2.4), ease((t - 0.38) / 0.62));
+        def[gp.id] = lerp(shell, cover, t);
+        if (input.beat) {
+          def[gp.id] = lerp(def[gp.id], away(manNow, RIM, 2.4), clamp((t - 0.35) / 0.65, 0, 1));
         }
       } else if (isHelp) {
-        def[gp.id] = lerp(shell, cover, ease(clamp((t - 0.12) / 0.5, 0, 1)));
+        def[gp.id] = lerp(shell, cover, clamp((t - 0.06) / 0.72, 0, 1));
       } else {
-        stunt = toward(shell, ballXy, 4.2);
-        u = t < 0.44 ? ease(t / 0.44) : ease((t - 0.44) / 0.56);
-        def[gp.id] = t < 0.44 ? lerp(shell, stunt, u) : lerp(stunt, cover, u);
+        coverNow = lerp(shell, cover, t);
+        stuntW = Math.sin(Math.PI * clamp(t / 0.82, 0, 1)) * 0.5;
+        def[gp.id] = lerp(coverNow, stunt, stuntW);
       }
     }
-    if (input.outcome === 'blk' && r.blocker && t > 0.5) {
-      def[r.blocker.id] = lerp(def[r.blocker.id] || clone(Z.rim), clone(Z.rim), ease(clamp((t - 0.5) / 0.35, 0, 1)));
+    if (input.outcome === 'blk' && r.blocker) {
+      def[r.blocker.id] = lerp(def[r.blocker.id] || clone(Z.rim), clone(Z.rim), clamp((t - 0.45) / 0.4, 0, 1));
     }
     if (input.kind === 'stl' && r.stealer && ballId && offNow[ballId]) {
-      def[r.stealer.id] = lerp(def[r.stealer.id] || offNow[ballId], offNow[ballId], ease(t));
+      def[r.stealer.id] = lerp(def[r.stealer.id] || clone(offNow[ballId]), clone(offNow[ballId]), t);
     }
     return def;
   }
@@ -445,27 +476,201 @@
     });
   }
 
-  function packDots(offPos, defPos, input, ballId) {
+  function packDots(offPos, defPos, input) {
     var dots = [], id, p;
     for (id in offPos) {
       p = findP(input.off, id);
-      if (p) dots.push({ id: p.id, x: offPos[id][0], y: offPos[id][1], kind: homeAway(p, input), ball: ballId === p.id });
+      if (p) dots.push({ id: p.id, x: offPos[id][0], y: offPos[id][1], kind: homeAway(p, input) });
     }
     for (id in defPos) {
       p = findP(input.def, id);
-      if (p) dots.push({ id: p.id, x: defPos[id][0], y: defPos[id][1], kind: homeAway(p, input), ball: ballId === p.id });
+      if (p) dots.push({ id: p.id, x: defPos[id][0], y: defPos[id][1], kind: homeAway(p, input) });
     }
     return dots;
   }
 
-  function ballAt(r, input, t) {
-    var pass = r.passer && /catch|spot|cut|lob|flare|pin|dho|extra|kick/.test(String(input.action || '') + String(input.branch || ''));
-    if (input.kind === 'stl' && r.stealer) {
-      return t < 0.4 ? (r.ball && r.ball.id) : r.stealer.id;
+  function hoopAt(attackRight) {
+    return attackRight === false ? [HOOP_IN, COURT_W / 2] : [COURT_L - HOOP_IN, COURT_W / 2];
+  }
+
+  function holdBall(xy, attackRight) {
+    if (!xy) return null;
+    var hoop = hoopAt(attackRight);
+    var dx = hoop[0] - xy[0], dy = hoop[1] - xy[1];
+    var len = Math.sqrt(dx * dx + dy * dy) || 1;
+    return {
+      x: xy[0] + dx / len * 1.32,
+      y: xy[1] + dy / len * 1.08,
+      z: 0.38
+    };
+  }
+
+  function flyAt(seg, u) {
+    u = clamp(u, 0, 1);
+    var a = seg.a, b = seg.b;
+    var dx = b[0] - a[0], dy = b[1] - a[1];
+    var len = Math.sqrt(dx * dx + dy * dy) || 1;
+    var px = -dy / len, py = dx / len;
+    var h = seg.h || 4;
+    var curve = seg.curve || 0;
+    if (seg.blockU != null && u > seg.blockU && seg.blockTo) {
+      var hit = flyAt({ a: a, b: b, h: h, curve: curve }, seg.blockU);
+      var v = (u - seg.blockU) / Math.max(0.0001, 1 - seg.blockU);
+      var fall = (1 - v) * (1 - v);
+      return {
+        x: hit.x + (seg.blockTo[0] - hit.x) * v,
+        y: hit.y + (seg.blockTo[1] - hit.y) * v,
+        z: hit.z * fall
+      };
     }
-    if (input.kind === 'tov') return t < 0.7 ? (r.ball && r.ball.id) : null;
-    if (pass) return t < 0.38 ? r.passer.id : (r.ball && r.ball.id);
-    return r.ball && r.ball.id;
+    return {
+      x: a[0] + dx * u + px * curve * Math.sin(Math.PI * u),
+      y: a[1] + dy * u + py * curve * Math.sin(Math.PI * u),
+      z: h * 4 * u * (1 - u)
+    };
+  }
+
+  function missTarget(from, rim, input) {
+    var dx = rim[0] - from[0], dy = rim[1] - from[1];
+    var len = Math.sqrt(dx * dx + dy * dy) || 1;
+    var ux = dx / len, uy = dy / len;
+    var px = -uy, py = ux;
+    var h = idHash(String(input.shooter || '') + '|' + String(input.zone || '') + '|' + String(input.action || '') + '|' + String(input.kind || ''));
+    if (h < 0.3) return [from[0] + ux * len * 0.8, from[1] + uy * len * 0.8];
+    if (h < 0.56) return [rim[0] + ux * 3.6, clamp(rim[1] + uy * 1.8, 3, 47)];
+    var side = h < 0.78 ? 2.7 : -2.7;
+    return [rim[0] + px * side + ux * 0.6, clamp(rim[1] + py * side, 3, 47)];
+  }
+
+  function posMapFrom(off, def) {
+    var m = {}, id;
+    for (id in off) m[id] = off[id];
+    for (id in def) m[id] = def[id];
+    return m;
+  }
+
+  function evalBall(script, t, posMap, attackRight) {
+    if (!script || !script.length) return null;
+    var seg = script[0], i;
+    t = clamp(t, 0, 1);
+    for (i = 0; i < script.length; i++) {
+      if (t <= script[i].t1) { seg = script[i]; break; }
+      seg = script[i];
+    }
+    if (seg.type === 'hold') {
+      return posMap && posMap[seg.who] ? holdBall(posMap[seg.who], attackRight) : null;
+    }
+    if (seg.type === 'rest') return { x: seg.x, y: seg.y, z: seg.z || 0 };
+    if (seg.type === 'fly') {
+      return flyAt(seg, (t - seg.t0) / Math.max(0.0001, seg.t1 - seg.t0));
+    }
+    return null;
+  }
+
+  function buildBallScript(r, input, mapAt) {
+    var segs = [];
+    var kind = input.kind || '';
+    var action = String(input.action || '');
+    var shooterId = r.ball && r.ball.id;
+    var passerId = r.passer && r.passer.id;
+    var stealerId = r.stealer && r.stealer.id;
+    var three = input.shot === 'threePT' || /^(spot|catch|cut|pull3|stepback|snatch|flare|pin|dho|trail)$/.test(action);
+    var drive = isDrive(action);
+    var dunk = !!input.dunk || action === 'dunk' || action === 'lob' || action === 'putback';
+    var lob = action === 'lob';
+    var dho = action === 'dho';
+    var rim = clone(RIM);
+    var wantPass = !!(passerId && shooterId && passerId !== shooterId && kind !== 'stl' && kind !== 'hack' && kind !== 'tech');
+
+    function xyHold(t, id) {
+      var h = holdBall(mapAt(t)[id], true);
+      return h ? [h.x, h.y] : null;
+    }
+    function pushHold(t0, t1, who) {
+      if (!who || t1 <= t0 + 0.01) return;
+      segs.push({ type: 'hold', t0: t0, t1: t1, who: who });
+    }
+    function pushFly(t0, t1, a, b, h, curve, extra) {
+      if (!a || !b || t1 <= t0 + 0.01) return;
+      var seg = { type: 'fly', t0: t0, t1: t1, a: [a[0], a[1]], b: [b[0], b[1]], h: h, curve: curve || 0 };
+      if (extra) {
+        if (extra.blockU != null) seg.blockU = extra.blockU;
+        if (extra.blockTo) seg.blockTo = [extra.blockTo[0], extra.blockTo[1]];
+      }
+      segs.push(seg);
+    }
+    function pushRest(t0, t1, p, z) {
+      if (!p || t1 <= t0) return;
+      segs.push({ type: 'rest', t0: t0, t1: t1, x: p[0], y: p[1], z: z || 0 });
+    }
+
+    if (kind === 'stl') {
+      pushHold(0, 0.36, shooterId);
+      pushFly(0.36, 0.64, xyHold(0.36, shooterId), xyHold(0.64, stealerId) || xyHold(0.64, shooterId), 2.4, 1.5);
+      if (stealerId) pushHold(0.64, 1, stealerId);
+      return segs;
+    }
+    if (kind === 'tov') {
+      if (wantPass) {
+        pushHold(0, 0.26, passerId);
+        var out = xyHold(0.26, passerId) || [70, 25];
+        pushFly(0.26, 0.82, out, [clamp(out[0] - 6, 2, 92), out[1] < 25 ? 1.2 : 48.8], 4.2, 2.2);
+      } else {
+        pushHold(0, 0.4, shooterId);
+        out = xyHold(0.4, shooterId) || [70, 25];
+        pushFly(0.4, 0.86, out, [clamp(out[0] - 4, 2, 92), out[1] < 25 ? 1.2 : 48.8], 3.4, 1.6);
+      }
+      return segs;
+    }
+    if (kind === 'hack' || action === 'ft' || input.tactic === 'ft') {
+      pushHold(0, 0.42, shooterId);
+      pushFly(0.42, 0.92, xyHold(0.42, shooterId) || clone(Z.ft), rim, 7.4, 0.4);
+      pushRest(0.92, 1, rim, 0.85);
+      return segs;
+    }
+
+    var passH = lob ? 8.8 : (dho ? 2.15 : 4.5);
+    var passCurve = lob ? 3.3 : (dho ? 0.65 : 2.25);
+    var shotH = dunk ? 2.3 : (drive ? 3.7 : (three ? 10.6 : 7.3));
+    var shotCurve = dunk ? 0.35 : (drive ? 0.7 : (three ? 1.15 : 0.85));
+    var shotDur = dunk ? 0.16 : (drive ? 0.26 : (three ? 0.40 : 0.34));
+    var tShot1 = 0.98;
+    var tShot0 = tShot1 - shotDur;
+    var tPass1 = 0, tPass0 = 0;
+    if (wantPass) {
+      var pa = xyHold(0.28, passerId);
+      var pb = xyHold(0.48, shooterId);
+      var passDur = clamp(0.18 + (pa && pb ? dist(pa, pb) : 18) / 85, 0.2, 0.36);
+      tPass1 = Math.max(0.12, tShot0 - (dho ? 0.06 : 0.12));
+      tPass0 = Math.max(0.1, tPass1 - passDur);
+      if (tPass0 < 0.1) { tPass0 = 0.1; tPass1 = tPass0 + passDur; if (tPass1 > tShot0 - 0.06) tShot0 = Math.min(0.78, tPass1 + 0.08); }
+      pushHold(0, tPass0, passerId);
+      pushFly(tPass0, tPass1, xyHold(tPass0, passerId), xyHold(tPass1, shooterId), passH, passCurve);
+      pushHold(tPass1, tShot0, shooterId);
+    } else {
+      pushHold(0, tShot0, shooterId);
+    }
+
+    var isShot = kind === 'make' || kind === 'miss' || kind === 'blk' || kind === 'andone' || kind === 'foul';
+    if (isShot && shooterId) {
+      var from = xyHold(tShot0, shooterId);
+      if (from) {
+        var dest = clone(rim);
+        var extra = null;
+        if (kind === 'miss' || kind === 'foul') dest = missTarget(from, rim, input);
+        if (kind === 'blk') {
+          dest = lerp(from, rim, 0.62);
+          extra = { blockU: 0.55, blockTo: missTarget(from, rim, input) };
+          extra.blockTo[0] = clamp(extra.blockTo[0] - 5.5, 4, 90);
+        }
+        pushFly(tShot0, tShot1, from, dest, shotH, shotCurve, extra);
+        pushRest(tShot1, 1, extra && extra.blockTo ? extra.blockTo : dest, kind === 'make' || kind === 'andone' ? 0.9 : 0.22);
+      }
+    } else {
+      pushHold(tShot0, 1, shooterId);
+    }
+    if (!segs.length && shooterId) pushHold(0, 1, shooterId);
+    return segs;
   }
 
   PP_COURT.compose = function (input) {
@@ -475,20 +680,56 @@
     var camera = 'half';
     if (tactic === 'trans_coast' || tactic === 'steal' || input.action === 'coast') camera = 'full';
     var plan = offensePlan(r, input);
-    var times = [0, 0.18, 0.4, 0.68, 1];
-    var frames = times.map(function (t) {
-      var off = sampleOff(plan, t);
-      var def = poseDef(off, plan.set, r, input, t);
-      separate([off, def], 3.2);
-      return { t: t, dots: packDots(off, def, input, ballAt(r, input, t)) };
-    });
-    return { camera: camera, tactic: tactic, branch: input.branch, zone: input.zone, attackRight: input.attackRight !== false, frames: frames };
+    var def0 = poseDef(plan.set, plan.set, r, input, 0);
+    var defA = poseDef(plan.act, plan.set, r, input, 0.42);
+    var def1 = poseDef(plan.shot, plan.set, r, input, 1);
+    separate([plan.set, def0], 3.15);
+    separate([plan.act, defA], 3.15);
+    separate([plan.shot, def1], 3.15);
+    var offCtrl = [
+      plan.set,
+      lerpMap(plan.set, plan.act, 0.34),
+      lerpMap(plan.set, plan.act, 0.67),
+      plan.act,
+      lerpMap(plan.act, plan.shot, 0.25),
+      lerpMap(plan.act, plan.shot, 0.5),
+      lerpMap(plan.act, plan.shot, 0.78),
+      plan.shot
+    ];
+    function sampleOD(t) {
+      var off = sampleMaps(offCtrl, t);
+      var def;
+      if (plan.ballCurve && plan.ballId) {
+        off[plan.ballId] = quad(plan.ballCurve.a, plan.ballCurve.c, plan.ballCurve.b, t);
+      }
+      def = poseDef(off, plan.set, r, input, t);
+      return { off: off, def: def };
+    }
+    function mapAt(t) {
+      var s = sampleOD(t);
+      return posMapFrom(s.off, s.def);
+    }
+    var ballScript = buildBallScript(r, input, mapAt);
+    var frames = [];
+    var i, t, pair, n = 10;
+    for (i = 0; i < n; i++) {
+      t = i / (n - 1);
+      pair = sampleOD(t);
+      frames.push({
+        t: t,
+        dots: packDots(pair.off, pair.def, input),
+        ball: evalBall(ballScript, t, mapAt(t), true)
+      });
+    }
+    return { camera: camera, tactic: tactic, branch: input.branch, zone: input.zone, attackRight: input.attackRight !== false, frames: frames, ballScript: ballScript };
   };
 
   /* ---------- SVG 球场（NBA 94×50） ---------- */
-  var svg, dotsG, ballEl, wrap, raf, enabled = true, dotMap = {};
+  var svg, dotsG, ballEl, ballShadow, trailEls, wrap, raf, idleRaf, enabled = true, dotMap = {};
   var pose = null;
+  var poseBall = null;
   var camBox = null;
+  var svgSize = null;
   var flight = null;
 
   function nsEl(name) { return document.createElementNS('http://www.w3.org/2000/svg', name); }
@@ -499,16 +740,66 @@
         id: d.id,
         x: attackRight ? d.x : COURT_L - d.x,
         y: d.y,
-        kind: d.kind,
-        ball: d.ball
+        kind: d.kind
       };
     });
   }
 
-  function viewBoxFor(camera, attackRight) {
-    if (camera === 'full') return [-1, -0.8, 96, 51.6];
-    if (attackRight === false) return [-0.8, -0.8, 48.3, 51.6];
-    return [46.5, -0.8, 48.3, 51.6];
+  function worldBall(b, attackRight) {
+    if (!b) return null;
+    return { x: attackRight ? b.x : COURT_L - b.x, y: b.y, z: b.z || 0 };
+  }
+
+  function cloneScript(script) {
+    return (script || []).map(function (seg) {
+      var s = { type: seg.type, t0: seg.t0, t1: seg.t1, h: seg.h, curve: seg.curve, who: seg.who };
+      if (seg.a) s.a = [seg.a[0], seg.a[1]];
+      if (seg.b) s.b = [seg.b[0], seg.b[1]];
+      if (seg.blockTo) s.blockTo = [seg.blockTo[0], seg.blockTo[1]];
+      if (seg.blockU != null) s.blockU = seg.blockU;
+      if (seg.x != null) { s.x = seg.x; s.y = seg.y; s.z = seg.z; }
+      return s;
+    });
+  }
+
+  function worldScript(script, attackRight) {
+    var out = cloneScript(script);
+    if (attackRight !== false) return out;
+    var i, s;
+    for (i = 0; i < out.length; i++) {
+      s = out[i];
+      if (s.a) s.a[0] = COURT_L - s.a[0];
+      if (s.b) s.b[0] = COURT_L - s.b[0];
+      if (s.blockTo) s.blockTo[0] = COURT_L - s.blockTo[0];
+      if (s.x != null) s.x = COURT_L - s.x;
+    }
+    return out;
+  }
+
+  function remapScript(script, split, fromBall, toBall) {
+    var out = cloneScript(script);
+    var i, gap;
+    for (i = 0; i < out.length; i++) {
+      out[i].t0 = split + out[i].t0 * (1 - split);
+      out[i].t1 = split + out[i].t1 * (1 - split);
+    }
+    if (split > 0.02 && fromBall && toBall) {
+      gap = dist([fromBall.x, fromBall.y], [toBall.x, toBall.y]);
+      if (gap > 0.8) {
+        out.unshift({
+          type: 'fly', t0: 0, t1: split,
+          a: [fromBall.x, fromBall.y], b: [toBall.x, toBall.y],
+          h: Math.min(3.8, 0.5 + gap * 0.12), curve: 0.75
+        });
+      }
+    }
+    return out;
+  }
+
+  var FULL_BOX = [-1, -0.532, 96, 51.064];
+
+  function viewBoxFor() {
+    return FULL_BOX.slice();
   }
 
   function lerpBox(a, b, t) {
@@ -546,42 +837,130 @@
   }
 
   function stitch(prevDots, worldFrames, live) {
-    if (!prevDots || !worldFrames || !worldFrames.length) return worldFrames;
+    if (!prevDots || !worldFrames || !worldFrames.length) return { frames: worldFrames, split: 0 };
     var dest0 = worldFrames[0].dots;
     var start = carryDots(prevDots, dest0);
     var travel = maxTravel(start, dest0);
-    if (travel < 1.4) return worldFrames;
-    var split = live ? (travel > 32 ? 0.48 : (travel > 12 ? 0.3 : 0.18)) : 0.12;
-    var out = [{ t: 0, dots: start }];
-    var i, fr;
+    var copy, i, fr, split;
+    if (travel < 0.55) {
+      copy = worldFrames.slice();
+      copy[0] = { t: 0, dots: start, ball: worldFrames[0].ball };
+      return { frames: copy, split: 0 };
+    }
+    split = live ? Math.min(0.26, 0.06 + travel / 140) : Math.min(0.2, 0.08 + travel / 160);
+    copy = [{ t: 0, dots: start, ball: poseBall || worldFrames[0].ball }];
     for (i = 0; i < worldFrames.length; i++) {
       fr = worldFrames[i];
-      out.push({ t: split + fr.t * (1 - split), dots: fr.dots });
+      copy.push({ t: split + fr.t * (1 - split), dots: fr.dots, ball: fr.ball });
+    }
+    return { frames: copy, split: split };
+  }
+
+  function indexDots(dots) {
+    var m = {}, i;
+    for (i = 0; i < (dots || []).length; i++) m[dots[i].id] = dots[i];
+    return m;
+  }
+
+  function mixDotsCR(d0, d1, d2, d3, t) {
+    var m0 = indexDots(d0), m1 = indexDots(d1), m2 = indexDots(d2), m3 = indexDots(d3);
+    var ids = {}, id, a, b, c, d, out = [];
+    for (id in m1) ids[id] = true;
+    for (id in m2) ids[id] = true;
+    for (id in ids) {
+      b = m1[id] || m2[id];
+      c = m2[id] || b;
+      if (!b) continue;
+      a = m0[id] || b;
+      d = m3[id] || c;
+      out.push({
+        id: id,
+        kind: (c && c.kind) || b.kind,
+        x: clamp(catmull1(a.x, b.x, c.x, d.x, t), 1.2, COURT_L - 1.2),
+        y: clamp(catmull1(a.y, b.y, c.y, d.y, t), 1.2, COURT_W - 1.2)
+      });
     }
     return out;
+  }
+
+  function posMapFromDots(dots) {
+    var m = {}, i;
+    for (i = 0; i < (dots || []).length; i++) m[dots[i].id] = [dots[i].x, dots[i].y];
+    return m;
+  }
+
+  function lerpBall(a, b, t) {
+    if (!a && !b) return null;
+    if (!a) return { x: b.x, y: b.y, z: b.z || 0 };
+    if (!b) return { x: a.x, y: a.y, z: a.z || 0 };
+    return {
+      x: a.x + (b.x - a.x) * t,
+      y: a.y + (b.y - a.y) * t,
+      z: (a.z || 0) + ((b.z || 0) - (a.z || 0)) * t
+    };
+  }
+
+  function lerpSize(a, b, t) {
+    if (!a) return b ? b.slice() : null;
+    if (!b) return a.slice();
+    return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
   }
 
   function sampleFlight(u) {
     if (!flight || !flight.frames || !flight.frames.length) return null;
     var frames = flight.frames;
-    var i, a, b, local, dots;
+    var i, local, dots, ball;
     u = clamp(u, 0, 1);
     if (u <= frames[0].t) dots = frames[0].dots;
     else if (u >= frames[frames.length - 1].t) dots = frames[frames.length - 1].dots;
     else {
       for (i = 0; i < frames.length - 1; i++) {
         if (u >= frames[i].t && u <= frames[i + 1].t) {
-          a = frames[i]; b = frames[i + 1];
-          local = (u - a.t) / Math.max(0.0001, b.t - a.t);
-          dots = mixDots(a.dots, b.dots, local);
+          local = (u - frames[i].t) / Math.max(0.0001, frames[i + 1].t - frames[i].t);
+          dots = mixDotsCR(
+            frames[Math.max(0, i - 1)].dots,
+            frames[i].dots,
+            frames[i + 1].dots,
+            frames[Math.min(frames.length - 1, i + 2)].dots,
+            local
+          );
           break;
         }
       }
     }
+    dots = dots || frames[frames.length - 1].dots;
+    if (flight.script && flight.script.length) {
+      ball = evalBall(flight.script, u, posMapFromDots(dots), flight.attackRight);
+    } else {
+      ball = null;
+      if (u <= frames[0].t) ball = frames[0].ball;
+      else if (u >= frames[frames.length - 1].t) ball = frames[frames.length - 1].ball;
+      else {
+        for (i = 0; i < frames.length - 1; i++) {
+          if (u >= frames[i].t && u <= frames[i + 1].t) {
+            local = (u - frames[i].t) / Math.max(0.0001, frames[i + 1].t - frames[i].t);
+            ball = lerpBall(frames[i].ball, frames[i + 1].ball, local);
+            break;
+          }
+        }
+      }
+    }
     return {
-      dots: dots || frames[frames.length - 1].dots,
-      box: lerpBox(flight.box0, flight.box1, ease(u))
+      dots: dots,
+      ball: ball,
+      trail: (flight.script && flight.script.length) ? ballTrail(flight.script, u, posMapFromDots(dots), flight.attackRight) : null,
+      box: FULL_BOX.slice(),
+      size: null
     };
+  }
+
+  function ballTrail(script, t, posMap, attackRight) {
+    var n = 8, out = [], i, b;
+    for (i = n; i >= 1; i--) {
+      b = evalBall(script, t - i * 0.015, posMap, attackRight);
+      if (b && b.z > 0.55) out.push(b);
+    }
+    return out;
   }
 
   function capturePose() {
@@ -590,6 +969,7 @@
       var cur = sampleFlight(u);
       if (cur) {
         pose = cur.dots;
+        poseBall = cur.ball;
         camBox = cur.box;
       }
     }
@@ -708,13 +1088,16 @@
   }
 
   function injectCourtStyle() {
-    if (document.getElementById('pp-court-style')) return;
-    var s = document.createElement('style');
-    s.id = 'pp-court-style';
+    var s = document.getElementById('pp-court-style');
+    if (!s) {
+      s = document.createElement('style');
+      s.id = 'pp-court-style';
+      document.head.appendChild(s);
+    }
     s.textContent =
-      '.pp-live-court-wrap{height:220px;background:var(--bg-card);border-bottom:1px solid var(--border);flex-shrink:0;position:relative}' +
+      '.pp-live-court-wrap{height:220px;background:var(--bg-card);border-bottom:1px solid var(--border);flex-shrink:0;position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden}' +
       '.pp-live-court-wrap.is-off{display:none}' +
-      '.pp-live-court{width:100%;height:100%;display:block}' +
+      '.pp-live-court{display:block;flex:0 0 auto;width:calc(100% - 24px);max-width:100%;height:auto;max-height:200px;aspect-ratio:94/50;margin:0 auto}' +
       '.pp-court-line{stroke:var(--text-dim);stroke-width:0.22;fill:none}' +
       '.pp-court-dash{stroke:var(--text-dim);stroke-width:0.18;fill:none;stroke-dasharray:0.9 0.7;opacity:.75}' +
       '.pp-court-board{stroke:var(--text);stroke-width:0.45}' +
@@ -723,8 +1106,55 @@
       '.pp-dot-away{fill:#161616;stroke:#e8e8e8;stroke-width:0.28}' +
       '.pp-dot-hero{fill:#d4a017;stroke:#fff4c2;stroke-width:0.42}' +
       '.pp-dot-hero-ring{fill:none;stroke:#ffe38a;stroke-width:0.32;opacity:.95}' +
-      '.pp-court-ball{fill:var(--orange);stroke:#fff;stroke-width:0.18}';
-    document.head.appendChild(s);
+      '.pp-court-ball{fill:var(--orange);stroke:#fff;stroke-width:0.16}' +
+      '.pp-court-ball-shadow{fill:#000;stroke:none}' +
+      '.pp-court-ball-trail{fill:var(--orange);stroke:none}';
+  }
+
+  function courtSize() {
+    var maxW = Math.max(120, (wrap && wrap.clientWidth ? wrap.clientWidth : 520) - 24);
+    var maxH = Math.max(80, (wrap && wrap.clientHeight ? wrap.clientHeight : 220) - 20);
+    var aspect = COURT_L / COURT_W;
+    var w = maxW;
+    var h = w / aspect;
+    if (h > maxH) {
+      h = maxH;
+      w = h * aspect;
+    }
+    return [w, h];
+  }
+
+  function applySize(sz) {
+    if (!svg || !sz) return;
+    svg.style.width = sz[0] + 'px';
+    svg.style.height = sz[1] + 'px';
+    svgSize = sz.slice();
+  }
+
+  function layoutSvg() {
+    if (!wrap || !svg) return;
+    svg.setAttribute('viewBox', FULL_BOX[0] + ' ' + FULL_BOX[1] + ' ' + FULL_BOX[2] + ' ' + FULL_BOX[3]);
+    svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+    applySize(courtSize());
+  }
+
+  function stopIdle() {
+    if (idleRaf) { cancelAnimationFrame(idleRaf); idleRaf = 0; }
+  }
+
+  function startIdle() {
+    if (!enabled || !svg || flight) return;
+    if (idleRaf) return;
+    function loop() {
+      idleRaf = 0;
+      if (!enabled || !svg || flight) return;
+      if (pose) {
+        drawDots(pose);
+        paintBall(poseBall, null);
+      }
+      idleRaf = requestAnimationFrame(loop);
+    }
+    idleRaf = requestAnimationFrame(loop);
   }
 
   PP_COURT.mount = function (host) {
@@ -736,12 +1166,28 @@
     wrap.id = 'pp-live-court-wrap';
     svg = nsEl('svg');
     svg.setAttribute('class', 'pp-live-court');
-    svg.setAttribute('viewBox', '46.5 -0.8 48.3 51.6');
+    svg.setAttribute('viewBox', FULL_BOX[0] + ' ' + FULL_BOX[1] + ' ' + FULL_BOX[2] + ' ' + FULL_BOX[3]);
     svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
     svg.appendChild(courtLines());
+    ballShadow = nsEl('ellipse');
+    ballShadow.setAttribute('class', 'pp-court-ball-shadow');
+    ballShadow.style.display = 'none';
+    svg.appendChild(ballShadow);
     dotsG = nsEl('g');
     dotsG.setAttribute('class', 'pp-court-dots');
     svg.appendChild(dotsG);
+    trailEls = [];
+    var tg = nsEl('g');
+    var ti, tc;
+    tg.setAttribute('class', 'pp-court-ball-trails');
+    for (ti = 0; ti < 8; ti++) {
+      tc = nsEl('circle');
+      tc.setAttribute('class', 'pp-court-ball-trail');
+      tc.style.display = 'none';
+      tg.appendChild(tc);
+      trailEls.push(tc);
+    }
+    svg.appendChild(tg);
     ballEl = nsEl('circle');
     ballEl.setAttribute('r', '0.72');
     ballEl.setAttribute('class', 'pp-court-ball');
@@ -749,9 +1195,22 @@
     wrap.appendChild(svg);
     dotMap = {};
     pose = null;
+    poseBall = null;
     camBox = null;
     flight = null;
     enabled = true;
+    camBox = FULL_BOX.slice();
+    layoutSvg();
+    requestAnimationFrame(function () {
+      layoutSvg();
+      startIdle();
+    });
+    if (!wrap._ppCourtResize) {
+      wrap._ppCourtResize = true;
+      window.addEventListener('resize', function () {
+        if (svg && wrap) layoutSvg();
+      });
+    }
     return wrap;
   };
 
@@ -761,15 +1220,59 @@
     if (!on) {
       capturePose();
       if (raf) { cancelAnimationFrame(raf); raf = 0; }
+      stopIdle();
       flight = null;
       pose = null;
+      poseBall = null;
       camBox = null;
+    } else {
+      startIdle();
     }
   };
 
+  function paintBall(b, trail) {
+    var i, g, op, rr;
+    if (!ballEl) return;
+    if (!b) {
+      ballEl.style.display = 'none';
+      if (ballShadow) ballShadow.style.display = 'none';
+      for (i = 0; i < (trailEls || []).length; i++) trailEls[i].style.display = 'none';
+      return;
+    }
+    if (ballShadow) {
+      ballShadow.style.display = '';
+      ballShadow.setAttribute('cx', b.x.toFixed(3));
+      ballShadow.setAttribute('cy', b.y.toFixed(3));
+      ballShadow.setAttribute('rx', (0.4 + (b.z || 0) * 0.05).toFixed(3));
+      ballShadow.setAttribute('ry', (0.28 + (b.z || 0) * 0.028).toFixed(3));
+      ballShadow.setAttribute('opacity', String(0.15 + Math.min(0.2, (b.z || 0) * 0.016)));
+    }
+    for (i = 0; i < (trailEls || []).length; i++) {
+      g = trail && trail[i];
+      if (!g || g.z < 0.55) {
+        trailEls[i].style.display = 'none';
+        continue;
+      }
+      op = 0.07 + 0.24 * ((i + 1) / trailEls.length);
+      rr = 0.26 + g.z * 0.032;
+      trailEls[i].style.display = '';
+      trailEls[i].setAttribute('cx', g.x.toFixed(3));
+      trailEls[i].setAttribute('cy', (g.y - g.z * 0.26).toFixed(3));
+      trailEls[i].setAttribute('r', rr.toFixed(3));
+      trailEls[i].setAttribute('opacity', op.toFixed(3));
+    }
+    ballEl.style.display = '';
+    ballEl.setAttribute('cx', b.x.toFixed(3));
+    ballEl.setAttribute('cy', (b.y - (b.z || 0) * 0.28).toFixed(3));
+    ballEl.setAttribute('r', (0.56 + Math.min(0.7, (b.z || 0) * 0.07)).toFixed(3));
+  }
+
   function drawDots(dots) {
     if (!dotsG) return;
-    var seen = {}, i, d, node, ring, c, ball = null;
+    var seen = {}, i, d, node, ring, c;
+    var now = performance.now() * 0.001;
+    var amp = flight ? 0.045 : 0.15;
+    var h, x, y;
     for (i = 0; i < (dots || []).length; i++) {
       d = dots[i];
       seen[d.id] = true;
@@ -783,18 +1286,20 @@
         dotsG.appendChild(c);
         node = dotMap[d.id] = { c: c, ring: ring };
       }
-      node.c.setAttribute('cx', d.x.toFixed(3));
-      node.c.setAttribute('cy', d.y.toFixed(3));
+      h = idHash(d.id) * Math.PI * 2;
+      x = d.x + Math.sin(now * 1.65 + h) * amp;
+      y = d.y + Math.cos(now * 1.28 + h * 1.7) * amp * 0.85;
+      node.c.setAttribute('cx', x.toFixed(3));
+      node.c.setAttribute('cy', y.toFixed(3));
       node.c.setAttribute('r', d.kind === 'hero' ? '1.35' : '1.12');
       node.c.setAttribute('class', d.kind === 'hero' ? 'pp-dot-hero' : (d.kind === 'home' ? 'pp-dot-home' : 'pp-dot-away'));
       if (d.kind === 'hero') {
         node.ring.style.display = '';
-        node.ring.setAttribute('cx', d.x.toFixed(3));
-        node.ring.setAttribute('cy', d.y.toFixed(3));
+        node.ring.setAttribute('cx', x.toFixed(3));
+        node.ring.setAttribute('cy', y.toFixed(3));
       } else {
         node.ring.style.display = 'none';
       }
-      if (d.ball) ball = d;
     }
     for (i in dotMap) {
       if (!seen[i]) {
@@ -803,69 +1308,49 @@
         delete dotMap[i];
       }
     }
-    if (ballEl) {
-      if (ball) {
-        ballEl.setAttribute('cx', (ball.x + 1.15).toFixed(3));
-        ballEl.setAttribute('cy', (ball.y - 0.95).toFixed(3));
-        ballEl.style.display = '';
-      } else ballEl.style.display = 'none';
-    }
-  }
-
-  function mixDots(a, b, t) {
-    var mapA = {}, mapB = {}, ids = {}, i, id, d, o, u = ease(t), out = [];
-    for (i = 0; i < (a || []).length; i++) { mapA[a[i].id] = a[i]; ids[a[i].id] = true; }
-    for (i = 0; i < (b || []).length; i++) { mapB[b[i].id] = b[i]; ids[b[i].id] = true; }
-    for (id in ids) {
-      d = mapA[id];
-      o = mapB[id];
-      if (d && o) {
-        out.push({
-          id: d.id,
-          kind: o.kind || d.kind,
-          ball: u > 0.5 ? o.ball : d.ball,
-          x: d.x + (o.x - d.x) * u,
-          y: d.y + (o.y - d.y) * u
-        });
-      } else if (o) out.push(o);
-      else out.push(d);
-    }
-    return out;
   }
 
   PP_COURT.play = function (clip, duration) {
     if (!enabled || !clip || !clip.frames || !svg) return;
     capturePose();
+    stopIdle();
     if (raf) { cancelAnimationFrame(raf); raf = 0; }
     duration = Math.max(400, duration || 1400);
     var attackRight = clip.attackRight !== false;
     var world = clip.frames.map(function (fr) {
-      return { t: fr.t, dots: worldDots(fr.dots, attackRight) };
+      return { t: fr.t, dots: worldDots(fr.dots, attackRight), ball: worldBall(fr.ball, attackRight) };
     });
     var live = !!clip.chain;
-    var frames = (live && pose) ? stitch(pose, world, true) : world;
+    var stitched = pose ? stitch(pose, world, live) : { frames: world, split: 0 };
+    var frames = stitched.frames;
+    var script = worldScript(clip.ballScript, attackRight);
+    if (stitched.split > 0.02) {
+      script = remapScript(script, stitched.split, poseBall, world[0] && world[0].ball);
+    }
     var travel = pose ? maxTravel(frames[0].dots, frames[frames.length - 1].dots) : 0;
-    var cam = clip.camera || 'half';
-    if (live && travel > 22) cam = 'full';
-    if (!live && travel > 36) cam = 'full';
-    var box1 = viewBoxFor(cam, attackRight);
-    var box0 = camBox ? camBox.slice() : box1.slice();
-    flight = { frames: frames, t0: performance.now(), duration: duration, box0: box0, box1: box1 };
-    applyBox(box0);
+    flight = {
+      frames: frames, t0: performance.now(), duration: duration,
+      box0: FULL_BOX.slice(), box1: FULL_BOX.slice(),
+      script: script, attackRight: attackRight
+    };
+    applyBox(FULL_BOX);
     drawDots(frames[0].dots);
+    paintBall(evalBall(script, 0, posMapFromDots(frames[0].dots), attackRight), null);
     function tick(now) {
       if (!flight) return;
       var u = Math.min(1, (now - flight.t0) / flight.duration);
       var cur = sampleFlight(u);
       if (cur) {
-        applyBox(cur.box);
         drawDots(cur.dots);
+        paintBall(cur.ball, cur.trail);
       }
       if (u >= 1) {
         pose = frames[frames.length - 1].dots;
-        camBox = box1.slice();
+        poseBall = cur && cur.ball ? cur.ball : (frames[frames.length - 1].ball || poseBall);
+        camBox = FULL_BOX.slice();
         flight = null;
         raf = 0;
+        startIdle();
         return;
       }
       raf = requestAnimationFrame(tick);
@@ -879,19 +1364,25 @@
     if (raf) { cancelAnimationFrame(raf); raf = 0; }
     flight = null;
     var attackRight = clip.attackRight !== false;
-    var dots = worldDots(clip.frames[clip.frames.length - 1].dots, attackRight);
-    var box = viewBoxFor(clip.camera || 'half', attackRight);
+    var last = clip.frames[clip.frames.length - 1];
+    var dots = worldDots(last.dots, attackRight);
     pose = dots;
-    camBox = box;
-    applyBox(box);
+    poseBall = worldBall(last.ball, attackRight);
+    camBox = FULL_BOX.slice();
+    layoutSvg();
+    applyBox(FULL_BOX);
     drawDots(dots);
+    paintBall(poseBall, null);
+    startIdle();
   };
 
   PP_COURT.resetPose = function () {
     capturePose();
     if (raf) { cancelAnimationFrame(raf); raf = 0; }
+    stopIdle();
     flight = null;
     pose = null;
+    poseBall = null;
     camBox = null;
   };
 })();

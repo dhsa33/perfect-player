@@ -799,5 +799,11 @@
 
   registerExpandedEvents();
   registerExpandedSeasonEvents();
-  document.addEventListener('DOMContentLoaded', window.renderCharacterCreator);
+  if (typeof window.renderCharacterCreator === 'function') {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', window.renderCharacterCreator);
+    } else {
+      window.renderCharacterCreator();
+    }
+  }
 })();

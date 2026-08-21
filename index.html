@@ -4,6 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Perfect Player · 完美球员</title>
+  <style>
+    html,body{margin:0;min-height:100%;background:#faf5eb;color:#2d1f0e;font-family:sans-serif}
+    .boot{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;text-align:center}
+    .boot b{display:block;font-size:22px;margin-top:8px}
+    .boot span{display:block;margin-top:6px;color:#8a7a66;font-size:13px}
+  </style>
   <script>
       var target = new URL('nba-perfect-player.html', window.location.href);
       target.search = window.location.search;
@@ -13,6 +19,9 @@
   <noscript><meta http-equiv="refresh" content="0;url=nba-perfect-player.html"></noscript>
 </head>
 <body>
-  <p><a href="nba-perfect-player.html">打开游戏</a></p>
+  <div class="boot">
+    <div>🏀<b>Perfect Player</b><span>正在打开球场</span></div>
+  </div>
+  <p hidden><a href="nba-perfect-player.html">打开游戏</a></p>
 </body>
 </html>
