@@ -43,7 +43,7 @@
   }
 
   function run() {
-    set(52, '准备游戏模块');
+    set(50, '准备游戏模块');
     var i = 0;
     function next() {
       if (i >= FILES.length) {
@@ -53,7 +53,7 @@
         return;
       }
       var item = FILES[i];
-      var p = 52 + (i / FILES.length) * 40;
+      var p = 50 + ((i + 1) / FILES.length) * 44;
       set(p, item[1]);
       i += 1;
       loadScript(item[0]).then(next);
