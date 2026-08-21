@@ -8,7 +8,7 @@
     ['assets/js/perfect-player-hupu-extensions.js?v=20260821-boot-v1', '角色扩展'],
     ['assets/js/perfect-player-story-events.js?v=20260820-rival-pool', '生涯剧情'],
     ['assets/js/perfect-player-skills.js?v=20260820-skill-no-slot', '球风技能'],
-    ['assets/js/perfect-player-live-court.js?v=20260821-court-v9', '俯瞰球场'],
+    ['assets/js/perfect-player-live-court.js?v=20260821-court-v10', '俯瞰球场'],
     ['assets/js/perfect-player-live-sim.js?v=20260821-live-sim-v27', '文字直播'],
     ['assets/js/perfect-player-enhancements.js?v=20260820-legacy-create', '成就特效']
   ];

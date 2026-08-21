@@ -513,6 +513,9 @@
     var px = -dy / len, py = dx / len;
     var h = seg.h || 4;
     var curve = seg.curve || 0;
+    var arrive, xyT, t, d, z;
+    curve = Math.min(curve, Math.max(0.08, len * 0.04));
+    if (seg.swish) curve *= 0.35;
     if (seg.blockU != null && u > seg.blockU && seg.blockTo) {
       var hit = flyAt({ a: a, b: b, h: h, curve: curve }, seg.blockU);
       var v = (u - seg.blockU) / Math.max(0.0001, 1 - seg.blockU);
@@ -523,10 +526,24 @@
         z: hit.z * fall
       };
     }
+    arrive = seg.arrive == null ? 1 : seg.arrive;
+    xyT = arrive >= 0.999 ? u : clamp(u / arrive, 0, 1);
+    if (arrive < 0.999) xyT = xyT * xyT * (3 - 2 * xyT);
+    if (seg.swish) {
+      if (u <= arrive) {
+        t = arrive > 0.001 ? u / arrive : 1;
+        z = h * 3.1 * t * (1 - t) + 1.25 * t;
+      } else {
+        d = (u - arrive) / Math.max(0.0001, 1 - arrive);
+        z = 1.25 * (1 - d) * (1 - d) + 0.16;
+      }
+    } else {
+      z = h * 4 * u * (1 - u);
+    }
     return {
-      x: a[0] + dx * u + px * curve * Math.sin(Math.PI * u),
-      y: a[1] + dy * u + py * curve * Math.sin(Math.PI * u),
-      z: h * 4 * u * (1 - u)
+      x: a[0] + dx * xyT + px * curve * Math.sin(Math.PI * xyT),
+      y: a[1] + dy * xyT + py * curve * Math.sin(Math.PI * xyT),
+      z: z
     };
   }
 
@@ -596,6 +613,8 @@
       if (extra) {
         if (extra.blockU != null) seg.blockU = extra.blockU;
         if (extra.blockTo) seg.blockTo = [extra.blockTo[0], extra.blockTo[1]];
+        if (extra.arrive != null) seg.arrive = extra.arrive;
+        if (extra.swish) seg.swish = true;
       }
       segs.push(seg);
     }
@@ -624,17 +643,18 @@
     }
     if (kind === 'hack' || action === 'ft' || input.tactic === 'ft') {
       pushHold(0, 0.42, shooterId);
-      pushFly(0.42, 0.92, xyHold(0.42, shooterId) || clone(Z.ft), rim, 7.4, 0.4);
-      pushRest(0.92, 1, rim, 0.85);
+      pushFly(0.42, 0.86, xyHold(0.42, shooterId) || clone(Z.ft), rim, 7.4, 0.15, { arrive: 0.7, swish: true });
+      pushRest(0.86, 1, rim, 0.22);
       return segs;
     }
 
     var passH = lob ? 8.8 : (dho ? 2.15 : 4.5);
     var passCurve = lob ? 3.3 : (dho ? 0.65 : 2.25);
-    var shotH = dunk ? 2.3 : (drive ? 3.7 : (three ? 10.6 : 7.3));
-    var shotCurve = dunk ? 0.35 : (drive ? 0.7 : (three ? 1.15 : 0.85));
-    var shotDur = dunk ? 0.16 : (drive ? 0.26 : (three ? 0.40 : 0.34));
-    var tShot1 = 0.98;
+    var shotH = dunk ? 2.6 : (drive ? 4.1 : (three ? 10.6 : 7.3));
+    var shotCurve = dunk ? 0.12 : (drive ? 0.22 : (three ? 0.55 : 0.32));
+    var isMake = kind === 'make' || kind === 'andone';
+    var shotDur = dunk ? 0.22 : (drive ? 0.32 : (three ? 0.46 : 0.38));
+    var tShot1 = isMake ? 0.88 : 0.96;
     var tShot0 = tShot1 - shotDur;
     var tPass1 = 0, tPass0 = 0;
     if (wantPass) {
@@ -663,8 +683,9 @@
           extra = { blockU: 0.55, blockTo: missTarget(from, rim, input) };
           extra.blockTo[0] = clamp(extra.blockTo[0] - 5.5, 4, 90);
         }
+        if (isMake) extra = { arrive: dunk ? 0.58 : 0.7, swish: true };
         pushFly(tShot0, tShot1, from, dest, shotH, shotCurve, extra);
-        pushRest(tShot1, 1, extra && extra.blockTo ? extra.blockTo : dest, kind === 'make' || kind === 'andone' ? 0.9 : 0.22);
+        pushRest(tShot1, 1, extra && extra.blockTo ? extra.blockTo : dest, isMake ? 0.2 : 0.22);
       }
     } else {
       pushHold(tShot0, 1, shooterId);
@@ -757,6 +778,8 @@
       if (seg.b) s.b = [seg.b[0], seg.b[1]];
       if (seg.blockTo) s.blockTo = [seg.blockTo[0], seg.blockTo[1]];
       if (seg.blockU != null) s.blockU = seg.blockU;
+      if (seg.arrive != null) s.arrive = seg.arrive;
+      if (seg.swish) s.swish = true;
       if (seg.x != null) { s.x = seg.x; s.y = seg.y; s.z = seg.z; }
       return s;
     });
@@ -1230,6 +1253,13 @@
     }
   };
 
+  function hoopLift(x, y, z) {
+    var d0 = dist([x, y], [HOOP_IN, COURT_W / 2]);
+    var d1 = dist([x, y], [COURT_L - HOOP_IN, COURT_W / 2]);
+    var fade = clamp((Math.min(d0, d1) - 0.85) / 5.2, 0, 1);
+    return (z || 0) * 0.22 * fade;
+  }
+
   function paintBall(b, trail) {
     var i, g, op, rr;
     if (!ballEl) return;
@@ -1257,13 +1287,13 @@
       rr = 0.26 + g.z * 0.032;
       trailEls[i].style.display = '';
       trailEls[i].setAttribute('cx', g.x.toFixed(3));
-      trailEls[i].setAttribute('cy', (g.y - g.z * 0.26).toFixed(3));
+      trailEls[i].setAttribute('cy', (g.y - hoopLift(g.x, g.y, g.z)).toFixed(3));
       trailEls[i].setAttribute('r', rr.toFixed(3));
       trailEls[i].setAttribute('opacity', op.toFixed(3));
     }
     ballEl.style.display = '';
     ballEl.setAttribute('cx', b.x.toFixed(3));
-    ballEl.setAttribute('cy', (b.y - (b.z || 0) * 0.28).toFixed(3));
+    ballEl.setAttribute('cy', (b.y - hoopLift(b.x, b.y, b.z)).toFixed(3));
     ballEl.setAttribute('r', (0.56 + Math.min(0.7, (b.z || 0) * 0.07)).toFixed(3));
   }
 
