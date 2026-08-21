@@ -162,7 +162,16 @@
       '.pp-live-hero-stat small{display:block;font-size:9px;color:var(--text-dim)}' +
       '.pp-live-hero-stat.is-bump b{animation:ppHeroBump .38s ease}' +
       '@keyframes ppHeroBump{0%{transform:scale(1.28);color:var(--orange)}100%{transform:scale(1)}}' +
-      '@media (prefers-reduced-motion: reduce){.pp-live-hero-stat.is-bump b{animation:none}}';
+      '@media (prefers-reduced-motion: reduce){.pp-live-hero-stat.is-bump b{animation:none}}' +
+      '.pp-live-lineups{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0 14px 10px;text-align:left}' +
+      '.pp-live-lu{background:var(--bg-card);border:1.5px solid var(--border);border-radius:10px;padding:8px 8px 6px;min-width:0}' +
+      '.pp-live-lu-h{display:flex;align-items:center;gap:6px;font-family:var(--font-display);font-size:12px;font-weight:700;margin-bottom:5px}' +
+      '.pp-live-lu-h .pp-live-logo{width:20px;height:20px;border-radius:4px}' +
+      '.pp-live-lu-row{display:flex;align-items:center;gap:4px;font-size:11px;line-height:1.35;padding:2px 0;border-top:1px solid var(--border-light);min-width:0}' +
+      '.pp-live-lu-pos{width:22px;flex-shrink:0;color:var(--text-dim);font-family:var(--font-display);font-size:10px}' +
+      '.pp-live-lu-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
+      '.pp-live-lu-name.is-me{color:var(--orange);font-weight:700}' +
+      '.pp-live-lu-ovr{flex-shrink:0;font-family:var(--font-display);font-weight:700;font-size:11px;color:var(--text-dim)}';
     document.head.appendChild(s);
   }
 
@@ -2538,6 +2547,43 @@
   PP_LIVE.skipRegularSeason = function () { if (STATE.season) STATE.season._skipLiveRegular = true; };
 
   /* ---------- UI ---------- */
+  function starterRowsHtml(teamCode) {
+    if (!teamCode || typeof calcTeamLineup !== 'function') return '';
+    var lineup = calcTeamLineup(teamCode);
+    var order = ['PG', 'SG', 'SF', 'PF', 'C'];
+    var posShort = { PG: '控', SG: '分', SF: '小', PF: '大', C: '中' };
+    var html = '';
+    var i, pos, p, name, ovr, me;
+    for (i = 0; i < order.length; i++) {
+      pos = order[i];
+      p = lineup.starters && lineup.starters[pos];
+      if (!p) continue;
+      name = p.cname || p.name || '球员';
+      ovr = parseInt(p._lineupOvr != null ? p._lineupOvr : p.ovr, 10) || '—';
+      me = !!p._isUser;
+      html += '<div class="pp-live-lu-row">' +
+        '<span class="pp-live-lu-pos">' + (posShort[pos] || pos) + '</span>' +
+        '<span class="pp-live-lu-name' + (me ? ' is-me' : '') + '">' + esc(name) + (me ? ' ★' : '') + '</span>' +
+        '<span class="pp-live-lu-ovr">' + ovr + '</span>' +
+      '</div>';
+    }
+    return html;
+  }
+
+  function lineupsPreviewHtml(teamA, teamB) {
+    if (!teamA || !teamB) return '';
+    return '<div class="pp-live-lineups">' +
+      '<div class="pp-live-lu">' +
+        '<div class="pp-live-lu-h">' + teamLogoHtml(teamA, 20) + '<span>' + esc(teamName(teamA)) + ' 首发</span></div>' +
+        starterRowsHtml(teamA) +
+      '</div>' +
+      '<div class="pp-live-lu">' +
+        '<div class="pp-live-lu-h">' + teamLogoHtml(teamB, 20) + '<span>' + esc(teamName(teamB)) + ' 首发</span></div>' +
+        starterRowsHtml(teamB) +
+      '</div>' +
+    '</div>';
+  }
+
   function promptChoice(info, onSkip, onWatch) {
     injectStyle();
     var old = document.getElementById('pp-live-prompt');
@@ -2551,6 +2597,7 @@
     } else if (info.allowSeasonSkip) {
       extra = '<button class="btn btn-secondary pp-live-wide" id="pp-live-season">跳过本赛季常规赛</button>';
     }
+    var lineups = lineupsPreviewHtml(info.teamA, info.teamB);
     overlay.innerHTML =
       '<div class="pp-live-card">' +
         '<div class="pp-live-head">' +
@@ -2558,6 +2605,7 @@
           '<div class="pp-live-title">' + (info.title || '观看本场？') + '</div>' +
           '<div class="pp-live-sub">' + (info.reason || '') + '</div>' +
         '</div>' +
+        lineups +
         '<div class="pp-live-actions">' +
           '<button class="btn btn-primary" id="pp-live-watch">观看比赛</button>' +
           '<button class="btn btn-secondary" id="pp-live-skip">快速跳过</button>' +

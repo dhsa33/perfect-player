@@ -35,8 +35,8 @@ html.pp-booting #app{visibility:hidden}
   40%{content:"28%"}50%{content:"32%"}62%{content:"36%"}75%{content:"40%"}88%{content:"44%"}100%{content:"48%"}
 }
   </style>
-  <link rel="preload" href="assets/js/perfect-player-boot.js?v=20260821-boot-v14" as="script">
-  <script defer src="assets/js/perfect-player-boot.js?v=20260821-boot-v14"></script>
+  <link rel="preload" href="assets/js/perfect-player-boot.js?v=20260821-boot-v15" as="script">
+  <script defer src="assets/js/perfect-player-boot.js?v=20260821-boot-v15"></script>
   <style>
 /* ============================================================
    BuildPlayer — Mobile-First Game Edition
@@ -5027,7 +5027,9 @@ function liveOrSkipUserPack(opponent, options, onPack) {
       kicker: options.playIn ? '附加赛' : '季后赛',
       title: options.title || '观看本场？',
       reason: options.reason || ('对阵 ' + getTeamName(opponent) + '。'),
-      allowSeriesSkip: !options.playIn
+      allowSeriesSkip: !options.playIn,
+      teamA: STATE.careerTeam,
+      teamB: opponent
     }, runSkip, runWatch);
     return true;
   }
@@ -5036,7 +5038,9 @@ function liveOrSkipUserPack(opponent, options, onPack) {
       kicker: '关键赛事',
       title: '观看本场？',
       reason: PP_LIVE.describeRegular(options.game, options.index || 0, options.total || 82),
-      allowSeasonSkip: true
+      allowSeasonSkip: true,
+      teamA: STATE.careerTeam,
+      teamB: opponent
     }, runSkip, runWatch);
     return true;
   }
@@ -19494,6 +19498,17 @@ function isHiddenRetiredPlayerName(n) {
 }
 
 function showOffSeasonModals() {
+  var changes = STATE._leagueChanges || {};
+  var trades = changes.trades || [];
+  var major = trades.filter(function(tr) { return !!tr.major; });
+  if (major.length) {
+    showTradesModal(function() { showRosterReview(); }, { majorOnly: true });
+    return;
+  }
+  if (trades.length) {
+    showTradesModal(function() { showRosterReview(); }, { majorOnly: false });
+    return;
+  }
   showRosterReview();
 }
 
@@ -19568,20 +19583,34 @@ function showFAModal(callback) {
   };
 }
 
-function showTradesModal(callback) {
+function showTradesModal(callback, options) {
+  options = options || {};
   var changes = STATE._leagueChanges || { trades: [] };
-  var trades = changes.trades;
+  var trades = (changes.trades || []).slice();
+  if (options.majorOnly) {
+    trades = trades.filter(function(tr) { return !!tr.major; });
+  }
+  trades.sort(function(a, b) {
+    var sa = Math.max(a.ovrA || 0, a.ovrB || 0);
+    var sb = Math.max(b.ovrA || 0, b.ovrB || 0);
+    return sb - sa;
+  });
   var html = '<div class="team-picker-overlay" id="trades-modal">';
   html += '<div class="team-picker-modal">';
-  html += '<div class="team-picker-header"><span>🔄 联盟交易</span></div>';
+  html += '<div class="team-picker-header"><span>' + (options.majorOnly ? '⭐ 主要球员转会' : '🔄 联盟交易') + '</span></div>';
   html += '<div style="padding:8px 12px;max-height:60vh;overflow-y:auto;">';
+  if (!trades.length) {
+    html += '<div style="text-align:center;padding:20px;font-size:13px;color:var(--text-muted);">本休赛期暂无主要转会</div>';
+  }
   trades.forEach(function(tr) {
     var ta = getTeamName ? getTeamName(tr.from) : tr.from;
     var tb = getTeamName ? getTeamName(tr.to) : tr.to;
-    html += '<div style="background:var(--bg-card);border:1.5px solid var(--border);border-radius:8px;padding:8px 10px;margin-bottom:6px;">';
+    var isMajor = !!tr.major;
+    html += '<div style="background:var(--bg-card);border:1.5px solid ' + (isMajor ? 'var(--orange)' : 'var(--border)') + ';border-radius:8px;padding:8px 10px;margin-bottom:6px;">';
+    if (isMajor) html += '<div style="font-size:10px;color:var(--orange);font-weight:700;margin-bottom:3px;">总评前20动向</div>';
     html += '<div style="font-family:var(--font-display);font-size:12px;color:var(--text);font-weight:600;margin-bottom:4px;">🔁 ' + ta + ' ⇄ ' + tb + '</div>';
-    html += '<div style="font-size:12px;color:var(--text-dim);padding:2px 0;">👤 ' + tr.playerB + ' → ' + tb + '</div>';
-    html += '<div style="font-size:12px;color:var(--text-dim);padding:2px 0;">👤 ' + tr.playerA + ' → ' + ta + '</div>';
+    html += '<div style="font-size:12px;color:var(--text-dim);padding:2px 0;">👤 ' + tr.playerB + (tr.ovrB ? '（' + tr.ovrB + '）' : '') + ' → ' + tb + '</div>';
+    html += '<div style="font-size:12px;color:var(--text-dim);padding:2px 0;">👤 ' + tr.playerA + (tr.ovrA ? '（' + tr.ovrA + '）' : '') + ' → ' + ta + '</div>';
     html += '</div>';
   });
   html += '</div>';
@@ -20022,20 +20051,115 @@ function findTradeCandidate(roster, pos, excludeOvr, tradedSet) {
   return best;
 }
 
-function swapRosterPlayers(teamA, teamB, playerA, playerB) {
+function swapRosterPlayers(teamA, teamB, playerA, playerB, meta) {
   var rosterA = NBA2K_DATA[teamA];
   var rosterB = NBA2K_DATA[teamB];
   var idxA = -1, idxB = -1;
   for (var i = 0; i < rosterA.length; i++) { if (rosterA[i] === playerB) { idxA = i; break; } }
   for (var j = 0; j < rosterB.length; j++) { if (rosterB[j] === playerA) { idxB = j; break; } }
-  if (idxA < 0 || idxB < 0) return;
+  if (idxA < 0 || idxB < 0) return false;
   rosterA[idxA] = playerA;
   rosterB[idxB] = playerB;
+  meta = meta || {};
   STATE._leagueChanges.trades.push({
     from: teamA, to: teamB,
     playerA: playerA.cname || playerA.name,
     playerB: playerB.cname || playerB.name,
+    nameENA: playerA.name || '',
+    nameENB: playerB.name || '',
+    ovrA: parseInt(playerA.ovr, 10) || 0,
+    ovrB: parseInt(playerB.ovr, 10) || 0,
+    major: !!meta.major
   });
+  return true;
+}
+
+function listLeaguePlayersByOvr() {
+  var list = [];
+  if (!NBA2K_DATA || !NBA2K_TEAMS) return list;
+  NBA2K_TEAMS.forEach(function(t) {
+    (NBA2K_DATA[t] || []).forEach(function(p) {
+      if (!p || p._isUser) return;
+      list.push({ player: p, team: t, ovr: parseInt(p.ovr, 10) || 0 });
+    });
+  });
+  list.sort(function(a, b) { return b.ovr - a.ovr; });
+  return list;
+}
+
+function findMajorTradeReturn(roster, starOvr, tradedSet) {
+  var best = null;
+  var bestScore = -1;
+  for (var i = 0; i < roster.length; i++) {
+    var p = roster[i];
+    if (!p || p._isUser || p._justSigned) continue;
+    if (p.name && p.name.indexOf('Rookie_') >= 0) continue;
+    if (tradedSet && tradedSet.has(p)) continue;
+    var ovr = parseInt(p.ovr, 10) || 0;
+    if (ovr < 78 || ovr > 97) continue;
+    var diff = Math.abs(ovr - starOvr);
+    if (diff > 16) continue;
+    var score = 100 - diff + ovr * 0.01;
+    if (score > bestScore) {
+      bestScore = score;
+      best = p;
+    }
+  }
+  return best;
+}
+
+/** 休赛期主要转会：从当前联盟总评前 20 里挑几人换队，制造头条级动向。 */
+function processTopTwentyMoves() {
+  if (!NBA2K_DATA || !NBA2K_TEAMS) return;
+  if (!STATE._leagueChanges) STATE._leagueChanges = { retired: [], rookies: [], teamChanges: {}, trades: [] };
+  if (!STATE._leagueChanges.trades) STATE._leagueChanges.trades = [];
+
+  function currentTeamOf(player) {
+    for (var i = 0; i < NBA2K_TEAMS.length; i++) {
+      var t = NBA2K_TEAMS[i];
+      var roster = NBA2K_DATA[t] || [];
+      if (roster.indexOf(player) >= 0) return t;
+    }
+    return null;
+  }
+
+  var ranked = listLeaguePlayersByOvr().slice(0, 20);
+  if (ranked.length < 6) return;
+
+  var tradedPlayers = new Set();
+  var tradedTeams = new Set();
+  var target = 2 + Math.floor((typeof rngNext === 'function' ? rngNext() : Math.random()) * 3); // 2~4
+  var pool = ranked.slice().sort(function() {
+    return (typeof rngNext === 'function' ? rngNext() : Math.random()) - 0.5;
+  });
+  var moves = 0;
+  var si, star, fromTeam, destCandidates, di, toTeam, returnPlayer;
+
+  for (si = 0; si < pool.length && moves < target; si++) {
+    star = pool[si];
+    if (!star || !star.player || tradedPlayers.has(star.player)) continue;
+    fromTeam = currentTeamOf(star.player);
+    if (!fromTeam || tradedTeams.has(fromTeam)) continue;
+    destCandidates = NBA2K_TEAMS.slice().sort(function() {
+      return (typeof rngNext === 'function' ? rngNext() : Math.random()) - 0.5;
+    });
+    for (di = 0; di < destCandidates.length; di++) {
+      toTeam = destCandidates[di];
+      if (!toTeam || toTeam === fromTeam || tradedTeams.has(toTeam)) continue;
+      returnPlayer = findMajorTradeReturn(NBA2K_DATA[toTeam] || [], star.ovr, tradedPlayers);
+      if (!returnPlayer || returnPlayer === star.player) continue;
+      if (tradedPlayers.has(returnPlayer)) continue;
+      if (currentTeamOf(returnPlayer) !== toTeam) continue;
+      // playerA 来自 toTeam，playerB 来自 fromTeam → 球星去 toTeam
+      if (!swapRosterPlayers(fromTeam, toTeam, returnPlayer, star.player, { major: true })) continue;
+      tradedPlayers.add(star.player);
+      tradedPlayers.add(returnPlayer);
+      tradedTeams.add(fromTeam);
+      tradedTeams.add(toTeam);
+      moves++;
+      break;
+    }
+  }
 }
 
 function processTrades() {
@@ -20097,7 +20221,7 @@ function processTrades() {
           tradedPlayers.add(playerForB);
           tradedTeams.add(a);
           tradedTeams.add(b);
-          swapRosterPlayers(a, b, playerForA, playerForB);
+          swapRosterPlayers(a, b, playerForA, playerForB, { major: false });
           tradeCount++;
           // 重新算两队需求
           lineup = calcTeamLineup(a);
@@ -20119,6 +20243,9 @@ function processTrades() {
       }
     }
   }
+
+  processTopTwentyMoves();
+  if (typeof clearLineupCache === 'function') clearLineupCache();
 }
 
 function calcOVR(attrs, pos) {
