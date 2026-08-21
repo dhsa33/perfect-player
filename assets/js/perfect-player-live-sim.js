@@ -129,7 +129,7 @@
       '.pp-live-score{font-family:var(--font-display);font-size:28px;font-weight:700;min-width:92px;text-align:center}' +
       '.pp-live-clockline{display:flex;justify-content:space-between;align-items:center;padding:6px 14px;font-size:12px;color:var(--text-dim);background:var(--bg-card);border-bottom:1px solid var(--border)}' +
       '.pp-live-clockline b{color:var(--text);font-family:var(--font-display)}' +
-      '.pp-live-feed{padding:0;display:flex;flex-direction:column;gap:0;min-height:220px;max-height:46vh;overflow:auto;flex:1}' +
+      '.pp-live-feed{padding:0;display:flex;flex-direction:column;gap:0;min-height:180px;max-height:38vh;overflow:auto;flex:1}' +
       '.pp-live-row{display:grid;grid-template-columns:54px 92px 1fr 56px;gap:6px;padding:8px 12px;border-bottom:1px solid var(--border);font-size:13px;line-height:1.45;align-items:start}' +
       '.pp-live-row.is-us{background:var(--orange-bg)}' +
       '.pp-live-row.is-make .pp-live-tag{color:#1f8a4c}' +
@@ -146,7 +146,9 @@
       '.pp-live-ev{background:var(--bg-card);border:1.5px solid var(--border);border-radius:10px;padding:8px 10px;font-size:12.5px;line-height:1.55}' +
       '.pp-live-ev b{color:var(--orange)}' +
       '.pp-live-qrow{display:flex;justify-content:space-between;font-family:var(--font-display);font-size:12px;padding:3px 14px;color:var(--text-dim)}' +
-      '.pp-live-final{margin:8px 12px 12px;padding:10px;border-radius:10px;text-align:center;font-family:var(--font-display)}';
+      '.pp-live-final{margin:8px 12px 12px;padding:10px;border-radius:10px;text-align:center;font-family:var(--font-display)}' +
+      '.pp-live-court-wrap{height:158px;background:var(--bg-card);border-bottom:1px solid var(--border);flex-shrink:0}' +
+      '.pp-live-court-wrap.is-off{display:none}';
     document.head.appendChild(s);
   }
 
@@ -1258,7 +1260,10 @@
     else if (fx.dunk || /补扣|扣完|暴扣/.test(blob)) hint.action = 'dunk';
     else if (/Floppy|底角|出角|Hammer/.test(blob)) hint.action = 'spot';
     else if (/电梯门|抢射|接球就拔/.test(blob)) hint.action = 'catch';
-    else if (/变向过/.test(blob)) hint.action = 'slash';
+    else if (/变向过/.test(blob)) hint.action = 'cross';
+    else if (/手递手/.test(blob)) hint.action = 'dho';
+    else if (/反跑|空切/.test(blob) && /无球/.test(blob)) hint.action = 'backdoor';
+    else if (/补篮|前场板补/.test(blob)) hint.action = 'putback';
     if (/放空|真正空位|弱侧.{0,6}空/.test(blob)) hint.contest = 'open';
     if (/贴身干扰/.test(blob)) hint.contest = 'contest';
     if (/协防到位/.test(blob)) hint.contest = 'help';
@@ -1348,17 +1353,18 @@
       return forced;
     }
     if (shot === 'threePT') {
-      var t3 = [['pull3', 2.1], ['stepback', attr(shooter, 'HAN') >= 74 ? 2.3 : 0.5]];
+      var t3 = [['pull3', 1.8], ['stepback', attr(shooter, 'HAN') >= 74 ? 2.0 : 0.4], ['snatch', attr(shooter, 'HAN') >= 80 ? 1.1 : 0.2]];
       if (passer) {
-        t3.push(['catch', 4.0], ['spot', 2.6]);
-        if (contest === 'open' || contest === 'close') t3.push(['cut', 4.6]);
+        t3.push(['catch', 3.4], ['spot', 2.2], ['pin', 1.2], ['dho', 0.9]);
+        if (contest === 'open' || contest === 'close') t3.push(['cut', 3.6], ['flare', 1.4]);
       }
+      if (trans) t3.push(['trail', 2.4]);
       return pickWeightedId(t3) || 'pull3';
     }
     if (shot === 'MID') {
-      var t2 = [['pullup', 3], ['jumper', 2.1], ['fade', 1.1 + skill01(attr(shooter, 'MID')) * 1.6]];
-      if (pos === 'C' || pos === 'PF') t2.push(['hook', 2.2 + skill01(attr(shooter, 'FIN'))], ['fade', 1.8]);
-      else t2.push(['float', attr(shooter, 'HAN') >= 70 ? 2.1 : 0.35]);
+      var t2 = [['pullup', 2.6], ['jumper', 1.8], ['fade', 1.0 + skill01(attr(shooter, 'MID')) * 1.4], ['jab', 1.1]];
+      if (pos === 'C' || pos === 'PF') t2.push(['hook', 1.8 + skill01(attr(shooter, 'FIN'))], ['skyhook', attr(shooter, 'FIN') >= 80 ? 1.2 : 0.3], ['fade', 1.6], ['postspin', 1.1]);
+      else t2.push(['float', attr(shooter, 'HAN') >= 70 ? 2.0 : 0.35], ['runner', 1.2]);
       return pickWeightedId(t2) || 'jumper';
     }
     var dnk = attr(shooter, 'DNK');
@@ -1369,19 +1375,20 @@
     if (passer && dnk >= 82 && chance(0.032 + skill01(dnk) * 0.04)) {
       return 'lob';
     }
-    var t1 = [['layup', 3.1]];
+    var t1 = [['layup', 2.6]];
     if (dnk >= 74) t1.push(['dunk', 1.5 + skill01(dnk) * 2.3]);
-    if (han >= 76 && pos !== 'C') t1.push(['euro', 2.5]);
-    else if (han >= 80) t1.push(['euro', 0.8]);
-    if (han >= 70) t1.push(['hop', 1.6]);
-    if ((pos === 'PF' || pos === 'C' || pos === 'SF') && attr(shooter, 'FIN') >= 72) t1.push(['upunder', 1.7]);
-    if (han >= 72 && pos !== 'C') t1.push(['slash', 1.5]);
-    if (fx && fx.dunk) t1.push(['dunk', 6]);
+    if (han >= 76 && pos !== 'C') t1.push(['euro', 2.2], ['cross', 1.4], ['hesi', 1.1], ['reverse', 0.9]);
+    else if (han >= 80) t1.push(['euro', 0.7]);
+    if (han >= 70) t1.push(['hop', 1.4], ['faceup', 1.0]);
+    if ((pos === 'PF' || pos === 'C' || pos === 'SF') && attr(shooter, 'FIN') >= 72) t1.push(['upunder', 1.5], ['dropstep', pos === 'C' || pos === 'PF' ? 1.6 : 0.4]);
+    if (han >= 72 && pos !== 'C') t1.push(['slash', 0.9]);
+    if (passer && (contest === 'open' || contest === 'close')) t1.push(['backdoor', 1.3]);
+    if (fx && fx.dunk) t1.push(['dunk', 6], ['putback', 1.5]);
     return pickWeightedId(t1) || 'layup';
   }
 
   function actionIsDunk(action, shooter, fx) {
-    if (action === 'dunk' || action === 'lob') return true;
+    if (action === 'dunk' || action === 'lob' || action === 'putback') return true;
     if (action === 'coast' && attr(shooter, 'DNK') >= 78) return true;
     return !!(fx && fx.dunk && action !== 'euro' && action !== 'hop');
   }
@@ -1391,23 +1398,135 @@
     if (action === 'hop') return '跳步上篮';
     if (action === 'upunder') return '上下步上篮';
     if (action === 'slash') return '突破上篮';
+    if (action === 'cross') return '变向上篮';
+    if (action === 'hesi') return '变速上篮';
+    if (action === 'reverse') return '反手上篮';
+    if (action === 'faceup') return '面筐杀篮下';
+    if (action === 'backdoor') return '反跑上篮';
+    if (action === 'dropstep') return '低位撤步上篮';
     if (action === 'layup') return '上篮';
+    if (action === 'putback') return dunk ? '补扣' : '补篮';
     if (action === 'dunk' || dunk && (action === 'coast' || action === 'lob')) return '扣篮';
     if (action === 'lob') return '空接扣篮';
     if (action === 'coast') return dunk ? '一条龙暴扣' : '一条龙上篮';
     if (action === 'float') return '抛投';
+    if (action === 'runner') return '跑投';
+    if (action === 'jab') return '假动作跳投';
     if (action === 'fade') return '背身后仰';
     if (action === 'hook') return '勾手';
+    if (action === 'skyhook') return '天空钩';
+    if (action === 'postspin') return '低位转身跳投';
     if (action === 'pullup') return '急停跳投';
     if (action === 'jumper') return '中距离跳投';
     if (action === 'stepback') return '后撤步三分';
+    if (action === 'snatch') return '后撤一步拔三分';
     if (action === 'pull3') return '持球拔三分';
+    if (action === 'trail') return '转换拖车三分';
+    if (action === 'flare') return '投三分';
+    if (action === 'pin') return '投三分';
+    if (action === 'dho') return '投三分';
     if (action === 'spot' || action === 'catch' || action === 'cut') return '投三分';
     return dunk ? '扣篮' : '跳投';
   }
 
   function driveAction(action) {
-    return /^(euro|hop|upunder|slash|layup|dunk)$/.test(action);
+    return /^(euro|hop|upunder|slash|layup|dunk|cross|hesi|reverse|faceup|backdoor|dropstep|putback)$/.test(action);
+  }
+
+  function canPostUp(shooter, matchup) {
+    var pos = posOf(shooter);
+    if (pos === 'C' || pos === 'PF') return true;
+    if (pos === 'SF' && matchup && POS_RANK[posOf(matchup)] >= 2 && attr(shooter, 'STR') >= attr(matchup, 'STR') + 8) return true;
+    return false;
+  }
+
+  var ZONE_CN = {
+    rim: '篮下', paint: '禁区', ft: '罚球线', elbow: '肘区', slot: '四十五度',
+    wing: '侧翼', corner: '底角', top: '弧顶', post: '低位', dunker: '空切位',
+    short: '短底角', logo: '远区', mid: '中距离', nail: '禁区前沿'
+  };
+
+  function remapActionForBody(shooter, matchup, action, trans) {
+    var pos = posOf(shooter);
+    if (/^(hook|skyhook|dropstep|upunder|postspin)$/.test(action) && !canPostUp(shooter, matchup)) {
+      return attr(shooter, 'MID') >= 72 ? 'fade' : 'jumper';
+    }
+    if (action === 'fade' && pos === 'PG' && matchup && posOf(matchup) === 'C') return 'stepback';
+    if (action === 'euro' && pos === 'C' && !trans) return 'dropstep';
+    if (action === 'skyhook' && pos !== 'C' && pos !== 'PF') return 'hook';
+    return action;
+  }
+
+  function pickZone(action, tactic) {
+    if (action === 'spot' || action === 'flare') return 'corner';
+    if (action === 'cut' || action === 'backdoor') return 'slot';
+    if (action === 'catch' || action === 'pin' || action === 'dho') return chance(0.5) ? 'slot' : 'wing';
+    if (action === 'pull3' || action === 'snatch') return chance(0.55) ? 'top' : 'wing';
+    if (action === 'stepback') return chance(0.5) ? 'wing' : 'slot';
+    if (action === 'trail') return 'slot';
+    if (action === 'pullup' || action === 'jumper' || action === 'jab') return chance(0.55) ? 'elbow' : 'mid';
+    if (action === 'float' || action === 'runner') return 'nail';
+    if (action === 'hook' || action === 'skyhook' || action === 'dropstep' || action === 'postspin' || action === 'upunder') return 'post';
+    if (action === 'fade') return /post/.test(tactic || '') ? 'post' : 'elbow';
+    if (action === 'putback' || action === 'lob' || action === 'dunk' || action === 'coast' || driveAction(action)) return 'rim';
+    if (action === 'logo') return 'logo';
+    return 'wing';
+  }
+
+  function pickTactic(action, trans, ev, fx, shooter, passer, shot) {
+    var blob = ev ? String(ev.name || '') + String(ev.text || '') : '';
+    if (fx && (fx.hack || fx.tech)) return { tactic: 'ft', branch: 'line', camera: 'half' };
+    if (trans || action === 'coast' || action === 'trail') {
+      if (action === 'coast') return { tactic: 'trans_coast', branch: 'coast', camera: 'full' };
+      if (action === 'trail') return { tactic: 'trans_num', branch: 'trail', camera: 'full' };
+      return { tactic: 'trans_num', branch: 'ahead', camera: 'full' };
+    }
+    if (action === 'putback') return { tactic: 'putback', branch: 'tip', camera: 'half' };
+    if (/西班牙/.test(blob)) return { tactic: 'spain', branch: 'back', camera: 'half' };
+    if (/牛角/.test(blob)) return { tactic: 'horns', branch: 'flash', camera: 'half' };
+    if (/电梯门/.test(blob)) return { tactic: 'elevator', branch: 'catch', camera: 'half' };
+    if (/Floppy|Hammer|底角/.test(blob)) return { tactic: 'hammer', branch: 'corner', camera: 'half' };
+    if (/手递手/.test(blob)) return { tactic: 'dho', branch: 'pull', camera: 'half' };
+    if (/挡拆外弹/.test(blob)) return { tactic: 'pnr_side', branch: 'pop', camera: 'half' };
+    if (/挡拆下滑|倒挡|假挡/.test(blob)) return { tactic: 'pnr_side', branch: 'roll', camera: 'half' };
+    if (/弱侧清空|拒绝掩护/.test(blob)) return { tactic: 'iso_clear', branch: 'drive', camera: 'half' };
+    if (/联防/.test(blob)) return { tactic: 'zone', branch: 'overload', camera: 'half' };
+    if (passer && chance(0.10)) return { tactic: 'dho', branch: /dho|catch|pull/.test(action) ? 'pull' : 'turn', camera: 'half' };
+    if (passer && chance(0.08)) return { tactic: 'horns', branch: 'flash', camera: 'half' };
+    if (passer && chance(0.06)) return { tactic: 'spain', branch: 'back', camera: 'half' };
+    if (passer && chance(0.07)) return { tactic: 'elevator', branch: 'catch', camera: 'half' };
+    if (passer && chance(0.06)) return { tactic: 'zone', branch: 'overload', camera: 'half' };
+    if (!passer && chance(0.08) && !driveAction(action)) return { tactic: 'delay', branch: 'dribble', camera: 'half' };
+    if (action === 'lob') return { tactic: passer ? 'pnr_high' : 'trans_num', branch: 'roll', camera: passer ? 'half' : 'full' };
+    if (action === 'spot' || action === 'flare') return { tactic: 'hammer', branch: 'corner', camera: 'half' };
+    if (action === 'cut' || action === 'backdoor') return { tactic: 'floppy', branch: 'cut', camera: 'half' };
+    if (/^(hook|skyhook|dropstep|postspin|upunder)$/.test(action)) return { tactic: 'post', branch: action === 'upunder' ? 'upunder' : 'hook', camera: 'half' };
+    if (action === 'fade' && canPostUp(shooter)) return { tactic: 'post', branch: 'fade', camera: 'half' };
+    if (!passer && /^(stepback|pull3|snatch|slash|euro|cross|hesi|faceup)$/.test(action)) {
+      return { tactic: 'iso_clear', branch: /stepback|pull3|snatch/.test(action) ? 'step' : 'drive', camera: 'half' };
+    }
+    if (passer && shot === 'threePT') return { tactic: chance(0.42) ? 'five_out' : 'pnr_side', branch: 'extra', camera: 'half' };
+    if (passer && driveAction(action)) return { tactic: 'pnr_side', branch: 'turn', camera: 'half' };
+    if (passer) return { tactic: 'pnr_side', branch: 'pop', camera: 'half' };
+    return { tactic: 'iso_mid', branch: 'jumper', camera: 'half' };
+  }
+
+  function fillSceneMeta(scene, trans, ev, fx) {
+    scene.action = remapActionForBody(scene.shooter, scene.matchup, scene.action, trans);
+    var meta = pickTactic(scene.action, trans, ev, fx, scene.shooter, scene.passer, scene.shot);
+    scene.tactic = meta.tactic;
+    scene.branch = meta.branch;
+    scene.camera = meta.camera;
+    scene.strong = chance(0.54) ? 'R' : 'L';
+    scene.zone = pickZone(scene.action, scene.tactic);
+    if (scene.action === 'fade' && scene.tactic !== 'post') scene.zone = 'elbow';
+    if (scene.zone === 'post' && !canPostUp(scene.shooter, scene.matchup)) {
+      scene.zone = 'elbow';
+      scene.tactic = 'iso_mid';
+      scene.branch = 'fade';
+      if (/^(hook|skyhook|dropstep|postspin|upunder)$/.test(scene.action)) scene.action = attr(scene.shooter, 'MID') >= 72 ? 'fade' : 'jumper';
+    }
+    return scene;
   }
 
   function pickBlocker(shot, matchup, help, rim, userDef, game) {
@@ -1439,12 +1558,20 @@
     var p = s.passer ? nm(s.passer) : '';
     var dunk = !!s.dunk;
     var move = movePhrase(s.action, dunk);
+    var zcn = ZONE_CN[s.zone] || '';
+    var finishMove = /上篮|扣篮|杀篮下|补篮|补扣/.test(move);
+    var useZ = !!(zcn && !/^(spot|cut|coast|lob|trail|putback)$/.test(s.action || '') && !(s.zone === 'rim' && finishMove));
+    var loc = useZ ? ('在' + zcn) : '';
     var core;
     if (s.action === 'cut' && p) core = a + '跑出空档接' + p + '传球，' + move;
     else if (s.action === 'spot' && p) core = p + '找到底角' + a + '，' + move;
-    else if (s.action === 'catch' && p) core = a + '接' + p + '传球，' + move;
-    else if (s.beat && s.matchup && driveAction(s.action)) core = a + '过掉' + m + '，' + move;
-    else core = a + move;
+    else if (s.action === 'flare' && p) core = a + '外弹接' + p + '传球，' + move;
+    else if (s.action === 'dho' && p) core = p + '手递手给' + a + '，' + move;
+    else if (s.action === 'pin' && p) core = a + '借掩护接' + p + '传球，' + move;
+    else if (s.action === 'catch' && p) core = a + '接' + p + '传球' + (loc ? loc : '') + '，' + move;
+    else if (s.action === 'backdoor' && p) core = a + '反跑接' + p + '传球，' + move;
+    else if (s.beat && s.matchup && driveAction(s.action)) core = a + '过掉' + m + '，' + loc + move;
+    else core = a + loc + move;
 
     if (s.action === 'lob' && p) {
       if (s.outcome === 'blk' && s.blocker) return p + '空接，' + nm(s.blocker) + '帽掉' + a;
@@ -1503,13 +1630,50 @@
 
   function shortenPbp(text) {
     text = String(text || '');
-    if (text.length <= 40) return text;
-    return text.replace(/，[^，]{2,6}干扰/, '').replace(/面对[^，]{1,6}，/, '');
+    if (text.length <= 48) return text;
+    return text.replace(/，[^，]{2,8}干扰/, '').replace(/面对[^，]{1,6}，/, '');
   }
 
-  function attachPbp(row, scene) {
+  function slimCourtPlayer(p, team) {
+    if (!p) return null;
+    return { id: pid(p), name: nm(p), pos: posOf(p), hero: !!p._isUser, team: team };
+  }
+
+  function courtInputFrom(scene, ctx, game, kind) {
+    if (!scene || !ctx) return null;
+    return {
+      tactic: scene.tactic || (kind === 'stl' ? 'steal' : 'iso_mid'),
+      branch: scene.branch || (kind === 'stl' ? 'strip' : 'jumper'),
+      zone: scene.zone || 'wing',
+      strong: scene.strong || 'R',
+      camera: scene.camera || (kind === 'stl' ? 'full' : 'half'),
+      action: scene.action,
+      contest: scene.contest,
+      outcome: scene.outcome,
+      shot: scene.shot,
+      dunk: scene.dunk,
+      beat: scene.beat,
+      kind: kind,
+      side: ctx.side,
+      teamAHome: !!(game && game.bp && game.bp.teamAHome),
+      shooter: scene.shooter && pid(scene.shooter),
+      passer: scene.passer && pid(scene.passer),
+      matchup: scene.matchup && pid(scene.matchup),
+      help: scene.help && pid(scene.help),
+      blocker: scene.blocker && pid(scene.blocker),
+      stealer: scene.stealer && pid(scene.stealer),
+      loser: scene.loser && pid(scene.loser),
+      off: (ctx.offCourt || []).map(function (p) { return slimCourtPlayer(p, 'off'); }).filter(Boolean),
+      def: (ctx.defCourt || []).map(function (p) { return slimCourtPlayer(p, 'def'); }).filter(Boolean)
+    };
+  }
+
+  function attachPbp(row, scene, ctx, game) {
     if (PP_LIVE._collectPbp && scene) row._pbp = scene;
     row.text = shortenPbp(row.text);
+    if (window.PP_COURT && typeof PP_COURT.compose === 'function' && scene && ctx) {
+      try { row.clip = PP_COURT.compose(courtInputFrom(scene, ctx, game, row.kind)); } catch (err) { row.clip = null; }
+    }
     return row;
   }
 
@@ -1528,7 +1692,9 @@
     if (/协防/.test(text) && !scene.help) errs.push('help-text');
     if (/跑出空档/.test(text) && /面对|举手干扰|夹击|协防/.test(text)) errs.push('cut-contest');
     if (/背身后仰|勾手|后撤步|急停/.test(text) && /无人防守/.test(text)) errs.push('iso-open');
-    if (/欧洲步|跳步上篮|上下步|突破上篮/.test(text) && /无人防守/.test(text)) errs.push('drive-open');
+    if (/欧洲步|跳步上篮|上下步|突破上篮|变向上篮|变速上篮/.test(text) && /无人防守/.test(text)) errs.push('drive-open');
+    if (/在低位|天空钩|低位撤步|低位转身/.test(text) && scene.shooter && !canPostUp(scene.shooter, scene.matchup) && posOf(scene.shooter) !== 'PF' && posOf(scene.shooter) !== 'C') errs.push('post-mismatch');
+    if (scene.zone && ZONE_CN[scene.zone] && text.indexOf(ZONE_CN[scene.zone]) >= 0 && scene.zone === 'post' && scene.shooter && posOf(scene.shooter) === 'PG') errs.push('pg-post');
     return errs;
   }
 
@@ -1605,12 +1771,12 @@
         rows.push(attachPbp({
           kind: 'stl', tag: '防守成功', tone: 'stop', teamSide: ctx.defSide,
           text: composeTurnoverText(loser, stealer, fx, ev)
-        }, { kind: 'stl', shooter: loser, stealer: stealer }));
+        }, { kind: 'stl', shooter: loser, stealer: stealer, loser: loser, matchup: stealer, tactic: 'steal', branch: 'strip', camera: 'full', action: 'layup', contest: 'contest', outcome: 'miss' }, ctx, game));
       } else {
         rows.push(attachPbp({
           kind: 'tov', tag: '进攻失败', tone: 'miss', teamSide: side,
           text: composeTurnoverText(loser, null, fx, ev)
-        }, { kind: 'tov', shooter: loser }));
+        }, { kind: 'tov', shooter: loser, loser: loser, tactic: 'iso_mid', branch: 'jumper', camera: 'half', action: 'slash', contest: 'contest', outcome: 'miss' }, ctx, game));
       }
       return { clock: clock, orb: false, rows: rows };
     }
@@ -1639,24 +1805,28 @@
     var contest = rollContest(shot, shooter, matchup, help, evHint);
     var action = pickAction(shooter, shot, passer, contest, trans, evHint, fx);
     if (action === 'lob' && !passer) action = attr(shooter, 'DNK') >= 78 ? 'dunk' : 'layup';
-    if ((action === 'cut' || action === 'spot' || action === 'catch') && !passer) action = shot === 'threePT' ? 'pull3' : 'jumper';
-    if (passer && shot === 'threePT' && (action === 'catch' || action === 'spot' || action === 'cut')) {
+    if ((action === 'cut' || action === 'spot' || action === 'catch' || action === 'flare' || action === 'pin' || action === 'dho') && !passer) action = shot === 'threePT' ? 'pull3' : 'jumper';
+    if (passer && shot === 'threePT' && (action === 'catch' || action === 'spot' || action === 'cut' || action === 'flare' || action === 'pin')) {
       if (contest === 'heavy') contest = 'help';
       else if (contest === 'contest' && chance(0.55)) contest = 'close';
       else if (contest === 'close' && chance(0.50)) contest = 'open';
       else if (contest === 'contest' && chance(0.22)) contest = 'open';
     }
-    if (/^(fade|hook|stepback|pullup)$/.test(action) && contest === 'open') contest = 'close';
-    if (contest === 'open' && /^(euro|hop|upunder|slash)$/.test(action)) {
+    if (/^(fade|hook|skyhook|stepback|pullup|jab|postspin|snatch|runner)$/.test(action) && contest === 'open') contest = 'close';
+    if (contest === 'open' && /^(euro|hop|upunder|slash|cross|hesi|faceup|reverse)$/.test(action)) {
       action = attr(shooter, 'DNK') >= 82 && chance(0.4) ? 'dunk' : 'layup';
     }
     if (action === 'cut' && contest !== 'open' && contest !== 'close') action = passer ? 'catch' : 'pull3';
     if (contest === 'open') help = null;
+    action = remapActionForBody(shooter, matchup, action, trans);
     var dunk = actionIsDunk(action, shooter, fx);
     var scene = {
       shooter: shooter, passer: passer, matchup: matchup, help: help,
       shot: shot, contest: contest, action: action, dunk: dunk
     };
+    fillSceneMeta(scene, trans, ev, fx);
+    dunk = scene.dunk = actionIsDunk(scene.action, shooter, fx);
+    action = scene.action;
 
     var rim = (ev && ev._bind && ev._bind.actor && ctx.defCourt.indexOf(ev._bind.actor) >= 0)
       ? ev._bind.actor
@@ -1682,7 +1852,7 @@
         rows.push(attachPbp({
           kind: 'blk', tag: '防守成功', tone: 'stop', teamSide: ctx.defSide,
           text: composeShotText(scene)
-        }, scene));
+        }, scene, ctx, game));
         var blkReb = doRebound(game, ctx, orbRate * 0.72);
         rows = rows.concat(reboundRows(ctx, blkReb));
         return { clock: clock, orb: !!blkReb.orb, rows: rows };
@@ -1745,7 +1915,7 @@
       rows.push(attachPbp({
         kind: 'foul', tag: '造杀伤', tone: madeFt ? 'make' : 'miss', teamSide: side,
         text: composeShotText(scene)
-      }, scene));
+      }, scene, ctx, game));
       return { clock: clock, orb: false, rows: rows };
     }
 
@@ -1766,7 +1936,7 @@
       tone: made ? 'make' : 'miss',
       teamSide: side,
       text: composeShotText(scene)
-    }, scene));
+    }, scene, ctx, game));
     if (made) return { clock: clock, orb: false, rows: rows };
     var missReb = doRebound(game, ctx, orbRate);
     rows = rows.concat(reboundRows(ctx, missReb));
@@ -1797,6 +1967,7 @@
       scoreA: game.scoreA,
       scoreB: game.scoreB
     };
+    if (row.clip) play.clip = row.clip;
     if (PP_LIVE._collectPbp && row._pbp) {
       play._pbp = row._pbp;
       play._pbpErrs = auditPbpScene(row._pbp, play.text);
@@ -2375,6 +2546,7 @@
           '<span><b id="pp-live-periodclock">第一节 12:00</b></span>' +
           '<span>开赛 <b id="pp-live-elapsed">0:00</b></span>' +
         '</div>' +
+        '<div class="pp-live-court-wrap" id="pp-live-court-wrap"></div>' +
         '<div id="pp-live-qrows"></div>' +
         '<div class="pp-live-feed" id="pp-live-feed"></div>' +
         '<div class="pp-live-actions" id="pp-live-actions">' +
@@ -2424,13 +2596,18 @@
     renderQRows(sess);
   }
 
-  function appendPlays(plays) {
+  function appendPlays(plays, opt) {
     var feedEl = document.getElementById('pp-live-feed');
     if (!feedEl || !plays || !plays.length) return;
     var html = '';
     for (var i = 0; i < plays.length; i++) html += playRowHtml(plays[i]);
     feedEl.insertAdjacentHTML('beforeend', html);
     feedEl.scrollTop = feedEl.scrollHeight;
+    if (opt && opt.court && window.PP_COURT && typeof PP_COURT.play === 'function') {
+      var clip = null;
+      for (i = 0; i < plays.length; i++) if (plays[i] && plays[i].clip) clip = plays[i].clip;
+      if (clip) PP_COURT.play(clip, opt.duration || 1400);
+    }
   }
 
   function showFinalCard(pack) {
@@ -2455,6 +2632,7 @@
     options.watch = true;
     var sess = createLiveSession(spec.teamA, spec.teamB, options);
     var overlay = mountTheaterShell(sess.bp);
+    if (window.PP_COURT && typeof PP_COURT.mount === 'function') PP_COURT.mount('pp-live-court-wrap');
     var paused = false;
     var fast = false;
     var timer = null;
@@ -2489,7 +2667,7 @@
       if (done) done(sess.pack);
     }
     function handleTick(out) {
-      appendPlays(out.plays);
+      appendPlays(out.plays, { court: !fast && !sess.fastForward, duration: 1400 });
       renderBoard(sess, sess.done ? sess.pack : null);
       if (sess.done) finishUI();
     }
@@ -2515,6 +2693,7 @@
     function skipToEnd() {
       sess.fastForward = true;
       paused = false;
+      if (window.PP_COURT && typeof PP_COURT.setEnabled === 'function') PP_COURT.setEnabled(false);
       stopTimer();
       var guard = 0;
       while (!sess.done && guard < 4000) {
@@ -2536,6 +2715,7 @@
     document.getElementById('pp-live-fast').onclick = function () {
       fast = !fast;
       this.textContent = fast ? '恢复' : '加快';
+      if (window.PP_COURT && typeof PP_COURT.setEnabled === 'function') PP_COURT.setEnabled(!fast);
       if (!paused && !sess.done) schedule();
     };
     document.getElementById('pp-live-end').onclick = skipToEnd;
@@ -2549,6 +2729,7 @@
     var live = pack.live;
     var plays = live.plays || [];
     var overlay = mountTheaterShell(live.bp);
+    if (window.PP_COURT && typeof PP_COURT.mount === 'function') PP_COURT.mount('pp-live-court-wrap');
     var idx = 0;
     var paused = false;
     var fast = false;
@@ -2580,7 +2761,7 @@
       }
       var p = plays[idx++];
       currentClockFromPlay(p);
-      appendPlays([p]);
+      appendPlays([p], { court: !fast, duration: 1400 });
       renderBoard(fakeSess, null);
       timer = setTimeout(pump, fast ? 280 : 1400);
     }
@@ -2593,6 +2774,7 @@
     document.getElementById('pp-live-fast').onclick = function () {
       fast = !fast;
       this.textContent = fast ? '恢复' : '加快';
+      if (window.PP_COURT && typeof PP_COURT.setEnabled === 'function') PP_COURT.setEnabled(!fast);
     };
     document.getElementById('pp-live-end').onclick = function () {
       if (timer) clearTimeout(timer);
@@ -2659,6 +2841,8 @@
     var nPbp = 0;
     var scores = { a: 0, b: 0 };
     var flavor = { face: 0, poster: 0, open: 0, help: 0, lob: 0, coast: 0, euro: 0 };
+    var tactics = {};
+    var clips = 0;
     var i, j, pack, plays, p, e, tx;
     for (i = 0; i < games; i++) {
       pack = run(teamA, teamB, { teamAHome: i % 2 === 0, neutralState: true, fatigueA: 0 });
@@ -2681,6 +2865,10 @@
         if (/空接/.test(tx)) flavor.lob++;
         if (/一条龙/.test(tx)) flavor.coast++;
         if (/欧洲步/.test(tx)) flavor.euro++;
+        if (p.clip && p.clip.tactic) {
+          clips++;
+          tactics[p.clip.tactic] = (tactics[p.clip.tactic] || 0) + 1;
+        }
         if (p._pbpErrs && p._pbpErrs.length) {
           for (e = 0; e < p._pbpErrs.length; e++) errs[p._pbpErrs[e]] = (errs[p._pbpErrs[e]] || 0) + 1;
         }
@@ -2699,6 +2887,8 @@
       contest: contest,
       actions: actions,
       flavor: flavor,
+      clips: clips,
+      tactics: tactics,
       errs: errs,
       samples: samples
     };
