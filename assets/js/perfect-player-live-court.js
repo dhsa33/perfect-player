@@ -529,7 +529,9 @@
     arrive = seg.arrive == null ? 1 : seg.arrive;
     xyT = arrive >= 0.999 ? u : clamp(u / arrive, 0, 1);
     if (arrive < 0.999) xyT = xyT * xyT * (3 - 2 * xyT);
-    if (seg.swish) {
+    if (seg.landZ != null) {
+      z = (seg.z0 || 0.42) * (1 - u) + seg.landZ * u + h * 2.2 * u * (1 - u);
+    } else if (seg.swish) {
       if (u <= arrive) {
         t = arrive > 0.001 ? u / arrive : 1;
         z = h * 3.1 * t * (1 - t) + 1.25 * t;
@@ -545,6 +547,13 @@
       y: a[1] + dy * xyT + py * curve * Math.sin(Math.PI * xyT),
       z: z
     };
+  }
+
+  function bankGlassPoint(from, rim) {
+    var bbX = COURT_L - BACKBOARD_IN;
+    var side = (from && from[1] < 25) ? -1 : 1;
+    var lat = clamp(from ? Math.abs(from[1] - 25) * 0.14 : 1.6, 1.05, 2.4);
+    return [bbX - 0.12, clamp(rim[1] + side * lat, 22.4, 27.6)];
   }
 
   function missTarget(from, rim, input) {
@@ -615,6 +624,8 @@
         if (extra.blockTo) seg.blockTo = [extra.blockTo[0], extra.blockTo[1]];
         if (extra.arrive != null) seg.arrive = extra.arrive;
         if (extra.swish) seg.swish = true;
+        if (extra.landZ != null) seg.landZ = extra.landZ;
+        if (extra.z0 != null) seg.z0 = extra.z0;
       }
       segs.push(seg);
     }
@@ -652,10 +663,11 @@
     var passCurve = lob ? 3.3 : (dho ? 0.65 : 2.25);
     var shotH = dunk ? 2.6 : (drive ? 4.1 : (three ? 10.6 : 7.3));
     var shotCurve = dunk ? 0.12 : (drive ? 0.22 : (three ? 0.55 : 0.32));
-    var isMake = kind === 'make' || kind === 'andone';
+    var isMake = kind === 'make' || kind === 'andone' || input.outcome === 'make' || input.outcome === 'andone';
+    var bank = !!(input.bank && isMake && !dunk && !lob);
     var shotDur = dunk ? 0.22 : (drive ? 0.32 : (three ? 0.46 : 0.38));
-    var tShot1 = isMake ? 0.88 : 0.96;
-    var tShot0 = tShot1 - shotDur;
+    var tShot1 = isMake ? (bank ? 0.94 : 0.88) : 0.96;
+    var tShot0 = tShot1 - shotDur - (bank ? 0.08 : 0);
     var tPass1 = 0, tPass0 = 0;
     if (wantPass) {
       var pa = xyHold(0.28, passerId);
@@ -683,9 +695,17 @@
           extra = { blockU: 0.55, blockTo: missTarget(from, rim, input) };
           extra.blockTo[0] = clamp(extra.blockTo[0] - 5.5, 4, 90);
         }
-        if (isMake) extra = { arrive: dunk ? 0.58 : 0.7, swish: true };
-        pushFly(tShot0, tShot1, from, dest, shotH, shotCurve, extra);
-        pushRest(tShot1, 1, extra && extra.blockTo ? extra.blockTo : dest, isMake ? 0.2 : 0.22);
+        if (isMake && !bank) extra = { arrive: dunk ? 0.58 : 0.7, swish: true };
+        if (bank) {
+          var glass = bankGlassPoint(from, rim);
+          var tBoard = tShot0 + (tShot1 - tShot0) * 0.68;
+          pushFly(tShot0, tBoard, from, glass, shotH * 0.82, shotCurve * 0.4, { landZ: 2.15, z0: 0.45 });
+          pushFly(tBoard, tShot1, glass, rim, 1.05, 0.06, { arrive: 0.58, swish: true });
+          pushRest(tShot1, 1, rim, 0.2);
+        } else {
+          pushFly(tShot0, tShot1, from, dest, shotH, shotCurve, extra);
+          pushRest(tShot1, 1, extra && extra.blockTo ? extra.blockTo : dest, isMake ? 0.2 : 0.22);
+        }
       }
     } else {
       pushHold(tShot0, 1, shooterId);
@@ -780,6 +800,8 @@
       if (seg.blockU != null) s.blockU = seg.blockU;
       if (seg.arrive != null) s.arrive = seg.arrive;
       if (seg.swish) s.swish = true;
+      if (seg.landZ != null) s.landZ = seg.landZ;
+      if (seg.z0 != null) s.z0 = seg.z0;
       if (seg.x != null) { s.x = seg.x; s.y = seg.y; s.z = seg.z; }
       return s;
     });

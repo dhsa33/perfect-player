@@ -35,8 +35,8 @@ html.pp-booting #app{visibility:hidden}
   40%{content:"28%"}50%{content:"32%"}62%{content:"36%"}75%{content:"40%"}88%{content:"44%"}100%{content:"48%"}
 }
   </style>
-  <link rel="preload" href="assets/js/perfect-player-boot.js?v=20260821-boot-v9" as="script">
-  <script defer src="assets/js/perfect-player-boot.js?v=20260821-boot-v9"></script>
+  <link rel="preload" href="assets/js/perfect-player-boot.js?v=20260821-boot-v11" as="script">
+  <script defer src="assets/js/perfect-player-boot.js?v=20260821-boot-v11"></script>
   <style>
 /* ============================================================
    BuildPlayer — Mobile-First Game Edition
@@ -17919,8 +17919,8 @@ function buildTop100Copy(r) {
   });
 }
 
-// 游戏内历史百大基准榜。最终结算会按生涯历史分把主角插入榜单，
-// 这是游戏评价模型，不代表联盟或媒体的官方排名。
+// 游戏内历史百大基准榜。最终结算会按生涯历史分把主角插入对应名次，
+// 其后席位依次顺延。这是游戏评价模型，不代表联盟或媒体的官方排名。
 var LEGACY_TOP100_BASELINE = [
   '迈克尔·乔丹','勒布朗·詹姆斯','卡里姆·阿卜杜尔-贾巴尔','比尔·拉塞尔','魔术师约翰逊',
   '拉里·伯德','威尔特·张伯伦','蒂姆·邓肯','科比·布莱恩特','沙奎尔·奥尼尔',
@@ -17992,23 +17992,32 @@ function escapeLegacyHtml(value) {
 
 function renderLegacyTop100Ranking(r) {
   ensureLegacyRankingDetails(r);
-  var rank = r.historicalRank;
+  var rank = Math.max(1, Number(r.historicalRank) || 101);
   var playerName = escapeLegacyHtml(typeof getHupuDisplayName === 'function' ? getHupuDisplayName() : '我的球员');
   var avatar = escapeLegacyHtml(typeof getHupuAvatarUrl === 'function' ? getHupuAvatarUrl() : '');
-  var rowCount = Math.max(100, rank);
+  var baseline = LEGACY_TOP100_BASELINE.slice();
+  var entries = [];
+  for (var bi = 0; bi < baseline.length; bi++) {
+    if (entries.length + 1 === rank) entries.push({ isPlayer: true, name: playerName });
+    entries.push({ isPlayer: false, name: baseline[bi] });
+  }
+  if (rank > entries.length) {
+    while (entries.length < rank - 1) entries.push({ isPlayer: false, name: '百大候选球星' });
+    entries.push({ isPlayer: true, name: playerName });
+  }
   var rows = '';
-  for (var i = 1; i <= rowCount; i++) {
-    var isPlayer = i === rank;
-    var name = isPlayer ? playerName : (i <= 100 ? LEGACY_TOP100_BASELINE[i - 1] : '百大候选球星');
-    rows += '<div class="legacy-rank-row' + (isPlayer ? ' is-player' : '') + '" data-rank="' + i + '">' +
-      '<span class="legacy-rank-number">' + i + '</span>' +
+  for (var i = 0; i < entries.length; i++) {
+    var isPlayer = !!entries[i].isPlayer;
+    var name = entries[i].name;
+    rows += '<div class="legacy-rank-row' + (isPlayer ? ' is-player' : '') + '" data-rank="' + (i + 1) + '">' +
+      '<span class="legacy-rank-number">' + (i + 1) + '</span>' +
       (isPlayer ? '<img class="legacy-row-avatar" src="' + avatar + '" alt="主角头像">' : '<span class="legacy-rank-dot"></span>') +
       '<span class="legacy-rank-name">' + name + '</span>' +
       (isPlayer ? '<span class="legacy-rank-you">你的最终位置</span>' : '') +
       '</div>';
   }
   var rankLabel = rank <= 100 ? 'NBA历史百大第 ' + rank + ' 名' : '百大候选第 ' + rank + ' 名';
-  var gapText = rank <= 100 ? '进入历史百大，超越榜单中 ' + (100 - rank) + ' 个席位' : '距离历史百大还差 ' + r.rankGapToTop100 + ' 位';
+  var gapText = rank <= 100 ? '插入第 ' + rank + ' 名，其后名次依次顺延' : '距离历史百大还差 ' + r.rankGapToTop100 + ' 位';
   var b = r.scoreBreakdown || {};
   var honorScore = (b.championships || 0) + (b.fmvp || 0) + (b.mvp || 0) + (b.dpoy || 0) + (b.allNBA || 0) + (b.allStar || 0);
   var careerScore = (b.points || 0) + (b.games || 0);
@@ -18017,11 +18026,11 @@ function renderLegacyTop100Ranking(r) {
     '<div class="legacy-rank-summary"><div><span class="legacy-rank-kicker">ALL-TIME TOP 100</span><strong>' + rankLabel + '</strong><small>' + gapText + '</small></div><div class="legacy-rank-score">' + r.score + '<small>历史分</small></div></div>' +
     '<div class="legacy-score-grid"><span>荣誉贡献<b>+' + honorScore + '</b></span><span>生涯数据<b>+' + careerScore + '</b></span><span>巅峰与忠诚<b>+' + bonusScore + '</b></span><span>历史档位<b>' + escapeLegacyHtml(r.tier) + '</b></span></div>' +
     '<div class="legacy-ranking-stage">' +
-      '<div class="legacy-ranking-caption"><span>游戏历史百大完整榜</span><small>可上下滑动查看 1–100 名</small></div>' +
+      '<div class="legacy-ranking-caption"><span>游戏历史百大完整榜</span><small>按名次插入，其后顺延 · 可滑动查看</small></div>' +
       '<div class="legacy-ranking-list">' + rows + '</div>' +
       '<div class="legacy-rank-climber"><img src="' + avatar + '" alt="上升中的主角头像"><span>从第150名向上冲刺</span></div>' +
     '</div>' +
-    '<div class="legacy-rank-settlement"><b>排名结算</b><span>最终第 ' + rank + ' 名 · 从第150名上升 ' + r.rankClimbed + ' 位</span><span>' + (rank <= 100 ? '正式入选NBA历史百大' : '未入选百大，' + gapText) + '</span><small>依据：总冠军、MVP、FMVP、DPOY、最佳阵容、全明星、生涯总得分、出场数、巅峰能力与球队忠诚。</small></div>' +
+    '<div class="legacy-rank-settlement"><b>排名结算</b><span>最终插入第 ' + rank + ' 名 · 从第150名上升 ' + r.rankClimbed + ' 位</span><span>' + (rank <= 100 ? '正式入选NBA历史百大，其后名次顺延' : '未入选百大，' + gapText) + '</span><small>依据：总冠军、MVP、FMVP、DPOY、最佳阵容、全明星、生涯总得分、出场数、巅峰能力与球队忠诚。</small></div>' +
   '</div>';
 }
 

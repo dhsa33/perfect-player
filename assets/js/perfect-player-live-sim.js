@@ -148,7 +148,21 @@
       '.pp-live-qrow{display:flex;justify-content:space-between;font-family:var(--font-display);font-size:12px;padding:3px 14px;color:var(--text-dim)}' +
       '.pp-live-final{margin:8px 12px 12px;padding:10px;border-radius:10px;text-align:center;font-family:var(--font-display)}' +
       '.pp-live-court-wrap{height:220px;background:var(--bg-card);border-bottom:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:center;overflow:hidden}' +
-      '.pp-live-court-wrap.is-off{display:none}';
+      '.pp-live-court-wrap.is-off{display:none}' +
+      '.pp-live-hero{display:flex;align-items:center;gap:8px;padding:6px 12px 7px;background:var(--orange-bg);border-bottom:1px solid var(--border);flex-shrink:0}' +
+      '.pp-live-hero-face{width:28px;height:28px;border-radius:50%;object-fit:cover;border:1.5px solid var(--orange);flex-shrink:0;background:#fff}' +
+      '.pp-live-hero-face.is-off{display:none}' +
+      '.pp-live-hero-meta{min-width:0;flex:0 1 86px}' +
+      '.pp-live-hero-name{font-family:var(--font-display);font-size:12px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
+      '.pp-live-hero-on{font-size:10px;color:var(--text-dim);margin-top:1px}' +
+      '.pp-live-hero-on.is-on{color:#1f8a4c}' +
+      '.pp-live-hero-nums{flex:1;display:flex;justify-content:space-between;gap:2px;min-width:0}' +
+      '.pp-live-hero-stat{text-align:center;min-width:0}' +
+      '.pp-live-hero-stat b{display:block;font-family:var(--font-display);font-size:15px;font-weight:700;line-height:1.1}' +
+      '.pp-live-hero-stat small{display:block;font-size:9px;color:var(--text-dim)}' +
+      '.pp-live-hero-stat.is-bump b{animation:ppHeroBump .38s ease}' +
+      '@keyframes ppHeroBump{0%{transform:scale(1.28);color:var(--orange)}100%{transform:scale(1)}}' +
+      '@media (prefers-reduced-motion: reduce){.pp-live-hero-stat.is-bump b{animation:none}}';
     document.head.appendChild(s);
   }
 
@@ -1434,6 +1448,21 @@
     return /^(euro|hop|upunder|slash|layup|dunk|cross|hesi|reverse|faceup|backdoor|dropstep|putback)$/.test(action);
   }
 
+  function rollBankShot(scene) {
+    if (!scene || scene.dunk || scene.shot === 'threePT') return false;
+    if (scene.action === 'dunk' || scene.action === 'lob' || scene.action === 'putback') return false;
+    var zone = scene.zone || '';
+    var action = scene.action || '';
+    var p = 0.10;
+    if (action === 'reverse' || action === 'hook' || action === 'skyhook' || action === 'float' || action === 'runner' || action === 'dropstep') p = 0.16;
+    else if (scene.shot === 'FIN') p = 0.12;
+    else if (scene.shot === 'MID') p = 0.09;
+    else return false;
+    if (zone === 'wing' || zone === 'slot' || zone === 'corner' || zone === 'post' || zone === 'elbow' || zone === 'short') p += 0.02;
+    if (zone === 'top' || zone === 'logo' || zone === 'nail') p -= 0.03;
+    return chance(clamp(p, 0.06, 0.18));
+  }
+
   function canPostUp(shooter, matchup) {
     var pos = posOf(shooter);
     if (pos === 'C' || pos === 'PF') return true;
@@ -1583,8 +1612,11 @@
     }
     if (s.action === 'coast') {
       if (s.outcome === 'blk' && s.blocker) return a + '快攻一条龙，被' + nm(s.blocker) + '追上帽掉';
-      if (s.outcome === 'make') return a + (dunk ? '快攻一条龙暴扣' : '快攻一条龙上篮得手');
-      if (s.outcome === 'andone') return a + '快攻一条龙打成2+1，加罚' + (s.ftMade ? '命中' : '不中');
+      if (s.outcome === 'make') {
+        if (dunk) return a + '快攻一条龙暴扣';
+        return a + (s.bank ? '快攻一条龙上篮打板命中' : '快攻一条龙上篮得手');
+      }
+      if (s.outcome === 'andone') return a + (s.bank ? '快攻一条龙打板打成2+1' : '快攻一条龙打成2+1') + '，加罚' + (s.ftMade ? '命中' : '不中');
       if (s.outcome === 'foul') return a + '快攻一条龙造犯，罚球 ' + s.ftMade + '/' + s.fta;
       return a + '快攻一条龙，' + (dunk ? '扣篮' : '上篮') + '不中';
     }
@@ -1596,7 +1628,7 @@
     if (s.face && s.outcome === 'make' && m) return a + '三分颜射' + m;
 
     if (s.outcome === 'blk' && s.blocker) return core + '，被' + nm(s.blocker) + '盖帽';
-    if (s.outcome === 'andone') return core + '打成2+1，加罚' + (s.ftMade ? '命中' : '不中');
+    if (s.outcome === 'andone') return core + (s.bank ? '打板打成2+1' : '打成2+1') + '，加罚' + (s.ftMade ? '命中' : '不中');
     if (s.outcome === 'foul') return core + '造成犯规，罚球 ' + s.ftMade + '/' + s.fta;
 
     var def = '';
@@ -1606,7 +1638,7 @@
     else if (s.contest === 'heavy' && m && h) def = m + '和' + h + '夹击';
     else if (s.contest === 'close' && m && !s.beat && s.action !== 'cut') def = '面对' + m;
 
-    var end = s.outcome === 'make' ? '命中' : '不中';
+    var end = s.outcome === 'make' ? (s.bank && !dunk ? '打板命中' : '命中') : '不中';
     if (def === '无人防守') return core.replace(move, '无人防守' + move) + end;
     if (def) return core + '，' + def + '，' + end;
     return core + end;
@@ -1654,6 +1686,7 @@
       shot: scene.shot,
       dunk: scene.dunk,
       beat: scene.beat,
+      bank: !!scene.bank,
       kind: kind,
       side: ctx.side,
       q: ctx.q,
@@ -1721,6 +1754,8 @@
     if (/背身后仰|勾手|后撤步|急停/.test(text) && /无人防守/.test(text)) errs.push('iso-open');
     if (/欧洲步|跳步上篮|上下步|突破上篮|变向上篮|变速上篮/.test(text) && /无人防守/.test(text)) errs.push('drive-open');
     if (/在低位|天空钩|低位撤步|低位转身/.test(text) && scene.shooter && !canPostUp(scene.shooter, scene.matchup) && posOf(scene.shooter) !== 'PF' && posOf(scene.shooter) !== 'C') errs.push('post-mismatch');
+    if (/打板/.test(text) && (!scene.bank || scene.dunk || scene.shot === 'threePT')) errs.push('bank-text');
+    if (scene.bank && scene.outcome !== 'make' && scene.outcome !== 'andone') errs.push('bank');
     if (scene.zone && ZONE_CN[scene.zone] && text.indexOf(ZONE_CN[scene.zone]) >= 0 && scene.zone === 'post' && scene.shooter && posOf(scene.shooter) === 'PG') errs.push('pg-post');
     return errs;
   }
@@ -1939,6 +1974,7 @@
       scene.fta = fta;
       scene.outcome = andOne ? 'andone' : 'foul';
       scene.beat = driveAction(action) && (andOne || contest === 'help' || contest === 'heavy');
+      if (andOne) scene.bank = rollBankShot(scene);
       rows.push(attachPbp({
         kind: 'foul', tag: '造杀伤', tone: madeFt ? 'make' : 'miss', teamSide: side,
         text: composeShotText(scene)
@@ -1957,6 +1993,7 @@
       (contest === 'contest' && attr(shooter, 'DNK') >= 84 && chance(0.40))
     ));
     scene.face = !!(made && shot === 'threePT' && matchup && contest === 'contest' && (action === 'stepback' || action === 'pull3') && chance(0.24));
+    if (made) scene.bank = rollBankShot(scene);
     rows.push(attachPbp({
       kind: made ? 'make' : 'miss',
       tag: made ? '进攻成功' : '进攻失败',
@@ -2575,6 +2612,18 @@
           '<span>开赛 <b id="pp-live-elapsed">0:00</b></span>' +
         '</div>' +
         '<div class="pp-live-court-wrap" id="pp-live-court-wrap"></div>' +
+        '<div class="pp-live-hero" id="pp-live-hero">' +
+          '<img class="pp-live-hero-face is-off" id="pp-live-hero-face" alt="主角头像">' +
+          '<div class="pp-live-hero-meta"><div class="pp-live-hero-name" id="pp-live-hero-name">我</div><div class="pp-live-hero-on" id="pp-live-hero-on">上场 0′</div></div>' +
+          '<div class="pp-live-hero-nums" id="pp-live-hero-nums">' +
+            '<div class="pp-live-hero-stat" data-k="pts"><b>0</b><small>分</small></div>' +
+            '<div class="pp-live-hero-stat" data-k="reb"><b>0</b><small>板</small></div>' +
+            '<div class="pp-live-hero-stat" data-k="ast"><b>0</b><small>助</small></div>' +
+            '<div class="pp-live-hero-stat" data-k="stl"><b>0</b><small>断</small></div>' +
+            '<div class="pp-live-hero-stat" data-k="blk"><b>0</b><small>帽</small></div>' +
+            '<div class="pp-live-hero-stat" data-k="fg"><b>0-0</b><small>投</small></div>' +
+          '</div>' +
+        '</div>' +
         '<div id="pp-live-qrows"></div>' +
         '<div class="pp-live-feed" id="pp-live-feed"></div>' +
         '<div class="pp-live-actions" id="pp-live-actions">' +
@@ -2605,6 +2654,76 @@
     el.innerHTML = html;
   }
 
+  function liveUserSnapshot(sess) {
+    var game = sess && sess.game;
+    var bp = game && game.bp;
+    if (!bp) return null;
+    var user = bp.rosterA.filter(function (p) { return p && p._isUser; })[0];
+    if (!user) return null;
+    var on = sess.lastUserOn;
+    if (on == null) {
+      var margin = game.scoreA - game.scoreB;
+      var stint = stintOf(sess.q, sess.clock, margin, sess.isOT);
+      on = userWantedOn(game, stint, sess.q, sess.clock, margin, sess.isOT);
+    }
+    return { player: user, ln: lineOf(game, user), on: !!on };
+  }
+
+  function bumpHeroStat(el, value) {
+    var b = el && el.querySelector('b');
+    if (!b) return;
+    var next = String(value);
+    var prev = el.getAttribute('data-v');
+    b.textContent = next;
+    el.setAttribute('data-v', next);
+    if (prev == null || prev === next) return;
+    el.classList.remove('is-bump');
+    void el.offsetWidth;
+    el.classList.add('is-bump');
+  }
+
+  function renderHeroLine(sess, pack) {
+    var wrap = document.getElementById('pp-live-hero');
+    if (!wrap) return;
+    var snap = liveUserSnapshot(sess);
+    if (!snap) { wrap.style.display = 'none'; return; }
+    wrap.style.display = '';
+    var ln = snap.ln;
+    var stats = pack && pack.stats ? pack.stats : {
+      pts: Math.round(ln.pts), reb: Math.round(ln.reb), ast: Math.round(ln.ast),
+      stl: Math.round(ln.stl), blk: Math.round(ln.blk),
+      fgm: Math.round(ln.fgm), fga: Math.round(ln.fga),
+      mins: Math.max(0, Math.round(ln.mins || 0))
+    };
+    var nameEl = document.getElementById('pp-live-hero-name');
+    var onEl = document.getElementById('pp-live-hero-on');
+    var face = document.getElementById('pp-live-hero-face');
+    var name = (typeof getHupuDisplayName === 'function' ? getHupuDisplayName() : '') || nm(snap.player);
+    if (nameEl) nameEl.textContent = name;
+    if (onEl) {
+      onEl.textContent = (sess.done ? '本场 ' : (snap.on ? '在场 ' : '休息 ')) + (stats.mins || 0) + '′';
+      onEl.classList.toggle('is-on', !sess.done && !!snap.on);
+    }
+    if (face) {
+      var url = typeof getHupuAvatarUrl === 'function' ? getHupuAvatarUrl() : '';
+      if (url) { face.src = url; face.classList.remove('is-off'); }
+      else face.classList.add('is-off');
+    }
+    var nums = document.getElementById('pp-live-hero-nums');
+    if (!nums) return;
+    var map = {
+      pts: stats.pts || 0,
+      reb: stats.reb || 0,
+      ast: stats.ast || 0,
+      stl: stats.stl || 0,
+      blk: stats.blk || 0,
+      fg: (stats.fgm || 0) + '-' + (stats.fga || 0)
+    };
+    [].forEach.call(nums.querySelectorAll('.pp-live-hero-stat'), function (el) {
+      bumpHeroStat(el, map[el.getAttribute('data-k')]);
+    });
+  }
+
   function renderBoard(sess, pack) {
     var game = sess.game;
     var scoreEl = document.getElementById('pp-live-score');
@@ -2622,6 +2741,7 @@
       elapsedEl.textContent = fmtElapsed(elapsedSec(sess.q, sess.clock, sess.isOT, game.ot));
     }
     renderQRows(sess);
+    renderHeroLine(sess, pack);
   }
 
   function appendPlays(plays, opt) {
