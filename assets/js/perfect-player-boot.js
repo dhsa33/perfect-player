@@ -23,9 +23,19 @@
     ]
   };
 
+  var GATE_MSG = {
+    startGame: '正在准备创建角色…',
+    manualLoadGame: '正在读取生涯存档…',
+    showAwardsScreen: '正在准备奖项…',
+    calcSeasonAwards: '正在统计选票…',
+    liveOrSkipUserPack: '正在加载球场直播…'
+  };
+
   var loaded = {};
   var inflight = {};
   var groupWork = {};
+  var groupReady = {};
+  var gateCount = 0;
 
   function boot() {
     return window.__PP_BOOT;
@@ -53,20 +63,56 @@
     var files = GROUPS[name];
     if (!files) return Promise.resolve();
     if (groupWork[name]) return groupWork[name];
+    var work;
     if (name === 'career') {
-      groupWork[name] = files.reduce(function (p, item) {
+      work = files.reduce(function (p, item) {
         return p.then(function () { return loadScript(item[0]); });
       }, Promise.resolve());
     } else {
-      groupWork[name] = Promise.all(files.map(function (item) { return loadScript(item[0]); }));
+      work = Promise.all(files.map(function (item) { return loadScript(item[0]); }));
     }
+    groupWork[name] = work.then(function () {
+      groupReady[name] = true;
+    });
     return groupWork[name];
   }
 
+  function namesList(names) {
+    return Array.isArray(names) ? names : [names];
+  }
+
   window.__PP_ensure = function (names) {
-    if (!Array.isArray(names)) names = [names];
-    return Promise.all(names.map(ensureGroup));
+    return Promise.all(namesList(names).map(ensureGroup));
   };
+
+  window.__PP_groupsReady = function (names) {
+    return namesList(names).every(function (n) { return !!groupReady[n]; });
+  };
+
+  function gateEl() {
+    var el = document.getElementById('pp-mod-gate');
+    if (el) return el;
+    el = document.createElement('div');
+    el.id = 'pp-mod-gate';
+    el.innerHTML = '<div id="pp-mod-gate-card"><div class="loading-balls"><span class="loading-ball"></span><span class="loading-ball"></span><span class="loading-ball"></span></div><div id="pp-mod-gate-msg">正在加载…</div></div>';
+    document.body.appendChild(el);
+    return el;
+  }
+
+  function showGate(msg) {
+    gateCount++;
+    var el = gateEl();
+    var text = el.querySelector('#pp-mod-gate-msg');
+    if (text) text.textContent = msg || '正在加载…';
+    el.classList.add('is-on');
+  }
+
+  function hideGate() {
+    gateCount = Math.max(0, gateCount - 1);
+    if (gateCount > 0) return;
+    var el = document.getElementById('pp-mod-gate');
+    if (el) el.classList.remove('is-on');
+  }
 
   function startBootGame() {
     if (typeof window.__PP_bootStart === 'function') {
@@ -89,7 +135,7 @@
       if (typeof skip === 'function' && skip.apply(self, args)) {
         return orig.apply(self, args);
       }
-      return window.__PP_ensure(groups).then(function () {
+      var run = function () {
         wrapped._ppInside = true;
         try {
           var current = window[name];
@@ -99,6 +145,15 @@
         } finally {
           wrapped._ppInside = false;
         }
+      };
+      if (window.__PP_groupsReady(groups)) return run();
+      showGate(GATE_MSG[name] || '正在加载…');
+      return window.__PP_ensure(groups).then(function () {
+        hideGate();
+        return run();
+      }, function () {
+        hideGate();
+        return run();
       });
     };
     wrapped._ppDeferred = true;
@@ -122,8 +177,7 @@
   }
 
   function idleLoad() {
-    setTimeout(function () { window.__PP_ensure(['create', 'career']); }, 0);
-    setTimeout(function () { window.__PP_ensure('story'); }, 280);
+    setTimeout(function () { window.__PP_ensure(['create', 'career', 'story']); }, 0);
     setTimeout(function () { window.__PP_ensure('live'); }, 900);
   }
 
@@ -134,6 +188,9 @@
     hookAll();
     warmPool();
     idleLoad();
+    if (typeof refreshContinueActivityButton === 'function') {
+      try { refreshContinueActivityButton(); } catch (e) {}
+    }
   }
 
   if (document.readyState === 'loading') {

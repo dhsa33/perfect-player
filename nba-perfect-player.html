@@ -25,14 +25,18 @@ html.pp-booting #app{visibility:hidden}
 #pp-boot-row{display:flex;justify-content:space-between;margin-top:8px;font-size:12px;color:#8a7a66;font-weight:700}
 #pp-boot-pct.is-fake{font-variant-numeric:tabular-nums}
 #pp-boot-pct.is-fake::after{content:"8%";animation:ppBootPct 16s linear forwards}
+#pp-mod-gate{position:fixed;inset:0;z-index:2147482000;display:none;align-items:center;justify-content:center;background:rgba(250,245,235,.86);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+#pp-mod-gate.is-on{display:flex}
+#pp-mod-gate-card{min-width:200px;text-align:center;padding:20px 24px;background:#fffaf2;border:2px solid #f0e0cc;border-radius:16px;box-shadow:0 8px 32px rgba(45,31,14,.12)}
+#pp-mod-gate-msg{margin-top:12px;font-family:'Noto Sans SC',sans-serif;font-size:13px;font-weight:700;color:#8a7a66;letter-spacing:.4px}
 @keyframes ppBootGrow{from{transform:scaleX(0.08)}to{transform:scaleX(0.48)}}
 @keyframes ppBootPct{
   0%{content:"8%"}8%{content:"12%"}16%{content:"16%"}24%{content:"20%"}32%{content:"24%"}
   40%{content:"28%"}50%{content:"32%"}62%{content:"36%"}75%{content:"40%"}88%{content:"44%"}100%{content:"48%"}
 }
   </style>
-  <link rel="preload" href="assets/js/perfect-player-boot.js?v=20260821-boot-v7" as="script">
-  <script defer src="assets/js/perfect-player-boot.js?v=20260821-boot-v7"></script>
+  <link rel="preload" href="assets/js/perfect-player-boot.js?v=20260821-boot-v8" as="script">
+  <script defer src="assets/js/perfect-player-boot.js?v=20260821-boot-v8"></script>
   <style>
 /* ============================================================
    BuildPlayer — Mobile-First Game Edition
@@ -73,6 +77,7 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);min-hei
 .feature-card .fc-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:12px 24px;background:var(--orange);color:#fff;border:none;border-radius:12px;font-family:var(--font-display);font-size:15px;font-weight:600;cursor:pointer;transition:all .1s;width:100%;box-shadow:0 4px 0 #c94d1e,0 6px 12px rgba(255,107,53,0.25)}
 .feature-card .fc-btn:active{transform:translateY(3px);box-shadow:0 1px 0 #c94d1e,0 3px 8px rgba(255,107,53,0.2)}
 .feature-card .fc-btn:disabled{opacity:.4;box-shadow:none;transform:none}
+.feature-card .fc-btn.is-waiting{opacity:.92;cursor:wait;box-shadow:0 4px 0 #1d4fb8}
 .fc-footer{margin-top:10px;font-size:12px;color:var(--text-muted);text-align:center}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:14px 24px;border:none;border-radius:12px;font-family:var(--font-display);font-size:15px;font-weight:600;cursor:pointer;transition:all .1s;min-height:48px;width:100%}
 .btn:active{transform:scale(0.96)}.btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
@@ -312,7 +317,7 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);min-hei
 .st-row span:nth-child(2){flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .st-row span{width:28px;text-align:center}.st-w{color:var(--green)}.st-l{color:var(--red)}
 .st-streak{font-size:11px;color:var(--text-dim)}
-.pp-pulse{margin:6px 0 10px;padding:8px 8px 6px;background:var(--bg-card);border:2px solid var(--border);border-radius:var(--radius)}
+.pp-pulse{margin:8px 10px 16px;padding:8px 8px 6px;background:var(--bg-card);border:2px solid var(--border);border-radius:var(--radius)}
 .pp-pulse-tabs{display:flex;gap:6px;margin-bottom:6px}
 .pp-pulse-tab{flex:1;padding:7px 8px;border:1.5px solid var(--border);border-radius:10px;background:var(--bg);font-family:var(--font-display);font-size:12px;font-weight:700;color:var(--text-dim);cursor:pointer}
 .pp-pulse-tab.is-on{border-color:var(--orange);background:var(--orange-bg);color:var(--orange)}
@@ -1705,6 +1710,7 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);min-hei
   <!-- ====== 赛季模拟 ====== -->
   <div class="screen" id="screen-season">
     <div class="sim-header" id="season-header"></div>
+    <div id="pp-pulse-host"></div>
     <div class="sim-controls" id="season-controls"></div>
     <div id="gamecast-area"></div>
     <div id="game-list"></div>
@@ -2903,7 +2909,7 @@ function renderModeSelect() {
     if (c.mode === 'current') {
       var mainBtn = card.querySelector('.fc-btn');
       if (mainBtn) {
-        mainBtn.insertAdjacentHTML('afterend', '<button class="fc-btn" id="continue-activity-btn" style="margin-top:10px;background:#2f6fed;box-shadow:0 4px 0 #1d4fb8;" onclick="event.stopPropagation();manualLoadGame(1)">▶ 继续活动</button>' +
+        mainBtn.insertAdjacentHTML('afterend', '<button type="button" class="fc-btn" id="continue-activity-btn" style="margin-top:10px;background:#2f6fed;box-shadow:0 4px 0 #1d4fb8;" onclick="event.stopPropagation();manualLoadGame(1)">▶ 继续活动</button>' +
           '<button class="fc-btn career-archive-home-btn" id="career-archive-btn" onclick="event.stopPropagation();showCareerArchive()">🏛️ 生涯档案馆 <span id="career-archive-count">0</span></button>');
       }
     }
@@ -4955,11 +4961,9 @@ function startSeason() {
         '<div class="loading-balls"><span class="loading-ball"></span><span class="loading-ball"></span><span class="loading-ball"></span></div>' +
       '</div>' +
     '</div>' +
-    '<div style="text-align:center;padding:4px 0 8px;font-size:12px;color:var(--text-dim);" id="simStatus"></div>' +
-    '<div id="pp-pulse" class="pp-pulse"></div>';
+    '<div style="text-align:center;padding:4px 0 8px;font-size:12px;color:var(--text-dim);" id="simStatus"></div>';
 
-  ensurePulseBoard();
-  refreshPulseBoard(true);
+  try { ensurePulseBoard(); refreshPulseBoard(true); } catch (e) { console.error('[Pulse]', e); }
   setTimeout(quickSimAllGames, 1200);
 }
 
@@ -6162,10 +6166,8 @@ function renderDotGrid() {
     '</div>' +
     renderEventStatus() +
     '<div class="dot-grid" id="simDotGrid">' + dotsHtml + '</div>' +
-    '<div id="pp-pulse" class="pp-pulse"></div>' +
     '<div style="text-align:center;padding:0 12px 16px;">' + actionBtn + '</div>';
-  ensurePulseBoard();
-  refreshPulseBoard(true);
+  try { ensurePulseBoard(); refreshPulseBoard(true); } catch (e) { console.error('[Pulse]', e); }
   } catch(e) { console.error('[Grid] renderDotGrid 异常:', e); }
 }
 
@@ -6234,24 +6236,31 @@ function switchPulseConf(conf) {
 }
 
 function ensurePulseBoard() {
+  var host = document.getElementById('pp-pulse-host');
   var wrap = document.getElementById('pp-pulse');
   if (!wrap) {
-    var host = document.getElementById('simStatus');
-    if (!host) return null;
     wrap = document.createElement('div');
     wrap.id = 'pp-pulse';
     wrap.className = 'pp-pulse';
-    host.insertAdjacentElement('afterend', wrap);
+    if (host) host.appendChild(wrap);
+    else {
+      var status = document.getElementById('simStatus');
+      if (status && status.parentNode) status.parentNode.insertBefore(wrap, status.nextSibling);
+      else return null;
+    }
+  } else if (host && wrap.parentNode !== host) {
+    host.appendChild(wrap);
   }
   if (!STATE._pulseConf) STATE._pulseConf = getConference(STATE.careerTeam) === 'WEST' ? 'WEST' : 'EAST';
   if (!wrap.getAttribute('data-ready')) {
     wrap.setAttribute('data-ready', '1');
     wrap.innerHTML =
+      '<div class="pp-pulse-note" style="font-size:13px;font-weight:700;color:var(--text);padding:2px 4px 8px;">联盟排名</div>' +
       '<div class="pp-pulse-tabs">' +
         '<button type="button" class="pp-pulse-tab' + (STATE._pulseConf === 'EAST' ? ' is-on' : '') + '" data-conf="EAST" onclick="switchPulseConf(\'EAST\')">东部</button>' +
         '<button type="button" class="pp-pulse-tab' + (STATE._pulseConf === 'WEST' ? ' is-on' : '') + '" data-conf="WEST" onclick="switchPulseConf(\'WEST\')">西部</button>' +
       '</div>' +
-      '<div class="pp-pulse-note">百回合效率 · 净效率 = 进攻 − 防守 · 第 6 / 10 名处分季后赛与附加赛线</div>' +
+      '<div class="pp-pulse-note">胜差 · 百回合进攻 / 防守 / 净效率</div>' +
       '<div class="pp-pulse-hdr"><span>#</span><span>球队</span><span>胜</span><span>负</span><span>差</span><span>进攻</span><span>防守</span><span>净</span></div>' +
       '<div class="pp-pulse-list" id="pp-pulse-list"></div>';
   }
@@ -6259,6 +6268,7 @@ function ensurePulseBoard() {
 }
 
 function refreshPulseBoard(instant) {
+  try {
   var wrap = ensurePulseBoard();
   if (!wrap) return;
   var list = document.getElementById('pp-pulse-list');
@@ -6349,6 +6359,7 @@ function refreshPulseBoard(instant) {
   ['EAST', 'WEST'].forEach(function(c) {
     sortedConferenceRows(c).forEach(function(s, idx) { ranks[s.team] = idx + 1; });
   });
+  } catch (e) { console.error('[Pulse]', e); }
 }
 
 // ==================== 赛程生成（真实NBA赛程）====================
@@ -16390,7 +16401,25 @@ function hasAutoSave() {
 function refreshContinueActivityButton() {
   var btn = document.getElementById('continue-activity-btn');
   if (!btn) return;
-  btn.style.display = hasAutoSave() ? '' : 'none';
+  if (!hasAutoSave()) { btn.style.display = 'none'; return; }
+  btn.style.display = '';
+  var groups = ['create', 'career', 'story'];
+  var ready = window.__PP_groupsReady && window.__PP_groupsReady(groups);
+  if (ready) {
+    btn.classList.remove('is-waiting');
+    btn.textContent = '▶ 继续活动';
+    return;
+  }
+  btn.classList.add('is-waiting');
+  btn.textContent = '▶ 加载中…';
+  if (typeof window.__PP_ensure === 'function') {
+    window.__PP_ensure(groups).then(function () {
+      var b = document.getElementById('continue-activity-btn');
+      if (!b || b.style.display === 'none') return;
+      b.classList.remove('is-waiting');
+      b.textContent = '▶ 继续活动';
+    });
+  }
 }
 
 function clearAutoSaveStorage() {
@@ -19619,10 +19648,8 @@ function renderSeasonScreenDOM() {
         '<div class="loading-balls"><span class="loading-ball"></span><span class="loading-ball"></span><span class="loading-ball"></span></div>' +
       '</div>' +
     '</div>' +
-    '<div style="text-align:center;padding:4px 0 8px;font-size:12px;color:var(--text-dim);" id="simStatus"></div>' +
-    '<div id="pp-pulse" class="pp-pulse"></div>';
-  ensurePulseBoard();
-  refreshPulseBoard(true);
+    '<div style="text-align:center;padding:4px 0 8px;font-size:12px;color:var(--text-dim);" id="simStatus"></div>';
+  try { ensurePulseBoard(); refreshPulseBoard(true); } catch (e) { console.error('[Pulse]', e); }
 }
 
 // ==================== 选秀系统 ====================
