@@ -136,15 +136,7 @@
         return orig.apply(self, args);
       }
       var run = function () {
-        wrapped._ppInside = true;
-        try {
-          var current = window[name];
-          var fn = orig;
-          if (typeof current === 'function' && current !== wrapped) fn = current;
-          return fn.apply(self, args);
-        } finally {
-          wrapped._ppInside = false;
-        }
+        return orig.apply(self, args);
       };
       if (window.__PP_groupsReady(groups)) return run();
       showGate(GATE_MSG[name] || '正在加载…');

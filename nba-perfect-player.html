@@ -35,8 +35,8 @@ html.pp-booting #app{visibility:hidden}
   40%{content:"28%"}50%{content:"32%"}62%{content:"36%"}75%{content:"40%"}88%{content:"44%"}100%{content:"48%"}
 }
   </style>
-  <link rel="preload" href="assets/js/perfect-player-boot.js?v=20260821-boot-v8" as="script">
-  <script defer src="assets/js/perfect-player-boot.js?v=20260821-boot-v8"></script>
+  <link rel="preload" href="assets/js/perfect-player-boot.js?v=20260821-boot-v9" as="script">
+  <script defer src="assets/js/perfect-player-boot.js?v=20260821-boot-v9"></script>
   <style>
 /* ============================================================
    BuildPlayer — Mobile-First Game Edition
@@ -5985,12 +5985,18 @@ function calcSeasonAwards() {
 
 /** 奖项页：每个奖项一行，头像 + 获奖者 + 排名 */
 function showAwardsScreen() {
+  if (showAwardsScreen._busy) return;
+  showAwardsScreen._busy = true;
+  var holdBusy = false;
+  try {
   trackEvent({act:"click",blk:"BMC098",pos:"TC16",label:"常规赛奖项"});
   if (!STATE._skipSixtyWinBeforeAwards && maybeShowFirstSixtyWinCelebration(function() {
     STATE._skipSixtyWinBeforeAwards = true;
+    showAwardsScreen._busy = false;
     showAwardsScreen();
     STATE._skipSixtyWinBeforeAwards = false;
   })) {
+    holdBusy = true;
     return;
   }
   showScreen('screen-awards');
@@ -6014,6 +6020,7 @@ function showAwardsScreen() {
     '</div>';
 
   setTimeout(function() {
+  try {
   var seed = getConferenceSeed(STATE.careerTeam);
   var emojiMap = { mvp:'🏆', dpoy:'🔒', mip:'📈', allStar:'⭐', allNBA:'🌟', allDefense:'🛡️', roty:'🌱', allRookie:'🌱', sixthman:'🔥' };
   var catMap = { mvp:'最有价值球员', dpoy:'最佳防守球员', mip:'进步最快球员', allStar:'全明星', allNBA:'最佳阵容', allDefense:'最佳防守阵容', roty:'最佳新秀', allRookie:'最佳新秀阵容', sixthman:'最佳第六人' };
@@ -6119,7 +6126,15 @@ function showAwardsScreen() {
   document.querySelectorAll('#awards-content .award-row').forEach(function(row) {
     trackExposureOnce(row, {act:"exposure",blk:"BMC099",pos:row.getAttribute('data-track-pos'),label:row.getAttribute('data-track-label')});
   });
-  }, 1500);
+  } catch (err) {
+    console.error('[Awards] render', err);
+    html('awards-content').innerHTML =
+      '<div style="text-align:center;padding:28px 16px;">奖项页渲染失败，请再试一次。<br><button type="button" class="btn btn-secondary btn-sm" onclick="showAwardsScreen()">重新打开</button></div>';
+  }
+  }, 200);
+  } finally {
+    if (!holdBusy) showAwardsScreen._busy = false;
+  }
 }
 
 // ★ 实验性：82 场赛果点阵图
@@ -9339,20 +9354,11 @@ function showChampionshipCelebration(onDone) {
 
 function maybeShowFirstSixtyWinCelebration(onDone) {
   var c = STATE.career;
-  if (!c || !STATE.season) {
-    if (typeof onDone === 'function') onDone();
-    return false;
-  }
+  if (!c || !STATE.season) return false;
   c.flags = c.flags || {};
-  if (c.flags.firstSixtyWinCelebrated) {
-    if (typeof onDone === 'function') onDone();
-    return false;
-  }
+  if (c.flags.firstSixtyWinCelebrated) return false;
   var wins = STATE.season.wins || 0;
-  if (wins < 60) {
-    if (typeof onDone === 'function') onDone();
-    return false;
-  }
+  if (wins < 60) return false;
   c.flags.firstSixtyWinCelebrated = true;
   showSixtyWinCelebration(wins, onDone);
   return true;
