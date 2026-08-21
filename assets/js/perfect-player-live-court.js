@@ -71,6 +71,25 @@
     if (t > 0.92) t = 0.92;
     return [from[0] + dx * t, from[1] + dy * t];
   }
+  function away(from, origin, feet) {
+    var dx = from[0] - origin[0], dy = from[1] - origin[1];
+    var len = Math.sqrt(dx * dx + dy * dy) || 1;
+    return [from[0] + dx / len * feet, from[1] + dy / len * feet];
+  }
+  function cloneMap(m) {
+    var o = {}, id;
+    for (id in m) o[id] = clone(m[id]);
+    return o;
+  }
+  function lerpMap(a, b, t) {
+    var o = {}, id;
+    for (id in a) o[id] = b[id] ? lerp(a[id], b[id], t) : clone(a[id]);
+    for (id in b) if (!o[id]) o[id] = clone(b[id]);
+    return o;
+  }
+  function put(map, p, xy) {
+    if (p && xy) map[p.id] = clone(xy);
+  }
   function quad(a, c, b, t) {
     var u = 1 - t;
     return [
@@ -168,11 +187,11 @@
     var eS = sid(strong, 'elbowL', 'elbowR');
     var pS = sid(strong, 'postL', 'postR');
     var dW = wid(strong, 'dunkerL', 'dunkerR');
-    if (tactic === 'post') return [pS, sS, cS, cW, sW];
+    if (tactic === 'post') return [lerp(pS, eS, 0.55), sS, cS, cW, sW];
     if (tactic === 'iso_clear') return [wS, dW, cW, cS, sW];
     if (tactic === 'iso_mid') return [eS, cW, sW, cS, sS];
     if (tactic === 'floppy' || tactic === 'hammer' || tactic === 'elevator') {
-      return [tactic === 'hammer' ? cS : lerp(cS, Z.shortL, 0.35), Z.top, eS, cW, sW];
+      return [lerp(cS, [RIM[0] - 7, (cS[1] + 25) / 2], 0.5), Z.top, eS, cW, sW];
     }
     if (tactic === 'horns' || tactic === 'spain') return [Z.top, Z.elbowL, Z.elbowR, cS, cW];
     if (tactic === 'dho') return [sS, eS, cS, cW, sW];
@@ -198,6 +217,187 @@
     return off;
   }
 
+  function matesOf(r) {
+    var ball = r.ball;
+    var used = {};
+    if (ball) used[ball.id] = true;
+    function next(prefer) {
+      if (prefer && !used[prefer.id]) { used[prefer.id] = true; return prefer; }
+      var i, p;
+      for (i = 0; i < r.offOrder.length; i++) {
+        p = r.offOrder[i];
+        if (p && !used[p.id]) { used[p.id] = true; return p; }
+      }
+      return null;
+    }
+    return {
+      ball: ball,
+      passer: next(r.passer),
+      big: next(r.big),
+      wing: next(r.wing),
+      extra: next(r.corner) || next(r.extra) || next(null)
+    };
+  }
+
+  function offensePlan(r, input) {
+    var strong = input.strong || 'R';
+    var tactic = input.tactic || 'pnr_side';
+    var action = input.action || '';
+    var branch = input.branch || '';
+    var zone = shotZone(input);
+    if (action === 'coast' || tactic === 'trans_coast') zone = clone(Z.rim);
+    if (action === 'lob') zone = clone(Z.rim);
+    var set = placeOff(r, tactic, strong);
+    var act = cloneMap(set);
+    var shot = cloneMap(set);
+    var m = matesOf(r);
+    var cS = sid(strong, 'cornerL', 'cornerR');
+    var cW = wid(strong, 'cornerL', 'cornerR');
+    var sS = sid(strong, 'slotL', 'slotR');
+    var sW = wid(strong, 'slotL', 'slotR');
+    var wS = sid(strong, 'wingL', 'wingR');
+    var wW = wid(strong, 'wingL', 'wingR');
+    var eS = sid(strong, 'elbowL', 'elbowR');
+    var dS = sid(strong, 'dunkerL', 'dunkerR');
+    var dW = wid(strong, 'dunkerL', 'dunkerR');
+    var pS = sid(strong, 'postL', 'postR');
+    var start = m.ball && set[m.ball.id] ? clone(set[m.ball.id]) : clone(sS);
+    var drive = isDrive(action) || branch === 'turn' || branch === 'drive';
+    var ballCurve = null;
+
+    function relocate(p, dest, maxFeet) {
+      if (!p || !set[p.id] || !dest) return;
+      var here = set[p.id];
+      var cap = maxFeet == null ? 11 : maxFeet;
+      var there = dist(here, dest) > cap ? toward(here, dest, cap) : clone(dest);
+      put(act, p, lerp(here, there, 0.62));
+      put(shot, p, there);
+    }
+    function spaceOut(p) {
+      if (!p || !set[p.id]) return;
+      put(act, p, away(set[p.id], RIM, 3.2));
+      put(shot, p, away(set[p.id], RIM, 5.4));
+    }
+    function dummyCut(p) {
+      if (!p || !set[p.id]) return;
+      var here = set[p.id];
+      put(act, p, toward(here, Z.paint, 9));
+      put(shot, p, toward(here, here[1] < 25 ? cS : cW, 6));
+    }
+
+    if (tactic === 'trans_coast' || tactic === 'steal' || action === 'coast') {
+      put(act, m.ball, clone(Z.midc));
+      put(shot, m.ball, clone(Z.rim));
+      relocate(m.wing, cS, 22);
+      relocate(m.big, dW, 22);
+      relocate(m.passer, sW, 20);
+      relocate(m.extra, cW, 22);
+      return { set: set, act: act, shot: shot, ballId: m.ball && m.ball.id, ballCurve: null };
+    }
+
+    if (drive) {
+      ballCurve = { a: start, c: [(start[0] + zone[0]) / 2 + 1.4, (start[1] + 25) / 2], b: zone };
+      put(act, m.ball, quad(start, ballCurve.c, zone, 0.45));
+      put(shot, m.ball, zone);
+    } else if (action === 'cut' || action === 'backdoor' || branch === 'cut') {
+      put(act, m.ball, [sS[0], (start[1] + zone[1]) / 2]);
+      put(shot, m.ball, zone);
+    } else if (action === 'stepback' || action === 'snatch' || branch === 'step') {
+      put(act, m.ball, toward(start, zone, 2.2));
+      put(shot, m.ball, toward(start, Z.logo, 5.5));
+    } else {
+      put(act, m.ball, toward(start, zone, 5));
+      put(shot, m.ball, zone);
+    }
+
+    if (tactic === 'post') {
+      relocate(m.passer, sW, 10);
+      spaceOut(m.wing);
+      dummyCut(m.extra);
+      relocate(m.big, dW, 10);
+    } else if (tactic === 'iso_clear' || tactic === 'iso_mid' || tactic === 'delay') {
+      relocate(m.big, dW, 10);
+      spaceOut(m.wing);
+      dummyCut(m.extra);
+      spaceOut(m.passer);
+    } else if (tactic === 'floppy' || tactic === 'hammer' || tactic === 'elevator') {
+      relocate(m.passer, sW, 10);
+      relocate(m.big, branch === 'roll' ? dS : Z.top, 12);
+      relocate(m.wing, wW, 10);
+      spaceOut(m.extra);
+    } else if (tactic === 'five_out' || tactic === 'zone') {
+      relocate(m.passer, sW, 10);
+      relocate(m.wing, cS, 10);
+      dummyCut(m.big);
+      spaceOut(m.extra);
+    } else {
+      if (branch === 'pop') relocate(m.big, Z.top, 12);
+      else if (branch === 'roll' || branch === 'slip' || action === 'lob') relocate(m.big, action === 'lob' ? Z.rim : dS, 12);
+      else relocate(m.big, drive ? dS : eS, 11);
+      spaceOut(m.wing);
+      relocate(m.passer, sW, 10);
+      dummyCut(m.extra);
+    }
+
+    r.offOrder.forEach(function (p, i) {
+      if (!p || !set[p.id]) return;
+      if (dist(set[p.id], act[p.id] || set[p.id]) > 0.8) return;
+      if (i % 2) dummyCut(p);
+      else spaceOut(p);
+    });
+
+    return { set: set, act: act, shot: shot, ballId: m.ball && m.ball.id, ballCurve: ballCurve };
+  }
+
+  function sampleOff(plan, t) {
+    var off = t <= 0.42
+      ? lerpMap(plan.set, plan.act, ease(t / 0.42))
+      : lerpMap(plan.act, plan.shot, ease((t - 0.42) / 0.58));
+    if (plan.ballCurve && plan.ballId) {
+      off[plan.ballId] = quad(plan.ballCurve.a, plan.ballCurve.c, plan.ballCurve.b, ease(t));
+    }
+    return off;
+  }
+
+  function poseDef(offNow, offSet, r, input, t) {
+    var contest = input.contest || 'close';
+    var ballId = r.ball && r.ball.id;
+    var ballXy = (ballId && offNow[ballId]) || clone(Z.ft);
+    var def = {};
+    var id, manNow, manSet, gp, isOn, isHelp, shell, cover, stunt, u, endGap;
+    for (id in r.guardOf) {
+      manNow = offNow[id];
+      manSet = offSet[id];
+      gp = r.guardOf[id];
+      if (!manNow || !gp) continue;
+      isOn = !!(r.onBall && gp.id === r.onBall.id);
+      isHelp = !!(r.help && gp.id === r.help.id && (contest === 'help' || contest === 'heavy') && !isOn);
+      shell = lerp(toward(manSet || manNow, RIM, isOn ? 6.5 : 9.5), toward(manSet || manNow, [FT[0] - 8, 25], isOn ? 3 : 5.5), 0.55);
+      endGap = isOn ? (contest === 'open' ? 8.2 : (contest === 'close' ? 5.6 : 4.1)) : (id === ballId ? (contest === 'open' ? 8.5 : 5.2) : 6.8);
+      cover = toward(manNow, RIM, endGap);
+      if (isHelp) cover = toward(ballXy, RIM, contest === 'heavy' ? 3.1 : 5.4);
+      if (isOn) {
+        def[gp.id] = lerp(shell, cover, ease(t));
+        if (input.beat && t > 0.38) {
+          def[gp.id] = lerp(def[gp.id], away(manNow, RIM, 2.4), ease((t - 0.38) / 0.62));
+        }
+      } else if (isHelp) {
+        def[gp.id] = lerp(shell, cover, ease(clamp((t - 0.12) / 0.5, 0, 1)));
+      } else {
+        stunt = toward(shell, ballXy, 4.2);
+        u = t < 0.44 ? ease(t / 0.44) : ease((t - 0.44) / 0.56);
+        def[gp.id] = t < 0.44 ? lerp(shell, stunt, u) : lerp(stunt, cover, u);
+      }
+    }
+    if (input.outcome === 'blk' && r.blocker && t > 0.5) {
+      def[r.blocker.id] = lerp(def[r.blocker.id] || clone(Z.rim), clone(Z.rim), ease(clamp((t - 0.5) / 0.35, 0, 1)));
+    }
+    if (input.kind === 'stl' && r.stealer && ballId && offNow[ballId]) {
+      def[r.stealer.id] = lerp(def[r.stealer.id] || offNow[ballId], offNow[ballId], ease(t));
+    }
+    return def;
+  }
+
   function shotZone(input) {
     var strong = input.strong || 'R';
     var z = input.zone;
@@ -217,115 +417,6 @@
 
   function isDrive(action) {
     return /^(euro|hop|upunder|slash|layup|dunk|cross|hesi|reverse|faceup|backdoor|dropstep|putback)$/.test(action || '');
-  }
-
-  function poseOff(r, input, t) {
-    var tactic = input.tactic || 'pnr_side';
-    var strong = input.strong || 'R';
-    var action = input.action || '';
-    var off = placeOff(r, tactic, strong);
-    var ball = r.ball && r.ball.id;
-    if (!ball || !off[ball]) return off;
-    var start = clone(off[ball]);
-    var zone = shotZone(input);
-    if (action === 'coast' || tactic === 'trans_coast') zone = clone(Z.rim);
-    if (action === 'lob') zone = clone(Z.rim);
-    var u, ctrl, rollTo, popTo;
-
-    if (tactic === 'trans_coast' || tactic === 'steal' || action === 'coast') {
-      u = ease(clamp(t, 0, 1));
-      off[ball] = lerp(Z.back, zone, u);
-      r.offOrder.forEach(function (p, i) {
-        if (!p || p.id === ball || !off[p.id]) return;
-        off[p.id] = lerp(off[p.id], lerp(off[p.id], [70 + i * 3, 8 + i * 9], 0.7), u);
-      });
-      return off;
-    }
-
-    if (isDrive(action) || input.branch === 'turn' || input.branch === 'drive') {
-      u = ease(clamp((t - 0.12) / 0.72, 0, 1));
-      ctrl = [(start[0] + zone[0]) / 2 + 1.5, (start[1] + 25) / 2];
-      off[ball] = quad(start, ctrl, zone, u);
-      if (r.big && off[r.big.id] && (tactic.indexOf('pnr') === 0 || tactic === 'horns')) {
-        rollTo = clone(sid(strong, 'dunkerL', 'dunkerR'));
-        off[r.big.id] = lerp(off[r.big.id], rollTo, ease(clamp((t - 0.18) / 0.55, 0, 1)));
-      }
-      return off;
-    }
-
-    if (action === 'cut' || action === 'backdoor' || input.branch === 'cut') {
-      u = ease(clamp(t / 0.85, 0, 1));
-      ctrl = [sid(strong, 'slotL', 'slotR')[0], sid(strong, 'cornerL', 'cornerR')[1]];
-      off[ball] = quad(start, ctrl, zone, u);
-      return off;
-    }
-
-    if (action === 'spot' || action === 'flare' || input.branch === 'corner') {
-      u = ease(clamp(t / 0.7, 0, 1));
-      off[ball] = lerp(start, zone, u);
-      return off;
-    }
-
-    if (action === 'stepback' || action === 'snatch' || input.branch === 'step') {
-      u = ease(clamp((t - 0.15) / 0.5, 0, 1));
-      off[ball] = lerp(start, toward(start, Z.logo, 5.5), u);
-      return off;
-    }
-
-    if (action === 'fade' || action === 'hook' || action === 'skyhook' || action === 'postspin' || action === 'dropstep' || action === 'upunder') {
-      u = ease(clamp(t / 0.65, 0, 1));
-      off[ball] = lerp(start, zone, u);
-      return off;
-    }
-
-    if (input.branch === 'pop' && r.big && off[r.big.id]) {
-      popTo = clone(Z.top);
-      off[r.big.id] = lerp(off[r.big.id], popTo, ease(clamp(t / 0.7, 0, 1)));
-    }
-    if (input.branch === 'roll' || input.branch === 'slip' || action === 'lob') {
-      if (r.big && off[r.big.id]) {
-        off[r.big.id] = lerp(off[r.big.id], clone(Z.rim), ease(clamp((t - 0.1) / 0.6, 0, 1)));
-      }
-      if (action === 'lob') off[ball] = lerp(start, Z.rim, ease(clamp((t - 0.25) / 0.5, 0, 1)));
-    }
-
-    u = ease(clamp((t - 0.2) / 0.55, 0, 1));
-    if (dist(start, zone) > 1.2) off[ball] = lerp(start, zone, u);
-    return off;
-  }
-
-  function placeDef(offPos, r, input, t) {
-    var contest = input.contest || 'close';
-    var def = {};
-    var onGap = contest === 'open' ? 9.5 : (contest === 'close' ? 6.2 : 4.4);
-    var sag = contest === 'open' ? 10 : (contest === 'close' ? 7.5 : 6.2);
-    var id, op, gp, xy, gap;
-    for (id in r.guardOf) {
-      op = offPos[id];
-      gp = r.guardOf[id];
-      if (!op || !gp) continue;
-      gap = (r.onBall && gp.id === r.onBall.id) ? onGap : sag;
-      xy = toward(op, RIM, gap);
-      if (r.onBall && gp.id === r.onBall.id && input.beat && t > 0.45) {
-        xy = toward(op, Z.logo, 3.2);
-        xy = lerp(toward(op, RIM, 4), xy, clamp((t - 0.45) / 0.4, 0, 1));
-      }
-      def[gp.id] = xy;
-    }
-    if ((contest === 'help' || contest === 'heavy') && r.help && t > 0.28) {
-      var helpTo = contest === 'heavy' ? lerp(Z.nail, Z.rim, 0.35) : clone(Z.nail);
-      if (r.ball && offPos[r.ball.id]) helpTo = toward(offPos[r.ball.id], RIM, contest === 'heavy' ? 3.2 : 6);
-      var hu = ease(clamp((t - 0.28) / 0.45, 0, 1));
-      if (def[r.help.id]) def[r.help.id] = lerp(def[r.help.id], helpTo, hu);
-      else def[r.help.id] = helpTo;
-    }
-    if (input.outcome === 'blk' && r.blocker && t > 0.55) {
-      def[r.blocker.id] = lerp(def[r.blocker.id] || clone(Z.rim), Z.rim, ease(clamp((t - 0.55) / 0.3, 0, 1)));
-    }
-    if (input.kind === 'stl' && r.stealer && r.ball && offPos[r.ball.id]) {
-      def[r.stealer.id] = lerp(def[r.stealer.id] || offPos[r.ball.id], offPos[r.ball.id], ease(t));
-    }
-    return def;
   }
 
   function separate(maps, minD) {
@@ -383,11 +474,12 @@
     var tactic = input.tactic || 'pnr_side';
     var camera = 'half';
     if (tactic === 'trans_coast' || tactic === 'steal' || input.action === 'coast') camera = 'full';
-    var times = [0, 0.22, 0.48, 0.74, 1];
+    var plan = offensePlan(r, input);
+    var times = [0, 0.18, 0.4, 0.68, 1];
     var frames = times.map(function (t) {
-      var off = poseOff(r, input, t);
-      var def = placeDef(off, r, input, t);
-      separate([off, def], 3.4);
+      var off = sampleOff(plan, t);
+      var def = poseDef(off, plan.set, r, input, t);
+      separate([off, def], 3.2);
       return { t: t, dots: packDots(off, def, input, ballAt(r, input, t)) };
     });
     return { camera: camera, tactic: tactic, branch: input.branch, zone: input.zone, frames: frames };
