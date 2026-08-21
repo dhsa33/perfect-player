@@ -6,15 +6,15 @@
 
   var GROUPS = {
     create: [
-      ['assets/js/perfect-player-hupu-extensions.js?v=20260821-boot-v1', '角色扩展']
+      ['assets/js/perfect-player-hupu-extensions.js?v=20260821-boot-v3', '角色扩展']
     ],
     career: [
       ['assets/js/perfect-player-skills.js?v=20260820-skill-no-slot', '球风技能'],
       ['assets/js/perfect-player-enhancements.js?v=20260820-legacy-create', '成就特效']
     ],
     story: [
-      ['assets/js/perfect-player-event-library.js', '赛季事件'],
-      ['assets/js/perfect-player-story-events.js?v=20260820-rival-pool', '生涯剧情'],
+      ['assets/js/perfect-player-event-library.js?v=20260821-events-v2', '赛季事件'],
+      ['assets/js/perfect-player-story-events.js?v=20260821-story-v2', '生涯剧情'],
       ['assets/js/perfect-player-awards.js?v=20260813-real-ballot-v1', '荣誉评选']
     ],
     live: [

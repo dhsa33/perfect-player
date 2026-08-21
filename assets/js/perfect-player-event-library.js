@@ -190,7 +190,48 @@
     ['old_coach_help','启蒙教练求助','启蒙教练的球馆面临关闭，他希望你直接承担全部欠款。','资助重建运营计划','先联系社区共同筹款','loyalty'],
     ['fan_translation','海外球迷来信','海外球迷寄来长信，现有翻译只给出几句粗略摘要。','聘请翻译完整回复','录制通用感谢视频','media'],
     ['charity_rival','与宿敌联合公益','联盟希望你与场上宿敌共同主持反暴力活动，双方团队担心形象混淆。','共同出席公开对话','分别录制同一主题','lead'],
-    ['retired_worker','球馆老员工退休','为球队工作四十年的设备管理员退休，仪式却被安排在无观众的训练日。','推动赛前公开致敬','组织球员私人送别','loyalty']
+    ['retired_worker','球馆老员工退休','为球队工作四十年的设备管理员退休，仪式却被安排在无观众的训练日。','推动赛前公开致敬','组织球员私人送别','loyalty'],
+
+    ['timeout_board_wipe','战术板被擦掉','暂停时助教刚画完的走位被汗水抹花，只剩十秒把方案说清楚。','用口语把关键三人讲完','改成熟悉的挡拆应急','lead'],
+    ['free_throw_noise','罚球噪音升级','客队主场在你罚球时同步敲地板，裁判只警告了一次。','按原节奏罚球','申请重新组织罚球环境','lead','road'],
+    ['mismatch_hunt','点名错位','对手连续用小个点你，教练让你决定是要位还是拉出去。','坚持内线要位','拉到外线惩罚换防','skill'],
+    ['second_unit_pace','第二阵容提速','替补控卫把回合压到七秒内出手，首发回来后节奏完全对不上。','跟着第二阵容跑','把球权重新控住','team'],
+    ['charge_circle','合理冲撞区争议','你一次造进攻犯规被改判阻挡，技术台说可以挑战。','立刻申请挑战','放弃挑战继续防守','lead'],
+    ['alley_oop_timing','空接时机争执','内线埋怨你传早了，你觉得他起跳晚了，下一回合还要不要再试。','下一回合继续空接','改成低位手递手','team'],
+    ['hack_strategy','故意犯规策略','教练要你对对方罚球最差的人执行砍人战术，队友觉得这不像赢球。','执行砍人战术','只在最后两分钟用','coach'],
+    ['hot_hand_feed','手热队友要球','连胜局里队友连续命中，公开要你把下一次回合交给他。','把球权让出','按原战术继续读防守','team','streak'],
+    ['cold_start','开局五投不中','你开场五投全失，解说开始讨论你是否该坐一会儿。','主动申请短休调整','继续留在场上寻找对抗','risk'],
+    ['boxout_assign','卡位分工','连丢前场板后，教练指定你放弃协防专门卡人。','接受纯卡位任务','保留协防兼顾篮板','skill'],
+
+    ['calf_tight','小腿突然发紧','热身最后一组冲刺后小腿发紧，队医给了三分钟判断时间。','下场做激活再定','贴好继续观察','risk'],
+    ['finger_jam','手指挫伤','一次抢板把食指挫到，护具会改变出手点。','戴护具调整投篮','短时间不用那只手终结','risk'],
+    ['back_to_back_sleep','背靠背睡眠窗','第一场加时打完已过午夜，第二场当天下午。睡眠舱只剩一个名额。','把睡眠舱让给先发控卫','自己使用并缩短晨投','recovery'],
+    ['cramp_timeout','抽筋要不要喊停','你小腿抽筋但仍能走，球队只剩一次暂停。','立刻喊停处理','坚持到下一死球','risk'],
+    ['mouthguard_fit','新护齿不适','牙医做的新护齿保护更好，却让你呼吸和喊防都变钝。','先用旧护齿完赛','强制适应新护齿','recovery'],
+    ['night_sweats','赛后盗汗','连续三晚赛后盗汗睡不着，队医怀疑负荷而不是感冒。','接受完整血液复查','先自行调整睡眠','recovery'],
+
+    ['translation_huddle','暂停翻译跟不上','外援听不清暂停布置，下回合走错了掩护方向。','你在场上再讲一遍','让他只执行最简单任务','team'],
+    ['minutes_chart','出场时间表外泄','一张未公布的轮换表出现在社交媒体，你的名字被标成“可交易”。','先找教练核对','不回应把训练打完','media','deadline'],
+    ['practice_no_show','主力没来训练','核心队友无故缺席对抗，教练让你顶他的位置带队。','按核心职责带队','只做自己原来的工作','lead'],
+    ['young_core_film','年轻核心录像课','教练把年轻球员留下来加课，老将已经走了，他们看你有没有留下来。','留下一起看','按自己的恢复计划离开','team'],
+    ['two_way_callup','双向合同升上','一名双向合同球员第一次进大名单，更衣室座位还没准备好。','把你的备用柜让给他','让装备组按流程处理','team'],
+    ['shootaround_skip','投篮训练有人旷','连败后有人迟到缺席投篮训练，队长让你表态要不要上报。','私下提醒一次','按队规上报','lead','slump'],
+
+    ['micd_up_edit','麦克风被剪成抱怨','联盟给你佩麦的那晚被剪成你在抱怨轮换，原话其实在布置防守。','要求放出完整音轨','赛后自己讲清楚','media','national'],
+    ['radio_row','电台嘉宾挖坑','赛前电台问你愿不愿意公开批评裁判，导播已经把音效准备好了。','只谈规则不谈人','拒绝这个话题','media'],
+    ['app_push','球队 App 推送失误','官方 App 把你的伤情模板误发给所有球迷，而你当天仍会首发。','立刻发自己的状态','让公关统一口径','media','home'],
+    ['stat_tracker','实时数据弹幕','主场大屏开始滚动你的真实命中率，投丢一次就刷新一次。','请球馆关掉个人弹幕','不理屏幕继续打','media','home'],
+    ['old_coach_quote','旧帅评价被拿出','你的前一任教练在节目里说你“还没学会赢”，今晚正好打他现在的球队。','赛前不回应','用比赛内容回答','lead'],
+    ['language_slip','第二语言口误','你用英语接受采访时把“轮换”说成了“放弃”，字幕已经发出去。','自己录一段更正','让翻译书面说明','media'],
+
+    ['charter_seat','包机座位调整','包机临时减座，训练师和一名伤兵只能有一个人坐前舱平躺。','把平躺位让给伤兵','按医疗优先级申请自己','recovery'],
+    ['shootaround_court','晨练馆地板过湿','客场晨练馆刚打过蜡，滑得不敢急停。','改成投篮和步法','坚持对抗但降强度','risk','road'],
+    ['arena_elevator','球员电梯停运','赛前电梯故障，你要从货运通道爬楼梯到更衣室。','提前出发走楼梯','申请推迟出场介绍','risk'],
+    ['lost_airpods','恢复噪音取消失效','你习惯用降噪入睡的设备丢在安检，长途飞行没有备用。','向队友借备用','接受睡眠变差','recovery'],
+
+    ['youth_ref','青少年比赛当裁判','球队安排你给青少年比赛吹一节，孩子们把你当成娱乐，家长把你当成标准。','严格按规则吹','吹得宽松保护体验','lead'],
+    ['esports_collab','电竞联动拍摄','球队电竞分部想让你出镜喊口号，拍摄要占用投篮日下午。','出镜但压缩时长','只授权名字不出镜','business'],
+    ['city_key','城市钥匙仪式','市政要把城市钥匙给你，仪式卡在背靠背第一场次日早晨。','短席出席','请家人代领','loyalty','home']
   ];
 
   var effects = {
@@ -264,6 +305,7 @@
         (beneficial ? gains : costs).push(naturalEffect(key, value));
       });
     });
+    if (effect.tp) gains.push('训练点+' + effect.tp);
     if (gains.length && costs.length) return gains.join('、') + '，但' + costs.join('、');
     return (gains.length ? gains : costs).join('、') || '后续剧情与人物评价将发生变化';
   }
@@ -283,9 +325,18 @@
     return label + '。' + (endings[family] || endings.lead)[side];
   }
 
+  var extraTp = {
+    weak_hand_test: [1, 0],
+    elbow_play: [1, 0],
+    double_team_read: [1, 0],
+    zone_surprise: [1, 0],
+    trainer_dispute: [0, 1]
+  };
+
   var definitions = catalog.map(function (row) {
     var family = row[5] || 'lead';
     var pair = effects[family] || effects.lead;
+    var tps = extraTp[row[0]] || [pair[0].tp || 0, pair[1].tp || 0];
     return {
       id: 'unique_' + row[0],
       topicId: 'unique_' + row[0],
@@ -294,14 +345,14 @@
       scene: row[2],
       body: '“' + row[1] + '”没有标准答案，两种处理都会留下不同影响。',
       choices: [
-        { label:row[3], hint:choiceForecast(pair[0]), profile:pair[0].profile, mods:pair[0].mods, result:decisionResult(row[3], family, 0) },
-        { label:row[4], hint:choiceForecast(pair[1]), profile:pair[1].profile, mods:pair[1].mods, result:decisionResult(row[4], family, 1) }
+        { label:row[3], hint:choiceForecast(Object.assign({}, pair[0], { tp: tps[0] })), profile:pair[0].profile, mods:pair[0].mods, tp: tps[0] || undefined, result:decisionResult(row[3], family, 0) },
+        { label:row[4], hint:choiceForecast(Object.assign({}, pair[1], { tp: tps[1] })), profile:pair[1].profile, mods:pair[1].mods, tp: tps[1] || undefined, result:decisionResult(row[4], family, 1) }
       ]
     };
   });
 
-  if (definitions.length !== 179) {
-    throw new Error('独立赛季事件数量错误：期望 179，实际 ' + definitions.length);
+  if (definitions.length !== 214) {
+    throw new Error('独立赛季事件数量错误：期望 214，实际 ' + definitions.length);
   }
 
   window.PERFECT_PLAYER_EXTRA_SEASON_EVENT_DEFINITIONS = definitions;

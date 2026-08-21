@@ -35,8 +35,8 @@ html.pp-booting #app{visibility:hidden}
   40%{content:"28%"}50%{content:"32%"}62%{content:"36%"}75%{content:"40%"}88%{content:"44%"}100%{content:"48%"}
 }
   </style>
-  <link rel="preload" href="assets/js/perfect-player-boot.js?v=20260821-boot-v11" as="script">
-  <script defer src="assets/js/perfect-player-boot.js?v=20260821-boot-v11"></script>
+  <link rel="preload" href="assets/js/perfect-player-boot.js?v=20260821-boot-v13" as="script">
+  <script defer src="assets/js/perfect-player-boot.js?v=20260821-boot-v13"></script>
   <style>
 /* ============================================================
    BuildPlayer — Mobile-First Game Edition
@@ -10340,6 +10340,38 @@ function addAttrDelta(key, delta) {
   STATE.attrs[key] = clampAttrVal((STATE.attrs[key] || 50) + delta);
 }
 
+var EVENT_TRAINING_BANK_CAP = 5;
+
+function getEventTrainingBank() {
+  if (!STATE.career) return 0;
+  return Math.max(0, Math.min(EVENT_TRAINING_BANK_CAP, Math.round(Number(STATE.career.trainingEventBank) || 0)));
+}
+
+function addEventTrainingPoints(n) {
+  n = Math.max(0, Math.round(Number(n) || 0));
+  if (!n || !STATE.career) return 0;
+  var cur = getEventTrainingBank();
+  var granted = Math.min(n, Math.max(0, EVENT_TRAINING_BANK_CAP - cur));
+  if (!granted) return 0;
+  STATE.career.trainingEventBank = cur + granted;
+  return granted;
+}
+
+function consumeEventTrainingBank() {
+  if (STATE.career) STATE.career.trainingEventBank = 0;
+}
+
+function formatTrainingPointGrant(n) {
+  if (!n) return '';
+  return '训练点+' + n + '（计入休赛期训练营，本季事件最多 +' + EVENT_TRAINING_BANK_CAP + '）。';
+}
+
+function applyEventTrainingGrant(result, n) {
+  var got = addEventTrainingPoints(n);
+  if (!got) return result || '';
+  return (result || '') + '<br><br>' + formatTrainingPointGrant(got);
+}
+
 function getStaminaAttr() {
   return Math.max(0, Number(STATE.attrs && STATE.attrs.STA) || 0);
 }
@@ -10669,7 +10701,7 @@ function buildOffseasonBranchQueue(pool) {
   var storyStepForced = false;
   var storyOffseasonBranch = null;
   var storyOffseasonPool = mainPool.filter(function(ev) {
-    return (ev.branch === 'legend' || ev.branch === 'hometown') && isDagEventPending(ev);
+    return (ev.branch === 'legend' || ev.branch === 'hometown' || ev.branch === 'craft' || ev.branch === 'voice' || ev.branch === 'bench' || ev.branch === 'load') && isDagEventPending(ev);
   });
   if (storyOffseasonPool.length > 0) {
     var storyStep = pickBranchEvent(storyOffseasonPool, true);
@@ -11279,6 +11311,10 @@ function getSeasonEventState(game, result, stats) {
     nationalSpotlight: nationalSpotlight,
     deadlineWindow: deadlineWindow,
     isRookie: isRookie,
+    isPlayoff: !!season.isPlayoffs,
+    sophomore: (career.seasonCount || 0) === 1,
+    veteran: (career.seasonCount || 0) >= 4 || (career.currentAge || 0) >= 30,
+    benchRole: gamesPlayed >= 15 && seasonPpg < 11 && (STATE.finalOVR || 80) < 87,
     contractYear: Number.isFinite(contractYears) && contractYears <= 1
   };
 }
@@ -11292,11 +11328,18 @@ function isSeasonEventStateEligible(ev, state) {
   if (contextId === 'slump' && !state.slump) return false;
   if (contextId === 'national' && !state.nationalSpotlight) return false;
   if (contextId === 'deadline' && !state.deadlineWindow) return false;
+  if (contextId === 'playoff' && !state.isPlayoff) return false;
   if (ev.stateContext === 'rookie_wall' && (!state.isRookie || state.gamesPlayed < 18)) return false;
   if (ev.stateContext === 'home_struggle' && (!state.home || (!state.lost && !state.poorPerformance))) return false;
   if (ev.stateContext === 'road_win' && (!state.road || !state.won)) return false;
   if (ev.stateContext === 'loss_press' && !state.lost) return false;
   if (ev.stateContext === 'teammate_slump' && !state.slump && !state.lowChemistry) return false;
+  if (ev.stateContext === 'sophomore' && !state.sophomore) return false;
+  if (ev.stateContext === 'veteran' && !state.veteran) return false;
+  if (ev.stateContext === 'playoff' && !state.isPlayoff) return false;
+  if (ev.stateContext === 'hot_night' && !state.hotPerformance) return false;
+  if (ev.stateContext === 'fatigue' && !state.highFatigue && !state.injuryConcern) return false;
+  if (ev.stateContext === 'bench_role' && !state.benchRole) return false;
   var topic = ev.topicId || '';
   if (topic === 'trade_source' && !state.deadlineWindow) return false;
   if (topic === 'extension_talk' && !state.contractYear) return false;
@@ -16050,7 +16093,7 @@ function getAgeTrainingBonus(age) {
 function calcTrainingPoints() {
   if (!STATE.season) return 0;
   var age = STATE.career && STATE.career.currentAge;
-  return getPlayoffTrainingLine() + getPersonalTrainingLine() + getAgeTrainingBonus(age);
+  return getPlayoffTrainingLine() + getPersonalTrainingLine() + getAgeTrainingBonus(age) + getEventTrainingBank();
 }
 
 function renderTrainingCamp() {
@@ -16750,6 +16793,8 @@ function calcTrainingBreakdown() {
   parts.push('季后赛线 ' + playoff + '（' + playoffLabel + '）');
   parts.push('个人线 ' + personal);
   parts.push('年龄补偿 +' + ageBonus + '（' + (age || '?') + '岁）');
+  var eventBank = getEventTrainingBank();
+  if (eventBank) parts.push('事件加练 +' + eventBank);
   return parts.join(' + ');
 }
 
@@ -16880,6 +16925,7 @@ function confirmTraining() {
 
   STATE.career.currentAge++;
   STATE._tpPending = {};
+  consumeEventTrainingBank();
 
   if (shouldOfferPlayerRetirement()) {
     STATE._retirementOfferPhase = 'post-training';

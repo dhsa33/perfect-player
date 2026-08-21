@@ -555,6 +555,50 @@
     { id:'camp_roommate', stage:'post', title:'训练营室友', scene:'球队安排你和另一名边缘球员共享训练营公寓。他每天凌晨起床加练，也会把闹钟吵醒你。', choices:[
       { label:'跟他一起晨练', hint:'建立竞争伙伴关系', apply:function() { addProfileDelta('lockerRoomTrust', 1); addSeasonMod('staminaLoad', 1, -10, 10); addSeasonMod('teamChemistry', 1, -10, 10); return '你们从互相较劲变成彼此提醒。训练营结束时，两个人都进了轮换讨论。<br><br>效果：更衣室信任+1；球队默契+1；体能负荷+1。'; } },
       { label:'协商错开训练时间', hint:'保护睡眠和状态', apply:function() { addSeasonMod('formVariance', -1, -10, 10); addProfileDelta('mediaTrust', 1); return '你们重新排了作息，各练各的，也学会了直接沟通。<br><br>效果：状态波动-1；媒体信任+1。'; } }
+    ]},
+    { id:'combine_shuttle', stage:'pre', title:'体测折返跑', scene:'联合试训的折返跑即将开始。体能教练让你选择：冲最好成绩，或按比赛节奏跑完避免拉伤。', choices:[
+      { label:'冲击最好成绩', hint:'数据更好，也更吃身体', apply:function() { var fast = Math.random() < 0.62; addSeasonMod('staminaLoad', 1, -10, 10); changeDraftStock(fast ? 1 : -1); return fast ? '你跑出了个人最佳。几支注重运动能力的球队当场更新了排名。<br><br>效果：体能负荷+1；选秀行情上升。' : '最后一次转身你慢了半步，成绩普通，体能也空了。<br><br>效果：体能负荷+1；选秀行情下降。'; } },
+      { label:'按比赛节奏完成', hint:'展示可控，数据不炸', apply:function() { addProfileDelta('coachTrust', 1); return '你没有为体测改变跑法。教练组记下了：他知道自己在测什么。<br><br>效果：教练信任+1。'; } }
+    ]},
+    { id:'parent_agent_split', stage:'pre', title:'家人与经纪人意见相反', scene:'试训行程排满后，家人希望你回家休息两天，经纪人坚持再去一站高顺位球队。两人当着你的面停了下来。', choices:[
+      { label:'听经纪人把行程跑完', hint:'多一次曝光，家人会失望', apply:function() { addSeasonMod('staminaLoad', 1, -10, 10); changeDraftStock(1); addProfileDelta('loyalty', -1); return '你按计划走完最后一站。球探多看到一次，家里的聊天记录却安静了一天。<br><br>效果：选秀行情上升；体能负荷+1；忠诚-1。'; } },
+      { label:'回家两天再出发', hint:'保护关系，可能错过窗口', apply:function() { addProfileDelta('loyalty', 2); if (Math.random() < 0.3) changeDraftStock(-1); return '你回家睡了两晚真正的觉。经纪人重排了部分会面，有一支球队没有再约。<br><br>效果：忠诚+2。'; } }
+    ]},
+    { id:'lottery_private_workout', stage:'pre', title:'乐透区封闭试训', scene:'一支乐透区球队把试训改成完全封闭。场上只有教练组和两名助理，他们要看你在无人起哄时怎么处理失败。', when:function() { var p = window.getPerfectPlayerDraftProjection && window.getPerfectPlayerDraftProjection(); return p && p.rank && p.rank <= 14; }, choices:[
+      { label:'主动要求加一组对抗', hint:'展示竞争心', apply:function() { var ok = Math.random() < 0.6; changeDraftStock(ok ? 2 : 0); addProfileDelta('coachTrust', 1); return ok ? '加练的那组你防下了两次错位。总经理看完只说：我们需要这种人。<br><br>效果：教练信任+1；选秀行情明显上升。' : '加练暴露了疲劳。球队欣赏态度，但记下了身体负荷。<br><br>效果：教练信任+1。'; } },
+      { label:'按他们的教案打完', hint:'展示可教性', apply:function() { addProfileDelta('coachTrust', 2); changeDraftStock(1); return '你把每个走位都问清楚再执行。封闭试训没有集锦，却有一份很厚的笔记。<br><br>效果：教练信任+2；选秀行情上升。'; } }
+    ]},
+    { id:'second_round_chip', stage:'pre', title:'次轮行情谈话', scene:'经纪人把模拟榜单翻到四十名以后：如果掉到次轮，是接受一张两年底薪，还是考虑海外一年再回来？', when:function() { var p = window.getPerfectPlayerDraftProjection && window.getPerfectPlayerDraftProjection(); return !p || p.rank == null || p.rank >= 28; }, choices:[
+      { label:'坚持走完选秀', hint:'留下被选中的可能', apply:function() { addProfileDelta('leadership', 1); changeDraftStock(1); return '你说：只要还有一支球队叫我名字，我就站在那里。<br><br>效果：领导力+1；选秀行情小幅回升。'; } },
+      { label:'让团队准备海外预案', hint:'给自己一条退路', apply:function() { addProfileDelta('mediaTrust', 1); addSeasonMod('formVariance', -1, -10, 10); return '预案让你睡得着了。球探听说你没有崩，反而觉得你更稳。<br><br>效果：媒体信任+1；状态波动-1。'; } }
+    ]},
+    { id:'green_room_wait', stage:'pre', title:'小绿屋座位确认', scene:'联盟通知你是否进入小绿屋。去了意味着镜头会一直停在你脸上，直到名字被叫到——或者一直没被叫到。', when:function() { var p = window.getPerfectPlayerDraftProjection && window.getPerfectPlayerDraftProjection(); return p && p.rank && p.rank <= 25; }, choices:[
+      { label:'确认出席小绿屋', hint:'曝光最大，等待也最长', apply:function() { addProfileDelta('fame', 2); addSeasonMod('mediaPressure', 1, -10, 10); return '你答应坐到镜头前。造型、家人座位和表情管理立刻变成一项工程。<br><br>效果：人气+2；媒体压力+1。'; } },
+      { label:'在家里看转播', hint:'把这一夜留给家人', apply:function() { addProfileDelta('loyalty', 2); addProfileDelta('fanSupport', 1); return '你和家人挤在同一张沙发上。没有红毯，但电话响起来时，房间里的人都会记得。<br><br>效果：忠诚+2；球迷支持+1。'; } }
+    ]},
+    { id:'team_medical_history', stage:'pre', title:'家族病史问卷', scene:'一份医疗问卷问到直系亲属的手术和遗传病。经纪人说可以写得更模糊，球队医生希望写全。', choices:[
+      { label:'完整填写', hint:'透明，可能影响个别球队', apply:function() { addProfileDelta('mediaTrust', 1); if (Math.random() < 0.22) changeDraftStock(-1); else changeDraftStock(1); return '你把知道的都写了。多数球队把它当成职业态度，也有一份报告变得更谨慎。<br><br>效果：媒体信任+1。'; } },
+      { label:'只写已公开信息', hint:'控制风险，留下猜测', apply:function() { addProfileDelta('controversy', 1); return '问卷很短。没有球队公开质疑，但私下列了跟进检查。<br><br>效果：争议+1。'; } }
+    ]},
+    { id:'lottery_night_trade', stage:'post', title:'乐透夜交易风声', scene:'你的名字刚被叫到，现场已经有人说这笔签可能被打包。新东家的公关还没走到你面前。', when:function(p) { return p && p.round === 1 && p.pick <= 14; }, choices:[
+      { label:'先对新东家表示感谢', hint:'把第一句话留给选中你的球队', apply:function() { addProfileDelta('loyalty', 2); addProfileDelta('fanSupport', 1); return '你走到那张桌子前先握手。交易后来没有发生，这段画面却留了下来。<br><br>效果：忠诚+2；球迷支持+1。'; } },
+      { label:'说自己为任何球队准备好', hint:'不挡交易，也少一份归属感', apply:function() { addProfileDelta('mediaTrust', 1); addProfileDelta('loyalty', -1); return '你把话留得很职业。流言退了，归属感也慢了一拍。<br><br>效果：媒体信任+1；忠诚-1。'; } }
+    ]},
+    { id:'second_round_call', stage:'post', title:'次轮电话接通', scene:'现场没有喊到你。电话却在酒店响起：一支球队用次轮末段选中了你，请你十分钟内决定是否接受邀请立即飞过去。', when:function(p) { return p && p.round === 2; }, choices:[
+      { label:'连夜飞过去报到', hint:'用行动抓住名单位置', apply:function() { addProfileDelta('coachTrust', 2); addSeasonMod('staminaLoad', 1, -10, 10); return '你在凌晨抵达空荡荡的训练馆。助教已经打开了灯。<br><br>效果：教练信任+2；体能负荷+1。'; } },
+      { label:'第二天再出发', hint:'把合同和身体先安排好', apply:function() { addProfileDelta('mediaTrust', 1); addProfileDelta('coachTrust', -1); return '团队把行程和体检排进白天。球队等了你，也记下了你没有连夜出现。<br><br>效果：媒体信任+1；教练信任-1。'; } }
+    ]},
+    { id:'undrafted_camp_offer', stage:'post', title:'落选邀请函', scene:'选秀结束十分钟，三封训练营邀请同时进来：争冠队、重建队，还有一份双向合同。', when:function(p) { return p && p.type === 'undrafted'; }, choices:[
+      { label:'去争冠队抢一个位置', hint:'舞台大，机会不一定多', apply:function() { addProfileDelta('leadership', 1); addSeasonMod('formVariance', 1, -10, 10); return '你选择走进已经有既定轮换的更衣室。证明自己会更难，也更显眼。<br><br>效果：领导力+1；状态波动+1。'; } },
+      { label:'去重建队要出场时间', hint:'先把比赛打上', apply:function() { addProfileDelta('coachTrust', 2); return '重建队的助教说得很直：我们缺的就是能上场的人。你点头。<br><br>效果：教练信任+2。'; } }
+    ]},
+    { id:'summer_league_captain', stage:'post', title:'夏联临时队长', scene:'夏季联赛首发名单出来后，教练把队长袖标扔给你：场上的沟通由你负责。你甚至还没背熟所有人的名字。', choices:[
+      { label:'接过袖标', hint:'用责任换信任', apply:function() { addProfileDelta('leadership', 2); addProfileDelta('coachTrust', 1); return '你把每个人的防守对位写在手腕上。第一场打得很吵，但没有人跑错轮转。<br><br>效果：领导力+2；教练信任+1。'; } },
+      { label:'建议给更熟体系的人', hint:'先把位置站稳', apply:function() { addProfileDelta('lockerRoomTrust', 1); addProfileDelta('coachTrust', 1); return '你推荐了一名两年级球员。教练同意了，也记住你没有抢不属于自己的东西。<br><br>效果：更衣室信任+1；教练信任+1。'; } }
+    ]},
+    { id:'veteran_film_invite', stage:'post', title:'老将的私教录像', scene:'队内核心约你凌晨看他自己的防守录像，条件是不许发给经纪人和媒体。', choices:[
+      { label:'准时到并做笔记', hint:'把秘密变成功课', apply:function() { addProfileDelta('lockerRoomTrust', 2); addProfileDelta('coachTrust', 1); return '他只讲了三个习惯。你把笔记本合上时，天已经亮了。<br><br>效果：更衣室信任+2；教练信任+1。'; } },
+      { label:'请他改到训练后', hint:'守住作息', apply:function() { addSeasonMod('formVariance', -1, -10, 10); addProfileDelta('lockerRoomTrust', -1); return '他回了一句：行。你们后来还是看了，只是少了那份把你当自己人的感觉。<br><br>效果：状态波动-1；更衣室信任-1。'; } }
     ]}
   ];
 
@@ -571,7 +615,14 @@
   };
   window.pickPerfectPlayerDraftEventId = function(stage, seen) {
     seen = seen || [];
-    var pool = DRAFT_RANDOM_EVENTS.filter(function(event) { return event.stage === stage && seen.indexOf(event.id) < 0; });
+    var pending = draftPending();
+    var pool = DRAFT_RANDOM_EVENTS.filter(function(event) {
+      if (event.stage !== stage || seen.indexOf(event.id) >= 0) return false;
+      if (typeof event.when === 'function') {
+        try { return !!event.when(pending); } catch (err) { return false; }
+      }
+      return true;
+    });
     if (!pool.length) return null;
     return pool[Math.floor(Math.random() * pool.length)].id;
   };
@@ -663,7 +714,11 @@
       var bounds = modBounds[key] || [-10, 10];
       addSeasonMod(key, choice.mods[key], bounds[0], bounds[1]);
     });
-    return choice.result || '';
+    var text = choice.result || '';
+    if (choice.tp && typeof applyEventTrainingGrant === 'function') {
+      text = applyEventTrainingGrant(text, choice.tp);
+    }
+    return text;
   }
 
   function registerExpandedSeasonEvents() {
@@ -674,11 +729,11 @@
         { label:'咬牙完成训练', hint:'争取教练认可，承担疲劳风险', profile:{coachTrust:2}, mods:{staminaLoad:2}, result:'你完成了最后一组折返跑。队友为你鼓掌，训练师却把冰袋直接塞进你手里。<br><br>效果：教练信任+2；体能负荷+2。' }
       ]},
       { id:'empty_gym', title:'赛季日常：空馆加练', scene:'赛后球馆已经熄掉一半灯，你的最后一次投篮偏得很远。助教问你：还练，还是明天再说？', body:'一次普通的失准，也可能改变你接下来一周的节奏。', choices:[
-        { label:'再投一百球', hint:'用重复找回手感', profile:{coachTrust:1}, mods:{staminaLoad:1,formVariance:-1}, result:'最后二十球，你只丢了两个。离开时保安已经在等你关灯。<br><br>效果：教练信任+1；状态波动-1；体能负荷+1。' },
+        { label:'再投一百球', hint:'用重复找回手感，训练点+1', profile:{coachTrust:1}, mods:{staminaLoad:1,formVariance:-1}, tp:1, result:'最后二十球，你只丢了两个。离开时保安已经在等你关灯。<br><br>效果：教练信任+1；状态波动-1；体能负荷+1。' },
         { label:'收拾东西回家', hint:'接受一场普通的失准', mods:{staminaLoad:-1,moraleBonus:1}, result:'你没有惩罚自己，回家吃饭睡觉。第二天第一球空心入网。<br><br>效果：体能负荷-1；士气+1。' }
       ]},
       { id:'film_detail', title:'赛季日常：录像里的一帧', scene:'录像师停在第三节的一帧：弱侧队友已经空了，而你还盯着篮筐。房间里所有人都在等你解释。', body:'这不是一次失误复盘，而是球队在判断你愿不愿意改变。', choices:[
-        { label:'承认漏看队友', hint:'用坦诚换取信任', profile:{coachTrust:1,lockerRoomTrust:1}, result:'你让录像继续播放，并主动说出下一次该怎么传。队友点了点头。<br><br>效果：教练信任+1；更衣室信任+1。' },
+        { label:'承认漏看队友', hint:'用坦诚换取信任，训练点+1', profile:{coachTrust:1,lockerRoomTrust:1}, tp:1, result:'你让录像继续播放，并主动说出下一次该怎么传。队友点了点头。<br><br>效果：教练信任+1；更衣室信任+1。' },
         { label:'解释当时的进攻判断', hint:'坚持自己的阅读', profile:{leadership:1,coachTrust:-1}, mods:{formVariance:1}, result:'你把自己的判断讲得很完整。教练认可逻辑，却提醒你：正确答案不只一个。<br><br>效果：领导力+1；教练信任-1；状态波动+1。' }
       ]},
       { id:'road_sleep', title:'赛季日常：凌晨客场', scene:'球队凌晨三点抵达酒店，第二天上午还有投篮训练。几名队友准备在大堂吃点东西再睡。', body:'漫长赛季里，作息也是比赛的一部分。', choices:[
@@ -750,8 +805,32 @@
         { label:'提议AA并开个玩笑', hint:'建立边界，也不破坏气氛', profile:{mediaTrust:1}, mods:{teamChemistry:1}, result:'大家笑着掏出手机转账。你没按旧规矩来，但也没有让场面冷掉。<br><br>效果：媒体信任+1；球队默契+1。' }
       ]},
       { id:'weather_delay', title:'赛季日常：暴雪滞留', scene:'客场城市遭遇暴雪，球队被困在酒店。原定训练取消，会议室和小健身房成了仅有的活动空间。', body:'意外空出的一天，可以恢复，也可以变成额外准备。', choices:[
-        { label:'组织全队看录像', hint:'把滞留变成战术准备', profile:{leadership:1,coachTrust:1}, mods:{teamChemistry:1}, result:'你们在酒店会议室把下一场战术过了两遍。教练到场时，球员已经自己开始讨论。<br><br>效果：领导力+1；教练信任+1；球队默契+1。' },
+        { label:'组织全队看录像', hint:'把滞留变成战术准备，训练点+1', profile:{leadership:1,coachTrust:1}, mods:{teamChemistry:1}, tp:1, result:'你们在酒店会议室把下一场战术过了两遍。教练到场时，球员已经自己开始讨论。<br><br>效果：领导力+1；教练信任+1；球队默契+1。' },
         { label:'彻底休息一天', hint:'利用意外恢复身体', mods:{staminaLoad:-2,moraleBonus:1}, result:'你睡了一个完整午觉，晚上和队友玩牌。航班恢复时，每个人都轻松了一点。<br><br>效果：体能负荷-2；士气+1。' }
+      ]},
+      { id:'sophomore_target', stateContext:'sophomore', title:'赛季日常：二年级被针对', scene:'对手的球探报告把你的习惯写得很细。开场三次挡拆都被预判，教练在暂停里问你：他们看穿的是你，还是我们的战术？', body:'新秀红利过了，联盟开始按你真正的样子防守。', choices:[
+        { label:'主动改变发动侧', hint:'用变化重新建立威胁，训练点+1', profile:{coachTrust:1}, mods:{formVariance:1}, tp:1, result:'你把习惯的那一侧藏起来。前两节别扭，第三节对手终于跟丢一次。<br><br>效果：教练信任+1；状态波动+1。' },
+        { label:'把阅读交给队友', hint:'先让球队重新运转', profile:{lockerRoomTrust:1}, mods:{teamChemistry:1}, result:'你不再硬打第一选择，连续把球交给更舒服的人。针对性还在，但不再只打在你一个人身上。<br><br>效果：更衣室信任+1；球队默契+1。' }
+      ]},
+      { id:'veteran_minutes', stateContext:'veteran', title:'赛季日常：老将的分钟数', scene:'训练后教练把下一周的轮换表给你看：背靠背第二场你不首发。他说这是保护，媒体会写成下滑。', body:'年纪到了以后，休息也会变成一种公开评价。', choices:[
+        { label:'接受轮休安排', hint:'保护身体，承担舆论', profile:{coachTrust:2}, mods:{injuryRiskBonus:-1,mediaPressure:1}, result:'你按计划坐下。下一场腿更轻，节目里已经有人在数你的场均。<br><br>效果：教练信任+2；伤病风险-1；媒体压力+1。' },
+        { label:'申请打满背靠背', hint:'用出场证明自己仍在', profile:{leadership:1}, mods:{staminaLoad:2,injuryRiskBonus:1}, result:'教练最终让你打了。你撑完了两场，队医把冰袋提前放到了座位下。<br><br>效果：领导力+1；体能负荷+2；伤病风险+1。' }
+      ]},
+      { id:'playoff_first_huddle', stateContext:'playoff', contextId:'playoff', title:'赛季日常：季后赛第一个暂停', scene:'系列赛第一场，对手把你当成点名对象。第一次暂停时，教练把战术板转过来，等你先说话。', body:'常规赛的轮换到这里会变短，声音也会被放大。', choices:[
+        { label:'先把防守对位讲清', hint:'用沟通稳住更衣室', profile:{leadership:2,coachTrust:1}, result:'你把三个轮转讲完，替补席才开始吵。这一节没有再被点穿。<br><br>效果：领导力+2；教练信任+1。' },
+        { label:'要一次错位单打', hint:'用进攻把气势拉回来', profile:{fame:1}, mods:{moraleBonus:1,formVariance:1}, result:'下一回合球到了你手里。进了，看台才出声；没进，你也把责任揽了下来。<br><br>效果：人气+1；士气+1；状态波动+1。' }
+      ]},
+      { id:'hot_night_encore', stateContext:'hot_night', title:'赛季日常：手热之后的加练', scene:'你刚打出本季最高分，球馆还没散尽。助教问你要不要再投一组，摄影师已经架好了灯。', body:'高潮之后加练，拍到的是职业，也可能是负担。', choices:[
+        { label:'关灯再投二十球', hint:'把高潮收进习惯里，训练点+1', profile:{coachTrust:1}, mods:{staminaLoad:1,formVariance:-1}, tp:1, result:'你把摄影师请出去，自己投完。保安后来只看见空馆和一声关门。<br><br>效果：教练信任+1；状态波动-1；体能负荷+1。' },
+        { label:'今天到此为止', hint:'让高峰停留在比赛里', mods:{staminaLoad:-1,moraleBonus:1}, result:'你把球放回架上。明天还有下一场，不必用加练证明今晚是真的。<br><br>效果：体能负荷-1；士气+1。' }
+      ]},
+      { id:'load_warning', stateContext:'fatigue', title:'赛季日常：负荷红灯', scene:'晨检平板跳出红色：跳跃高度下降、睡眠不足、肌肉紧张。教练组仍把你写进今晚首发。', body:'数据已经报警，轮换表还没有改。', choices:[
+        { label:'申请缩短首发时间', hint:'今晚少打，换后续更稳', profile:{coachTrust:-1}, mods:{staminaLoad:-2,injuryRiskBonus:-1}, result:'你被换成了限时出场。解说讨论你的“态度”，队医在记录里写了感谢。<br><br>效果：体能负荷-2；伤病风险-1；教练信任-1。' },
+        { label:'按原计划打完再处理', hint:'守住位置，承担风险', profile:{coachTrust:1,leadership:1}, mods:{staminaLoad:2,injuryRiskBonus:1}, result:'你打满了原定分钟。下场时小腿已经在抽筋，冰桶比往常更早出现。<br><br>效果：教练信任+1；领导力+1；体能负荷+2；伤病风险+1。' }
+      ]},
+      { id:'bench_spark_night', stateContext:'bench_role', title:'赛季日常：替补席上的火花', scene:'你已经坐了半节。场上连续停球，教练看向替补席。助理把你的名字写在下一波轮换里。', body:'板凳上的机会往往只有一次，而且很短。', choices:[
+        { label:'上去先防守和快下', hint:'用最稳的事换分钟', profile:{coachTrust:2}, mods:{teamChemistry:1}, result:'你第一回合就完成轮转，第二回合快下上篮。教练没有喊你下来。<br><br>效果：教练信任+2；球队默契+1。' },
+        { label:'上去要一次进攻回合', hint:'用得分证明自己', profile:{leadership:1}, mods:{moraleBonus:1,formVariance:1}, result:'你要到了一次挡拆。进了，替补席站起来；没进，你也把犹豫留在了场下。<br><br>效果：领导力+1；士气+1；状态波动+1。' }
       ]}
     ];
     var extraDefinitions = window.PERFECT_PLAYER_EXTRA_SEASON_EVENT_DEFINITIONS || [];
