@@ -17214,26 +17214,6 @@ function showRosterReview() {
   html += '<div style="margin-top:10px;"><button class="btn btn-primary" onclick="startNewSeason()" style="max-width:240px;">🏀 开始新赛季</button></div>';
   html += '</div>';
 
-  // 休赛期：转会池里总评最高的最多20笔（弹窗关了也能在这页看到）
-  var digest = typeof getTopTransferDigest === 'function' ? getTopTransferDigest() : (changes.transferDigest || []);
-  if (digest.length) {
-    var digestTotal = changes.transferDigestTotal || digest.length;
-    html += '<div style="margin-top:8px;background:var(--bg-card);border:2px solid var(--orange);border-radius:var(--radius-sm);padding:8px 10px;">';
-    html += '<div style="font-family:var(--font-display);font-size:12px;color:var(--orange);font-weight:700;margin-bottom:4px;">⭐ 本休赛期 · 转会动向（总评最高 ' + digest.length + ' 笔）</div>';
-    html += '<div style="font-size:10px;color:var(--text-muted);margin-bottom:6px;">共 ' + digestTotal + ' 笔球员变动</div>';
-    digest.forEach(function(m, idx) {
-      var fromTn = getTeamName ? getTeamName(m.from) : m.from;
-      var toTn = getTeamName ? getTeamName(m.to) : m.to;
-      var kindLabel = m.kind === 'fa' ? 'FA' : '交易';
-      html += '<div style="padding:5px 0;border-top:1px solid var(--border-light);font-size:12px;line-height:1.4;">';
-      html += '<span style="color:var(--text-muted);margin-right:4px;">' + (idx + 1) + '.</span>';
-      html += '<strong>' + m.name + '</strong> <span style="color:var(--orange);">OVR ' + m.ovr + '</span>';
-      html += '<div style="color:var(--text-dim);font-size:11px;margin-top:1px;">' + fromTn + ' → ' + toTn + ' · ' + kindLabel + '</div>';
-      html += '</div>';
-    });
-    html += '</div>';
-  }
-
   // 阵容列表
   html += '<div style="margin-top:8px;background:var(--bg-card);border:2px solid var(--border);border-radius:var(--radius-sm);padding:8px 4px;">';
   html += '<div style="font-family:var(--font-display);font-size:11px;color:var(--orange);padding:2px 4px 4px;letter-spacing:0.5px;">🏀 首发阵容</div>';
