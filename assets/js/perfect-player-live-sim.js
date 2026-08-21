@@ -225,7 +225,8 @@
     var teamFGA = pace * 0.896;
     var scoringAverage = (attr(attrs, 'threePT') + attr(attrs, 'MID') + attr(attrs, 'FIN')) / 3;
     var aggression = clamp(0.96 + (scoringAverage - 70) * 0.004, 0.78, 1.12);
-    var expectedFga = teamFGA * (mins / 48) * usage * aggression * (1 - defensePressure * 1.5) * 0.90;
+    var scoringScale = (typeof USER_PLAYER_SCORING_SCALE === 'number') ? USER_PLAYER_SCORING_SCALE : 0.85;
+    var expectedFga = teamFGA * (mins / 48) * usage * aggression * (1 - defensePressure * 1.5) * 0.90 * scoringScale;
     var dist = (typeof SIM_CONFIG !== 'undefined' && SIM_CONFIG.SHOT_DIST[pos]) || { threePT: 0.32, MID: 0.22, FIN: 0.28 };
     var threeW = dist.threePT * (0.45 + Math.pow(skill01(attr(attrs, 'threePT')), 1.15) * 1.25);
     var midW = dist.MID * (0.45 + Math.pow(skill01(attr(attrs, 'MID')), 1.15) * 1.25);

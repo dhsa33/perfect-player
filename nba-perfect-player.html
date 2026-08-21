@@ -6839,11 +6839,14 @@ window.samplePerfectPlayerSimulation = function(teamA, teamB, games) {
 window.PERFECT_PLAYER_SIM_REPORT = {
   engine:'2025-26-possession-and-role', resultFromScore:true, homeCourt:true, fatigue:true, careerState:true,
   attributeDrivenStats:true, rotationMinutes:true, opponentDefense:true,
+  userPlayerScoringScale: typeof USER_PLAYER_SCORING_SCALE === 'number' ? USER_PLAYER_SCORING_SCALE : 0.85,
   leagueBaseline:{ pointsPerGame:115.6, pace:99.4, offensiveRating:115.7 }
 };
 
 /** 事件可以把属性顶过 99；超出部分按一半计入模拟，不再被硬顶吃成 0。 */
 var ATTR_EVENT_CEILING = 130;
+/** 玩家个人得分相对旧版出手量缩放（跳过/观看共用）。约 0.85 ≈ 削 15%。 */
+var USER_PLAYER_SCORING_SCALE = 0.85;
 function softCap99(value) {
   var v = Number(value);
   if (!isFinite(v)) return 0;
@@ -7176,7 +7179,7 @@ function generatePlayerStatsNew(attrs, gameResult, isPlayoff) {
   const teamFGA = pace * 0.896;
   const scoringAverage = ((parseInt(attrs.threePT)||50) + (parseInt(attrs.MID)||50) + (parseInt(attrs.FIN)||50)) / 3;
   const aggression = Math.max(0.78, Math.min(1.12, 0.96 + (scoringAverage - 70) * 0.004));
-  const expectedFgaRaw = teamFGA * minsFactor * usage * aggression * (1 - defensePressure * 1.5);
+  const expectedFgaRaw = teamFGA * minsFactor * usage * aggression * (1 - defensePressure * 1.5) * USER_PLAYER_SCORING_SCALE;
   const expectedFga = expectedFgaRaw * 0.90;
   const fgaSigma = Math.max(0.8, expectedFgaRaw * 0.10) * 1.20;
   const minimumFga = mins >= 12 ? 2 : 0;
