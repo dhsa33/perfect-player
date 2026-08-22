@@ -14,7 +14,7 @@
     ],
     story: [
       ['assets/js/perfect-player-event-library.js?v=20260821-events-v3', '赛季事件'],
-      ['assets/js/perfect-player-story-events.js?v=20260821-story-v3', '生涯剧情'],
+      ['assets/js/perfect-player-story-events.js?v=20260822-story-v4', '生涯剧情'],
       ['assets/js/perfect-player-awards.js?v=20260813-real-ballot-v1', '荣誉评选']
     ],
     live: [

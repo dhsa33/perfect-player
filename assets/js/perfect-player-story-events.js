@@ -289,19 +289,33 @@
 
   function bindStoryLegend() {
     var flags = ensureFlags();
-    if (flags.storyLegend && flags.storyLegend.name) return flags.storyLegend;
+    var team = currentCareerTeam();
+    syncLegendCareerTeam();
+    flags.storyLegendByTeam = flags.storyLegendByTeam || {};
+    if (team && flags.storyLegendByTeam[team] && flags.storyLegendByTeam[team].name) {
+      flags.storyLegend = flags.storyLegendByTeam[team];
+      flags.storyLegendTeam = team;
+      return flags.storyLegend;
+    }
+    if (flags.storyLegend && flags.storyLegend.name && legendMatchesTeam(flags.storyLegend, team)) {
+      if (team) {
+        flags.storyLegendByTeam[team] = flags.storyLegend;
+        flags.storyLegendTeam = team;
+      }
+      return flags.storyLegend;
+    }
     var pos = playerPos();
-    var pool = (LEGEND_POOL[pos] || LEGEND_POOL.SF).slice();
-    var chinaPool = pool.filter(function (item) { return item.china; });
-    var pick;
-    if (chinaPool.length && Math.random() < 0.55) pick = chinaPool[Math.floor(Math.random() * chinaPool.length)];
-    else pick = pool[Math.floor(Math.random() * pool.length)];
+    var pick = pickLegendForTeam(team, pos);
     flags.storyLegend = pick;
+    if (team) {
+      flags.storyLegendByTeam[team] = pick;
+      flags.storyLegendTeam = team;
+    }
     return pick;
   }
 
   function getStoryLegend() {
-    return ensureFlags().storyLegend || bindStoryLegend();
+    return bindStoryLegend();
   }
 
   function currentCareerTeam() {
@@ -310,6 +324,93 @@
 
   function legendOnTeam(legend, team) {
     return !!(legend && team && legend.teams && legend.teams.indexOf(team) >= 0);
+  }
+
+  function legendInTeamExtras(legend, team) {
+    if (!legend || !team) return false;
+    var extras = TEAM_RAFTER_EXTRAS[team] || [];
+    for (var i = 0; i < extras.length; i++) {
+      var e = extras[i];
+      if (!e) continue;
+      if (legend.id && e.id && legend.id === e.id) return true;
+      if (legend.name && e.name && legend.name === e.name) return true;
+    }
+    return false;
+  }
+
+  function legendMatchesTeam(legend, team) {
+    return legendOnTeam(legend, team) || legendInTeamExtras(legend, team);
+  }
+
+  function defaultLegendAttr(pos) {
+    var map = { PG: 'PAS', SG: 'MID', SF: 'MID', PF: 'REB', C: 'FIN' };
+    return map[pos] || 'CLU';
+  }
+
+  function enrichLegendEntry(legend, pos) {
+    if (!legend) return legend;
+    if (legend.line && legend.attr) return legend;
+    return {
+      line: '那些被写进队史里的细节',
+      quote: '把简单的动作做到每晚都能用。',
+      attr: defaultLegendAttr(pos),
+      id: legend.id || 'franchise',
+      name: legend.name || '本队名宿',
+      city: legend.city || '这座城市'
+    };
+  }
+
+  function legendPoolForTeam(team, pos) {
+    var pool = [];
+    var seen = {};
+    function add(legend) {
+      if (!legend || !legend.name || seen[legend.id || legend.name]) return;
+      seen[legend.id || legend.name] = true;
+      pool.push(enrichLegendEntry(legend, pos));
+    }
+    var positions = posGroup(pos) || [pos];
+    positions.forEach(function (p) {
+      (LEGEND_POOL[p] || []).forEach(function (legend) {
+        if (legendOnTeam(legend, team)) add(legend);
+      });
+    });
+    if (pool.length < 2) {
+      Object.keys(LEGEND_POOL).forEach(function (p) {
+        LEGEND_POOL[p].forEach(function (legend) {
+          if (legendOnTeam(legend, team)) add(legend);
+        });
+      });
+    }
+    (TEAM_RAFTER_EXTRAS[team] || []).forEach(add);
+    return pool;
+  }
+
+  function syncLegendCareerTeam() {
+    var flags = ensureFlags();
+    var team = currentCareerTeam();
+    if (!team) return;
+    if (flags.storyLegendTeam && flags.storyLegendTeam !== team) {
+      flags.storyLegend = null;
+      if (typeof getBranchNode === 'function' && getBranchNode('legend') !== 'start' && typeof setBranchNode === 'function') {
+        setBranchNode('legend', 'start', {});
+      }
+    }
+  }
+
+  function pickLegendForTeam(team, pos) {
+    var pool = legendPoolForTeam(team, pos);
+    if (!pool.length) {
+      return enrichLegendEntry({
+        id: 'franchise',
+        name: '本队名宿',
+        city: (typeof getTeamName === 'function' && team) ? getTeamName(team) : '这座城市'
+      }, pos);
+    }
+    var chinaPool = pool.filter(function (item) { return item.china; });
+    if (chinaPool.length && Math.random() < 0.55) {
+      return chinaPool[Math.floor(Math.random() * chinaPool.length)];
+    }
+    return pool[Math.floor(Math.random() * pool.length)];
   }
 
   function rafterPoolForTeam(team) {
@@ -689,6 +790,7 @@
     requires: function () {
       if (getBranchNode('legend') !== 'start') return false;
       if (seasonCount() < 1 || playerOvr() < 80) return false;
+      if (!currentCareerTeam()) return false;
       bindStoryLegend();
       return true;
     },
@@ -698,18 +800,18 @@
         var attrs = {};
         attrs[legend.attr] = 2;
         if (legend.attr2) attrs[legend.attr2] = 1;
-        setBranchNode('legend', 'legend_dinner', { focus: 'craft', legendId: legend.id, legendName: legend.name });
+        setBranchNode('legend', 'legend_dinner', { focus: 'craft', legendId: legend.id, legendName: legend.name, legendTeam: currentCareerTeam() });
         applyStoryFx({ attrs: attrs, mods: { staminaLoad: 1 } });
         return '{名宿}把动作拆到脚尖。他说：{名宿原话}你练到关门，他才点头。<br><br>效果：' + (typeof attrCN === 'function' ? attrCN(legend.attr) : legend.attr) + '+2' + (legend.attr2 ? '，' + (typeof attrCN === 'function' ? attrCN(legend.attr2) : legend.attr2) + '+1' : '') + '；体能负荷+1。';
       }},
       { label: '请教如何带队', hint: '传球和领导力提升', apply: function () {
         var legend = bindStoryLegend();
-        setBranchNode('legend', 'legend_dinner', { focus: 'lead', legendId: legend.id, legendName: legend.name });
+        setBranchNode('legend', 'legend_dinner', { focus: 'lead', legendId: legend.id, legendName: legend.name, legendTeam: currentCareerTeam() });
         return applyStoryFx({ attrs: { PAS: 1 }, profile: { leadership: 2 }, result: '{名宿}没画战术，只问你更衣室里谁不敢说话。你答完，他把那个人的名字写在板子最上面。<br><br>效果：传球+1；领导力+2。' });
       }},
       { label: '聊生涯以外的事', hint: '关键球提升，状态更稳', apply: function () {
         var legend = bindStoryLegend();
-        setBranchNode('legend', 'legend_dinner', { focus: 'life', legendId: legend.id, legendName: legend.name });
+        setBranchNode('legend', 'legend_dinner', { focus: 'life', legendId: legend.id, legendName: legend.name, legendTeam: currentCareerTeam() });
         return applyStoryFx({ attrs: { CLU: 1 }, mods: { formVariance: -1 }, result: '后来你们几乎没碰篮球。{名宿}说退役后最难的不是没人防守，是没人每天逼你诚实。<br><br>效果：关键球+1；状态波动-1。' });
       }}
     ]
@@ -724,7 +826,10 @@
       '主持人把话筒递过来时，全场在等一句漂亮话。'
     ],
     body: '你可以认真，可以抢镜，也可以把时间还给{名宿}的家人。',
-    requires: function () { return getBranchNode('legend') === 'legend_dinner'; },
+    requires: function () {
+      bindStoryLegend();
+      return getBranchNode('legend') === 'legend_dinner';
+    },
     choices: [
       { label: '认真致辞：我配不上这件', hint: '传奇声望和球迷支持提升', apply: function () {
         setBranchNode('legend', 'legend_night', { speech: 'humble' });
@@ -750,7 +855,10 @@
       '助教小声说：他飞过来不是为了合影。'
     ],
     body: '{名宿}还在等你把上次餐桌上的东西练出来。',
-    requires: function () { return getBranchNode('legend') === 'legend_night'; },
+    requires: function () {
+      bindStoryLegend();
+      return getBranchNode('legend') === 'legend_night';
+    },
     choices: [
       { label: '加练到他点头', hint: '主技术再升，体能负荷明显上升', apply: function () {
         var legend = getStoryLegend();
@@ -1674,7 +1782,11 @@
       id: 'poor_mans_legend', weight: 10, title: '赛季事件：采访对比',
       scene: '主持人说你是「穷版的{名宿}」。现场有人笑，摄像机没有关。',
       body: '接受致敬、反驳“我是我”，或幽默接梗，都会改写你和名宿的关系。',
-      requires: function () { bindStoryLegend(); return getBranchNode('legend') !== 'start' || playerOvr() >= 82; },
+      requires: function () {
+        bindStoryLegend();
+        if (!currentCareerTeam()) return false;
+        return getBranchNode('legend') !== 'start' || playerOvr() >= 82;
+      },
       choices: [
         { label: '接受并致敬', hint: '传奇声望提升，并偷一点他的技术', apply: function () {
           bindStoryLegend();
