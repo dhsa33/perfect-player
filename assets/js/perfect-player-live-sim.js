@@ -653,7 +653,8 @@
   }
 
   function userLiveScoringScale() {
-    return (typeof USER_PLAYER_SCORING_SCALE === 'number') ? USER_PLAYER_SCORING_SCALE : 0.85;
+    var base = (typeof USER_PLAYER_SCORING_SCALE === 'number') ? USER_PLAYER_SCORING_SCALE : 0.85;
+    return base * 0.94;
   }
 
   function pickShooter(court, userOnCourt, usage, clutch) {
@@ -1847,7 +1848,7 @@
     var ln = lineOf(game, user);
     var frac = clamp(ln.mins / Math.max(4, bp.userMins), 0, 1.35);
     var gap = bp.user.fga * frac - ln.fga;
-    return clamp(bp.user.usage * 0.96 * (1 + gap * 0.03), 0.06, 0.36);
+    return clamp(bp.user.usage * 0.92 * (1 + gap * 0.025), 0.06, 0.34);
   }
 
   var FLAVOR_ACTION_POOL = [
@@ -2175,7 +2176,7 @@
       defP *= (1 - (st(game.styles, 'mid_craftsman') - 1) * 0.7);
     }
     var pct = shotPctFor(shooter, shot, defP, form, clutchMul, userBoost);
-    pct += (e - 1.154) * (e >= 1.154 ? 0.54 : 0.48);
+    pct += (e - 1.154) * (e >= 1.154 ? 0.50 : 0.44);
     if (ctx.home) pct += 0.005;
     pct += rush;
     if (hasTag(game, 'transition') && shot === 'FIN') pct += 0.06;
