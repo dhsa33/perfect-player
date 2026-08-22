@@ -1950,7 +1950,9 @@
     if (shot === 'three') shot = 'threePT';
     var evHint = eventActionHint(ev, fx);
     var trans = clock <= 9 || hasTag(game, 'transition') || !!(evHint && evHint.trans);
-    if (trans && !passer && chance(0.74)) passer = pickOutletPasser(ctx.offCourt, shooter);
+    if (trans) {
+      if (!passer) passer = pickOutletPasser(ctx.offCourt, shooter);
+    }
     if (evHint.action === 'coast' && !passer) passer = pickOutletPasser(ctx.offCourt, shooter);
     var matchup = pickMatchup(shooter, ctx.defCourt);
     var help = pickHelp(shot, matchup, ctx.defCourt, evHint);
@@ -1978,6 +1980,9 @@
       shot: shot, contest: contest, action: action, dunk: dunk
     };
     fillSceneMeta(scene, trans, ev, fx);
+    if (trans && scene.passer && scene.shooter && pid(scene.passer) === pid(scene.shooter)) {
+      scene.passer = pickOutletPasser(ctx.offCourt.filter(function (p) { return p && pid(p) !== pid(scene.shooter); }), scene.shooter);
+    }
     dunk = scene.dunk = actionIsDunk(scene.action, shooter, fx);
     action = scene.action;
 

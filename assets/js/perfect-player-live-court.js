@@ -59,6 +59,17 @@
     inbound: [COURT_L - 1.2, 8]
   };
 
+  /* 进攻向右时，己方后场篮筐（篮板/一传点） */
+  var DEF_BACK = [HOOP_IN + 2.8, COURT_W / 2];
+
+  function transOutletPlay(tactic, branch, action, input) {
+    if (tactic === 'trans_coast' || action === 'coast') return true;
+    if (tactic !== 'trans_num') return false;
+    if (branch === 'ahead' || branch === 'trail') return true;
+    if (input && input.shot === 'FIN' && isDrive(action)) return true;
+    return false;
+  }
+
   function clone(xy) { return [xy[0], xy[1]]; }
   function lerp(a, b, t) {
     return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
@@ -265,7 +276,7 @@
     if (tactic === 'ft') return [Z.ft, [RIM[0] - 3, 18], [RIM[0] - 3, 32], [68, 10], [68, 40]];
     if (tactic === 'trans_num') return [Z.top, sS, sW, cS, cW];
     if (tactic === 'trans_coast' || tactic === 'steal') {
-      return [Z.back, [28, 12], [28, 38], [38, 8], [36, 42]];
+      return [clone(DEF_BACK), [28, 12], [28, 38], [38, 8], [36, 42]];
     }
     if (tactic === 'pnr_high') return [Z.top, [FT[0] - 4, 25], cS, cW, sW];
     return [sS, eS, cS, cW, sW];
@@ -328,6 +339,7 @@
     var start = m.ball && set[m.ball.id] ? clone(set[m.ball.id]) : clone(sS);
     var drive = isDrive(action) || branch === 'turn' || branch === 'drive';
     var ballCurve = null;
+    var noStitch = false;
 
     function relocate(p, dest, maxFeet) {
       if (!p || !set[p.id] || !dest) return;
@@ -356,41 +368,44 @@
       relocate(m.big, dW, 22);
       relocate(m.passer, sW, 20);
       relocate(m.extra, cW, 22);
-      return { set: set, act: act, shot: shot, ballId: m.ball && m.ball.id, ballCurve: null };
+      return { set: set, act: act, shot: shot, ballId: m.ball && m.ball.id, ballCurve: null, noStitch: true };
     }
 
-    if (tactic === 'trans_coast' || action === 'coast') {
+    if (transOutletPlay(tactic, branch, action, input)) {
       var runner = m.ball;
       var outlet = (m.passer && runner && m.passer.id !== runner.id) ? m.passer : null;
       var laneY = runner ? (idHash(runner.id) > 0.52 ? 31.5 : 18.5) : 25;
-      var runnerSet = [MID[0] - 8, laneY];
-      var runnerAct = [MID[0] + 10, laneY];
-      var outletSpot = [HOOP_IN + 2.8, 25];
+      var isTrailThree = input.shot === 'threePT' && (action === 'trail' || branch === 'trail');
+      var runnerSet = isTrailThree ? clone(laneY < 25 ? Z.slotL : Z.slotR) : [MID[0] + 2, laneY];
+      var runnerAct = isTrailThree ? toward(runnerSet, Z.top, 7) : [RIM[0] - 22, laneY];
+      var finish = isTrailThree ? pushOutsideThree(toward(runnerSet, Z.top, 5)) : clone(Z.rim);
+      var outletSpot = clone(DEF_BACK);
       var soloWing = laneY < 25 ? clone(Z.wingL) : clone(Z.wingR);
-      var ballCurve = null;
+      ballCurve = null;
 
       if (outlet) {
-        put(set, outlet, clone(outletSpot));
-        put(act, outlet, clone(outletSpot));
-        put(shot, outlet, toward(outletSpot, Z.midc, 5));
+        put(set, outlet, outletSpot);
+        put(act, outlet, outletSpot);
+        put(shot, outlet, toward(outletSpot, Z.midc, 4));
         put(set, runner, runnerSet);
         put(act, runner, runnerAct);
-        put(shot, runner, clone(Z.rim));
+        put(shot, runner, finish);
       } else {
         put(set, runner, soloWing);
         put(act, runner, runnerAct);
-        put(shot, runner, clone(Z.rim));
+        put(shot, runner, finish);
         ballCurve = {
           a: clone(soloWing),
           c: [MID[0] - 2, laneY],
-          b: [MID[0] + 6, laneY]
+          b: [MID[0] + 8, laneY]
         };
       }
       relocate(m.wing, cS, 22);
       relocate(m.big, dW, 22);
       if (!outlet) relocate(m.passer, sW, 20);
       relocate(m.extra, cW, 22);
-      return { set: set, act: act, shot: shot, ballId: runner && runner.id, ballCurve: ballCurve };
+      noStitch = true;
+      return { set: set, act: act, shot: shot, ballId: runner && runner.id, ballCurve: ballCurve, noStitch: noStitch };
     }
 
     if (drive) {
@@ -448,7 +463,7 @@
       shot[m.ball.id] = pushOutsideThree(shot[m.ball.id]);
     }
 
-    return { set: set, act: act, shot: shot, ballId: m.ball && m.ball.id, ballCurve: ballCurve };
+    return { set: set, act: act, shot: shot, ballId: m.ball && m.ball.id, ballCurve: ballCurve, noStitch: noStitch };
   }
 
   function poseDef(offNow, offSet, r, input, t) {
@@ -777,6 +792,7 @@
       passH = 6.2;
       passCurve = 2.6;
     }
+    var transOutlet = wantPass && transOutletPlay(input.tactic, input.branch, action, input);
     var shotH = dunk ? 2.6 : (drive ? 4.1 : (three ? 10.6 : 7.3));
     var shotCurve = dunk ? 0.12 : (drive ? 0.22 : (three ? 0.55 : 0.32));
     var isMake = kind === 'make' || kind === 'andone' || input.outcome === 'make' || input.outcome === 'andone';
@@ -791,7 +807,7 @@
       var passDur = clamp(0.18 + (pa && pb ? dist(pa, pb) : 18) / 85, 0.2, 0.36);
       tPass1 = Math.max(0.12, tShot0 - (dho ? 0.06 : 0.12));
       tPass0 = Math.max(0.1, tPass1 - passDur);
-      if (action === 'coast') {
+      if (action === 'coast' || transOutlet) {
         pa = xyHold(0.12, passerId) || pa;
         pb = xyHold(0.32, shooterId) || pb;
         passDur = clamp(0.14 + (pa && pb ? dist(pa, pb) : 28) / 72, 0.16, 0.30);
@@ -845,7 +861,7 @@
     var r = assign(input);
     var tactic = input.tactic || 'pnr_side';
     var camera = 'half';
-    if (tactic === 'trans_coast' || tactic === 'steal' || input.action === 'coast') camera = 'full';
+    if (tactic === 'trans_coast' || tactic === 'steal' || input.action === 'coast' || tactic === 'trans_num') camera = 'full';
     var plan = offensePlan(r, input);
     var def0 = poseDef(plan.set, plan.set, r, input, 0);
     var defA = poseDef(plan.act, plan.set, r, input, 0.42);
@@ -888,7 +904,7 @@
         ball: evalBall(ballScript, t, mapAt(t), true)
       });
     }
-    return { camera: camera, tactic: tactic, branch: input.branch, zone: input.zone, attackRight: input.attackRight !== false, frames: frames, ballScript: ballScript };
+    return { camera: camera, tactic: tactic, branch: input.branch, zone: input.zone, attackRight: input.attackRight !== false, frames: frames, ballScript: ballScript, noStitch: !!plan.noStitch };
   };
 
   function dotXYFromPacked(dots, id) {
@@ -2001,7 +2017,7 @@
       return { t: fr.t, dots: worldDots(fr.dots, attackRight), ball: worldBall(fr.ball, attackRight) };
     });
     var live = !!clip.chain;
-    var stitched = pose ? stitch(pose, world, live) : { frames: world, split: 0 };
+    var stitched = (clip.noStitch && !live) ? { frames: world, split: 0 } : (pose ? stitch(pose, world, live) : { frames: world, split: 0 });
     if (!live && stitched.split > 0.02) {
       var stretched = stretchPossessionTransition(stitched, duration);
       stitched.frames = stretched.frames;
