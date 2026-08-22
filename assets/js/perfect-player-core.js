@@ -2481,6 +2481,7 @@ function startSeason() {
   
   initStandings();
   buildRealSchedule();
+  clearSimSeasonFooter();
   // ★ 直接渲染赛季页，加载动画放在 dot-grid 内部
   html('season-controls').innerHTML = '';
   html('gamecast-area').innerHTML = '';
@@ -2665,7 +2666,6 @@ function quickSimAllGames() {
         '</div>';
 
       refreshPulseBoard(true);
-      var footer = document.getElementById('pp-pulse') || document.getElementById('simDotGrid');
       // 最佳比赛：pts + reb + ast 最高的一场
       var bestGame = null, bestTotal = 0;
       var allGames = STATE.season.games || [];
@@ -2692,10 +2692,13 @@ function quickSimAllGames() {
           '</div>' +
         '</div>';
       }
-      if (footer) footer.insertAdjacentHTML('afterend',
-        '<div class="section-card">' + playerCardHtml + '</div>' +
-        '<div class="section-card" style="animation-delay:0.8s">' + bestHtml + '</div>' +
-        '<div style="text-align:center;padding:0 12px 16px;" id="simActions">' + actionBtn + '</div>');
+      var seasonFooter = ensureSimSeasonFooter();
+      if (seasonFooter) {
+        seasonFooter.innerHTML =
+          '<div class="section-card">' + playerCardHtml + '</div>' +
+          '<div class="section-card" style="animation-delay:0.8s">' + bestHtml + '</div>' +
+          '<div style="text-align:center;padding:0 12px 16px;" id="simActions">' + actionBtn + '</div>';
+      }
       trackExposureOnce(document.getElementById('simActions'), {act:"exposure",blk:"BMC099",pos:"T1",label:"赛季结果"});
       setTimeout(function() { maybeShowFirstSixtyWinCelebration(); }, 260);
       return;
@@ -3713,6 +3716,7 @@ function renderDotGrid() {
   }
 
   // 清空旧内容
+  clearSimSeasonFooter();
   html('season-controls').innerHTML = '';
   html('gamecast-area').innerHTML = '';
   html('game-list').innerHTML = '';
@@ -3798,6 +3802,44 @@ function switchPulseConf(conf) {
   refreshPulseBoard(true);
 }
 
+/** 清除赛季模拟页底部「常规赛场均 / 最佳表现 / 奖项」区域（避免跨赛季重复堆叠） */
+function clearSimSeasonFooter() {
+  var footerHost = document.getElementById('sim-season-footer');
+  if (footerHost) footerHost.innerHTML = '';
+  var pulse = document.getElementById('pp-pulse');
+  if (!pulse || !pulse.parentNode) return;
+  var child = pulse.nextSibling;
+  while (child) {
+    if (child.nodeType !== 1) {
+      child = child.nextSibling;
+      continue;
+    }
+    if (child.id === 'sim-season-footer') {
+      child = child.nextSibling;
+      continue;
+    }
+    if (child.id === 'simActions' || child.id === 'sim-season-summary' ||
+        (child.classList && child.classList.contains('section-card') && child.querySelector('.bv-po-title'))) {
+      var toRemove = child;
+      child = child.nextSibling;
+      toRemove.remove();
+      continue;
+    }
+    break;
+  }
+}
+
+function ensureSimSeasonFooter() {
+  var footerHost = document.getElementById('sim-season-footer');
+  if (footerHost) return footerHost;
+  var pulse = document.getElementById('pp-pulse') || ensurePulseBoard();
+  if (!pulse || !pulse.parentNode) return null;
+  footerHost = document.createElement('div');
+  footerHost.id = 'sim-season-footer';
+  pulse.parentNode.appendChild(footerHost);
+  return footerHost;
+}
+
 function ensurePulseBoard() {
   var host = document.getElementById('pp-pulse-host');
   var wrap = document.getElementById('pp-pulse');
@@ -3827,6 +3869,7 @@ function ensurePulseBoard() {
       '<div class="pp-pulse-hdr"><span>#</span><span>球队</span><span>胜</span><span>负</span><span>差</span><span>进攻</span><span>防守</span><span>净</span></div>' +
       '<div class="pp-pulse-list" id="pp-pulse-list"></div>';
   }
+  ensureSimSeasonFooter();
   return wrap;
 }
 
@@ -17274,6 +17317,7 @@ function resetForNewSeason() {
 }
 
 function renderSeasonScreenDOM() {
+  clearSimSeasonFooter();
   var confName = getConference(STATE.careerTeam) === 'EAST' ? '东部' : '西部';
   html('season-header').innerHTML =
     '<div class="sh-top" style="margin-top:8px;">' +
