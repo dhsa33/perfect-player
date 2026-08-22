@@ -485,7 +485,7 @@
     var flags = ensureFlags();
     var rival = flags.storyRival;
     var derby = flags.storyDerby;
-    var legend = flags.storyLegend;
+    var legend = bindStoryLegend();
     var rafter = bindTeamRafterStar();
     var rookie = flags.storyRookie;
     return String(str || '')
