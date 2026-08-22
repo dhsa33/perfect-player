@@ -94,7 +94,7 @@
   function isThreeInput(input) {
     var action = String((input && input.action) || '');
     return (input && input.shot === 'threePT') ||
-      /^(spot|catch|cut|pull3|stepback|snatch|flare|pin|dho|trail)$/.test(action);
+      /^(spot|catch|cut|pull3|stepback|snatch|flare|pin|dho|trail|logo)$/.test(action);
   }
   function pushOutsideThree(xy) {
     if (!xy) return xy;
@@ -453,6 +453,9 @@
     } else if (action === 'stepback' || action === 'snatch' || branch === 'step') {
       put(act, m.ball, toward(zone, RIM, 2.4));
       put(shot, m.ball, zone);
+    } else if (action === 'logo') {
+      put(act, m.ball, toward(start, Z.logo, 5));
+      put(shot, m.ball, pushOutsideThree(clone(Z.logo)));
     } else {
       put(act, m.ball, toward(start, zone, 5));
       put(shot, m.ball, zone);
@@ -749,11 +752,12 @@
     var shooterId = r.ball && r.ball.id;
     var passerId = r.passer && r.passer.id;
     var stealerId = r.stealer && r.stealer.id;
-    var three = input.shot === 'threePT' || /^(spot|catch|cut|pull3|stepback|snatch|flare|pin|dho|trail)$/.test(action);
+    var three = input.shot === 'threePT' || /^(spot|catch|cut|pull3|stepback|snatch|flare|pin|dho|trail|logo)$/.test(action);
     var drive = isDrive(action);
     var dunk = !!input.dunk || action === 'dunk' || action === 'lob' || action === 'putback';
     var lob = action === 'lob';
     var dho = action === 'dho';
+    var logoShot = action === 'logo';
     var rim = clone(RIM);
     var wantPass = !!(passerId && shooterId && passerId !== shooterId && kind !== 'stl' && kind !== 'hack' && kind !== 'tech');
 
@@ -828,11 +832,11 @@
       passCurve = 2.6;
     }
     var transOutlet = wantPass && transOutletPlay(input.tactic, input.branch, action, input);
-    var shotH = dunk ? 2.6 : (drive ? 4.1 : (three ? 10.6 : 7.3));
-    var shotCurve = dunk ? 0.12 : (drive ? 0.22 : (three ? 0.55 : 0.32));
+    var shotH = dunk ? 2.6 : (drive ? 4.1 : (logoShot ? 12.6 : (three ? 10.6 : 7.3)));
+    var shotCurve = dunk ? 0.12 : (drive ? 0.22 : (logoShot ? 0.62 : (three ? 0.55 : 0.32)));
     var isMake = kind === 'make' || kind === 'andone' || input.outcome === 'make' || input.outcome === 'andone';
     var bank = !!(input.bank && isMake && !dunk && !lob);
-    var shotDur = dunk ? 0.24 : (drive ? 0.32 : (three ? 0.46 : 0.38));
+    var shotDur = dunk ? 0.24 : (drive ? 0.32 : (logoShot ? 0.52 : (three ? 0.46 : 0.38)));
     var tShot1 = isMake ? (bank ? 0.92 : 0.82) : 0.96;
     var tShot0 = tShot1 - shotDur - (bank ? 0.08 : 0);
     var tPass1 = 0, tPass0 = 0;

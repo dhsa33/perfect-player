@@ -6,6 +6,7 @@
   var LAB_TEAM_B = 'OKC';
   var BROADCAST_SCALE = 1;
   var DEBUG_REBOUND_LAB = false;
+  var FLAVOR_LAB = false;
 
   /* 主游戏在 nba-perfect-player.html 内联脚本提供，实验室页需自备 */
   function ensureLabRuntime() {
@@ -131,7 +132,7 @@
     var b = typeof getTeamName === 'function' ? getTeamName(LAB_TEAM_B) : LAB_TEAM_B;
     el.innerHTML =
       '<strong>局内模拟实验室</strong> · ' + a + ' vs ' + b +
-      ' · 双方能力型球员已注入 · 看完可点「再打一场」';
+      ' · 高光动作演练（超远三分/颜射/隔扣） · 看完可点「再打一场」';
   }
 
   function runLab(done) {
@@ -157,6 +158,7 @@
           fatigueB: 0,
           broadcastScale: BROADCAST_SCALE,
           debugReboundLab: DEBUG_REBOUND_LAB,
+          flavorLab: FLAVOR_LAB,
           attrs: STATE.attrs,
           isPlayoff: false
         }
@@ -174,6 +176,7 @@
     teamB: LAB_TEAM_B,
     broadcastScale: BROADCAST_SCALE,
     debugReboundLab: DEBUG_REBOUND_LAB,
+    flavorLab: FLAVOR_LAB,
     run: runLab,
     diversifyTeam: diversifyTeam,
     setupState: setupState

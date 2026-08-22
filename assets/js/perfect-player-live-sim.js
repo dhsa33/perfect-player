@@ -295,6 +295,31 @@
     };
   }
 
+  function userBlueprintFromSkip(attrs, bp, isPlayoff) {
+    var base = expectedUserLine(attrs, bp, isPlayoff);
+    if (typeof generatePlayerStatsNew !== 'function') return base;
+    var syn = {
+      scoreA: bp.tgtA, scoreB: bp.tgtB, pace: bp.pace,
+      teamB: { power: bp.powerB }, home: bp.teamAHome
+    };
+    var st = generatePlayerStatsNew(attrs, syn, isPlayoff);
+    return {
+      usage: base.usage,
+      mins: base.mins,
+      fga: st.fga || base.fga,
+      pts: st.pts,
+      reb: st.reb,
+      ast: st.ast,
+      stl: st.stl,
+      blk: st.blk,
+      tov: st.tov,
+      threePct: base.threePct,
+      midPct: base.midPct,
+      finPct: base.finPct,
+      threeShare: base.threeShare
+    };
+  }
+
   function buildBlueprint(teamA, teamB, options) {
     options = options || {};
     var powerA = typeof calcTeamPowerWithPlayer === 'function' ? calcTeamPowerWithPlayer(teamA) : { offense: 70, defense: 70, athletic: 70, clutch: 70, depth: 70 };
@@ -357,11 +382,12 @@
       varianceB: clamp(6.4 + (modB.variance || 0), 4.6, 10),
       styles: rollStyles()
     };
-    bp.user = expectedUserLine(options.attrs || STATE.attrs || {}, bp, bp.isPlayoff);
-    bp.userMins = bp.user.mins;
     bp.tgtA = clamp(Math.round(bp.pace * bp.efficiencyA + gauss(0, bp.varianceA)), 80, 155);
     bp.tgtB = clamp(Math.round(bp.pace * bp.efficiencyB + gauss(0, bp.varianceB)), 80, 155);
+    bp.user = userBlueprintFromSkip(options.attrs || STATE.attrs || {}, bp, bp.isPlayoff);
+    bp.userMins = bp.user.mins;
     if (options.debugReboundLab) bp._debugReboundLab = true;
+    if (options.flavorLab) bp._flavorLab = true;
     return bp;
   }
 
@@ -1500,6 +1526,7 @@
     if (action === 'pin') return '投三分';
     if (action === 'dho') return '投三分';
     if (action === 'spot' || action === 'catch' || action === 'cut') return '投三分';
+    if (action === 'logo') return '超远三分';
     return dunk ? '扣篮' : '跳投';
   }
 
@@ -1532,7 +1559,7 @@
   var ZONE_CN = {
     rim: '篮下', paint: '禁区', ft: '罚球线', elbow: '肘区', slot: '四十五度',
     wing: '侧翼', corner: '底角', top: '弧顶', post: '低位', dunker: '空切位',
-    short: '短底角', logo: '远区', mid: '中距离', nail: '禁区前沿'
+    short: '短底角', logo: 'logo区', mid: '中距离', nail: '禁区前沿'
   };
 
   function remapActionForBody(shooter, matchup, action, trans) {
@@ -1591,6 +1618,7 @@
     if (action === 'cut' || action === 'backdoor') return { tactic: 'floppy', branch: 'cut', camera: 'half' };
     if (/^(hook|skyhook|dropstep|postspin|upunder)$/.test(action)) return { tactic: 'post', branch: action === 'upunder' ? 'upunder' : 'hook', camera: 'half' };
     if (action === 'fade' && canPostUp(shooter)) return { tactic: 'post', branch: 'fade', camera: 'half' };
+    if (action === 'logo') return { tactic: 'iso_clear', branch: 'step', camera: 'full' };
     if (!passer && /^(stepback|pull3|snatch|slash|euro|cross|hesi|faceup)$/.test(action)) {
       return { tactic: 'iso_clear', branch: /stepback|pull3|snatch/.test(action) ? 'step' : 'drive', camera: 'half' };
     }
@@ -1669,9 +1697,20 @@
       if (s.outcome === 'foul') return p + '空接给' + a + '，造成犯规，罚球 ' + s.ftMade + '/' + s.fta;
       return p + '空接给' + a + '，没扣进';
     }
+    if (s.action === 'logo') {
+      if (s.outcome === 'blk' && s.blocker) return a + 'logo区超远三分，被' + nm(s.blocker) + '盖帽';
+      if (s.outcome === 'foul') return a + 'logo区超远三分造犯，罚球 ' + s.ftMade + '/' + s.fta;
+      if (s.outcome === 'make') return a + 'logo区超远三分飙进';
+      return a + 'logo区超远三分不中';
+    }
     if (s.action === 'coast') {
       if (s.outcome === 'blk' && s.blocker) return a + '快攻一条龙，被' + nm(s.blocker) + '追上帽掉';
       if (s.outcome === 'make') {
+        if (s.poster) {
+          if (s.help) return a + '快攻隔扣' + h;
+          if (s.matchup) return a + '快攻隔扣' + m;
+          return a + '快攻一条龙隔扣';
+        }
         if (dunk) return a + '快攻一条龙暴扣';
         return a + (s.bank ? '快攻一条龙上篮打板命中' : '快攻一条龙上篮得手');
       }
@@ -1786,7 +1825,7 @@
         if (clip) {
           clip.attackRight = attackRightFor(ctx);
           clip.chain = !!(game && game._courtLive) && !ctx.afterTimeout;
-          if (clip.chain && (row.kind === 'stl' || scene.camera === 'full' || scene.tactic === 'trans_coast' || scene.tactic === 'steal')) {
+          if (clip.chain && (row.kind === 'stl' || scene.camera === 'full' || scene.tactic === 'trans_coast' || scene.tactic === 'steal' || scene.action === 'logo')) {
             clip.camera = 'full';
           }
         }
@@ -1830,9 +1869,142 @@
     return clamp(bp.user.usage * 0.98 * (1 + gap * 0.05), 0.06, 0.39);
   }
 
+  function userHunger(game, ctx) {
+    var bp = game.bp;
+    var user = bp.rosterA.filter(function (p) { return p && p._isUser; })[0];
+    if (!user || !ctx.userOn) return 0;
+    var ln = lineOf(game, user);
+    var frac = clamp(ln.mins / Math.max(4, bp.userMins), 0, 1.35);
+    var gap = bp.user.fga * frac - ln.fga;
+    return clamp(bp.user.usage * 0.98 * (1 + gap * 0.05), 0.06, 0.39);
+  }
+
+  var FLAVOR_ACTION_POOL = [
+    { id: 'logo', shot: 'threePT', action: 'logo', contest: 'close' },
+    { id: 'logo_contest', shot: 'threePT', action: 'logo', contest: 'contest' },
+    { id: 'face_step', shot: 'threePT', action: 'stepback', contest: 'contest', face: true },
+    { id: 'face_pull', shot: 'threePT', action: 'pull3', contest: 'contest', face: true },
+    { id: 'face_snatch', shot: 'threePT', action: 'snatch', contest: 'help', face: true },
+    { id: 'poster', shot: 'FIN', action: 'dunk', contest: 'help', dunk: true, poster: true, beat: true },
+    { id: 'poster_heavy', shot: 'FIN', action: 'dunk', contest: 'heavy', dunk: true, poster: true, beat: true },
+    { id: 'coast_poster', shot: 'FIN', action: 'coast', contest: 'help', dunk: true, poster: true, beat: true, trans: true, needPasser: true }
+  ];
+
+  function pickFlavorSpec(bp) {
+    var i = bp._flavorIdx || 0;
+    bp._flavorIdx = (i + 1) % FLAVOR_ACTION_POOL.length;
+    return FLAVOR_ACTION_POOL[i];
+  }
+
+  function forceHelpDefender(scene, ctx, shot) {
+    var pool = (ctx.defCourt || []).filter(function (p) {
+      return p && pid(p) !== pid(scene.matchup) && pid(p) !== pid(scene.shooter);
+    });
+    if (!pool.length) return null;
+    return pickWeighted(pool, function (p) {
+      return 0.2 + skill01(attr(p, shot === 'FIN' ? 'IDEF' : 'PDEF')) * 1.1 + skill01(attr(p, 'BLK')) * 0.9;
+    });
+  }
+
+  function sceneFlavorMade(scene) {
+    return scene.outcome === 'make' || scene.outcome === 'andone';
+  }
+
+  function flavorShotTag(scene, made) {
+    if (scene.poster && made) return '隔扣';
+    if (scene.deep) return made ? '超远命中' : '超远打铁';
+    if (scene.face && made) return '颜射三分';
+    return made ? '进攻成功' : '进攻失败';
+  }
+
+  function applyFlavorSpec(scene, ctx, game, ev, fx, made, flavor) {
+    if (!flavor || !scene) return;
+    var bp = game.bp;
+    var trans = !!flavor.trans;
+    var contest = flavor.contest || scene.contest || 'close';
+    if (!scene.matchup) scene.matchup = pickMatchup(scene.shooter, ctx.defCourt);
+    scene.shot = flavor.shot;
+    scene.contest = contest;
+    if (contest === 'help' || contest === 'heavy') {
+      scene.help = forceHelpDefender(scene, ctx, flavor.shot) || scene.help;
+      if (!scene.help) scene.help = pickHelp(flavor.shot, scene.matchup, ctx.defCourt, { contest: 'help' });
+    } else {
+      scene.help = null;
+    }
+    if (flavor.needPasser) {
+      scene.passer = pickOutletPasser(ctx.offCourt.filter(function (p) {
+        return p && pid(p) !== pid(scene.shooter);
+      }), scene.shooter);
+    } else if (/^(logo|stepback|pull3|snatch|dunk)$/.test(flavor.action)) {
+      scene.passer = null;
+    }
+    scene.action = remapActionForBody(scene.shooter, scene.matchup, flavor.action, trans);
+    scene.dunk = !!(flavor.dunk || actionIsDunk(scene.action, scene.shooter, fx));
+    fillSceneMeta(scene, trans, ev, fx);
+    scene.dunk = flavor.dunk ? true : actionIsDunk(scene.action, scene.shooter, fx);
+    scene.poster = !!(made && flavor.poster && scene.dunk);
+    scene.face = !!(made && flavor.face);
+    scene.deep = scene.action === 'logo';
+    scene.beat = !!(made && flavor.beat);
+    scene._flavorId = flavor.id;
+  }
+
+  function applyFlavorVisual(scene, ctx, game, ev, fx, made) {
+    var bp = game.bp;
+    if (!bp || !bp._flavorLab || !scene) return;
+    applyFlavorSpec(scene, ctx, game, ev, fx, made, pickFlavorSpec(bp));
+  }
+
+  function maybeFlavorVisual(scene, ctx, game, ev, fx, made) {
+    var bp = game.bp;
+    if (!bp || bp._flavorLab || !scene) return;
+    var shooter = scene.shooter;
+    var shot = scene.shot;
+    var action = scene.action;
+    var contest = scene.contest || 'close';
+    var flavor = null;
+    if (shot === 'threePT' && chance(0.018 + skill01(attr(shooter, 'threePT')) * 0.015)) {
+      flavor = {
+        id: 'logo', shot: 'threePT', action: 'logo',
+        contest: contest === 'open' ? 'close' : contest
+      };
+    } else if (made && shot === 'threePT' && scene.matchup && (contest === 'contest' || contest === 'help') &&
+      /^(stepback|pull3|snatch|catch)$/.test(action) && chance(0.26)) {
+      flavor = {
+        id: 'face', shot: 'threePT',
+        action: action === 'catch' ? 'stepback' : action,
+        contest: contest, face: true
+      };
+    } else if (made && scene.dunk && action === 'coast' && (contest === 'help' || contest === 'heavy') && chance(0.32)) {
+      flavor = {
+        id: 'coast_poster', shot: 'FIN', action: 'coast', contest: contest,
+        dunk: true, poster: true, beat: true, trans: true, needPasser: true
+      };
+    } else if (made && scene.dunk && action === 'dunk' && (contest === 'help' || contest === 'heavy') && chance(0.42)) {
+      flavor = {
+        id: 'poster', shot: 'FIN', action: 'dunk', contest: contest,
+        dunk: true, poster: true, beat: true
+      };
+    }
+    if (!flavor) return;
+    applyFlavorSpec(scene, ctx, game, ev, fx, made, flavor);
+  }
+
+  function finishFlavorOverlay(scene, ctx, game, ev, fx, made) {
+    if (!scene || !game || !game.bp) return;
+    if (game.bp._flavorLab) applyFlavorVisual(scene, ctx, game, ev, fx, made);
+    else maybeFlavorVisual(scene, ctx, game, ev, fx, made);
+  }
+
+  function shotRowTag(scene, made, flavorLab) {
+    if (flavorLab || scene._flavorId) return flavorShotTag(scene, made);
+    return made ? '进攻成功' : '进攻失败';
+  }
+
   function resolvePossession(game, ctx, ev) {
     var bp = game.bp;
     var labReb = !!(bp && bp._debugReboundLab);
+    var flavorLab = !!(bp && bp._flavorLab);
     var side = ctx.side;
     var fx = liveFx(ev);
     var rows = [];
@@ -1845,18 +2017,19 @@
     if (ctx.userOn) {
       tovRate = clamp(tovRate / (1 + (st(game.styles, 'tempo_master') - 1) * 0.7) * (1 + (st(game.styles, 'steal_instinct') - 1) * 0.25), 0.09, 0.18);
     }
+    if (flavorLab) tovRate = 0;
     var orbRate = clamp(0.265 + offEdge * 0.003 + (fx.orb || 0), 0.16, 0.38);
     var clock = possessionClock(ctx, ev, game);
     var form = (side === 'A' ? game.formA : game.formB) + gauss(0, 0.008);
     var rush = ctx.secLeft <= 6 ? -0.10 : 0;
 
-    if (fx.tech && !labReb) {
+    if (fx.tech && !labReb && !flavorLab) {
       addScore(game, ctx.defSide, 1, ctx.qIdx, ctx.isOT);
       rows.push({ kind: 'tech', tag: '罚球', tone: 'make', teamSide: ctx.defSide, text: '技术犯规罚球命中' });
       return { clock: Math.min(clock, 8), orb: false, rows: rows };
     }
 
-    if (fx.hack && !labReb) {
+    if (fx.hack && !labReb && !flavorLab) {
       var victim = (ev && ev._bind && ev._bind.actor) || ctx.offCourt[0];
       if (!victim || ctx.offCourt.indexOf(victim) < 0) victim = ctx.offCourt[0];
       var hackFt = shotPctFor(victim, 'FT', 0, form * 0.4, 1, victim && victim._isUser ? styleMul('ice_ft', game) : 1);
@@ -1873,7 +2046,7 @@
       return { clock: Math.min(clock, 10), orb: false, rows: rows };
     }
 
-    if (!labReb && (fx.forceTov || fx.stl || chance(tovRate))) {
+    if (!labReb && !flavorLab && (fx.forceTov || fx.stl || chance(tovRate))) {
       var loser = pickShooter(ctx.offCourt, ctx.userOn, ctx.usage * 0.55, false) || ctx.offCourt[0];
       lineOf(game, loser).tov++;
       var userOnDef = ctx.defCourt.filter(function (p) { return p && p._isUser; })[0];
@@ -2007,6 +2180,7 @@
         if (shot === 'threePT') lineOf(game, shooter).threeA++;
         scene.outcome = 'blk';
         scene.blocker = blocker;
+        finishFlavorOverlay(scene, ctx, game, ev, fx, false);
         rows.push(attachPbp({
           kind: 'blk', tag: '防守成功', tone: 'stop', teamSide: ctx.defSide,
           text: composeShotText(scene)
@@ -2030,7 +2204,7 @@
       defP *= (1 - (st(game.styles, 'mid_craftsman') - 1) * 0.7);
     }
     var pct = shotPctFor(shooter, shot, defP, form, clutchMul, userBoost);
-    pct += (e - 1.154) * (e >= 1.154 ? 0.62 : 0.56);
+    pct += (e - 1.154) * (e >= 1.154 ? 0.58 : 0.52);
     if (ctx.home) pct += 0.005;
     pct += rush;
     if (hasTag(game, 'transition') && shot === 'FIN') pct += 0.06;
@@ -2071,6 +2245,7 @@
       scene.outcome = andOne ? 'andone' : 'foul';
       scene.beat = driveAction(action) && (andOne || contest === 'help' || contest === 'heavy');
       if (andOne) scene.bank = rollBankShot(scene);
+      finishFlavorOverlay(scene, ctx, game, ev, fx, andOne);
       rows.push(attachPbp({
         kind: andOne ? 'andone' : 'foul', tag: '造杀伤', tone: madeFt ? 'make' : 'miss', teamSide: side,
         text: composeShotText(scene)
@@ -2083,16 +2258,11 @@
     recordShot(game, shooter, shot, made, pts, passer, side, ctx.qIdx, ctx.isOT);
     scene.outcome = made ? 'make' : 'miss';
     scene.beat = !!(driveAction(action) && matchup && (contest === 'help' || contest === 'heavy' || (made && contest !== 'open')));
-    scene.poster = !!(made && dunk && action === 'dunk' && (
-      contest === 'heavy' ||
-      (contest === 'help' && attr(shooter, 'DNK') >= 76) ||
-      (contest === 'contest' && attr(shooter, 'DNK') >= 84 && chance(0.40))
-    ));
-    scene.face = !!(made && shot === 'threePT' && matchup && contest === 'contest' && (action === 'stepback' || action === 'pull3') && chance(0.24));
     if (made) scene.bank = rollBankShot(scene);
+    finishFlavorOverlay(scene, ctx, game, ev, fx, made);
     rows.push(attachPbp({
       kind: made ? 'make' : 'miss',
-      tag: made ? '进攻成功' : '进攻失败',
+      tag: shotRowTag(scene, made, flavorLab),
       tone: made ? 'make' : 'miss',
       teamSide: side,
       text: composeShotText(scene)
@@ -2557,8 +2727,8 @@
     if (user) {
       var ln = lineOf(game, user);
       var diff = ln.pts - bp.user.pts;
-      if (Math.abs(diff) > 2.2) {
-        var uAdj = Math.round((Math.abs(diff) - 2.2) * 0.90) * (diff > 0 ? -1 : 1);
+      if (Math.abs(diff) > 2.8) {
+        var uAdj = Math.round((Math.abs(diff) - 2.8) * 0.82) * (diff > 0 ? -1 : 1);
         var before = ln.pts;
         addPtsToLine(ln, uAdj);
         var got = ln.pts - before;
@@ -2567,19 +2737,19 @@
       ['reb', 'ast', 'stl', 'blk', 'tov'].forEach(function (k) {
         var exp = bp.user[k];
         if (exp == null) return;
-        if (Math.abs(ln[k] - exp) > 0.7) {
-          ln[k] = Math.max(0, Math.round(exp * 0.82 + ln[k] * 0.18));
+        if (Math.abs(ln[k] - exp) > 0.85) {
+          ln[k] = Math.max(0, Math.round(exp * 0.76 + ln[k] * 0.24));
         }
       });
     }
 
-    var maxDev = bp.isPlayoff ? 2.6 : 1.8;
+    var maxDev = bp.isPlayoff ? 2.2 : 1.35;
     function pullTeam(side) {
       var tgt = (side === 'A' ? game.tgtA : game.tgtB) + (side === 'A' ? (game.otTgtA || 0) : (game.otTgtB || 0));
       var cur = side === 'A' ? game.scoreA : game.scoreB;
       var diff = cur - tgt;
       if (Math.abs(diff) <= maxDev) return;
-      var adj = Math.round((Math.abs(diff) - maxDev) * 0.94) * (diff > 0 ? -1 : 1);
+      var adj = Math.round((Math.abs(diff) - maxDev) * 0.88) * (diff > 0 ? -1 : 1);
       var applied = distributeAdj(game, side === 'A' ? bp.rosterA : bp.rosterB, adj, true);
       addCalibratedTeamPts(game, side, applied);
     }
@@ -3277,6 +3447,115 @@
     pump();
   }
   PP_LIVE.playTheater = playTheater;
+
+  var CALIBRATION_CASES = [
+    { teamA: 'LAL', teamB: 'BOS', teamAHome: true, neutralState: true, fatigueA: 0 },
+    { teamA: 'LAL', teamB: 'BOS', teamAHome: false, neutralState: true, fatigueA: 0 },
+    { teamA: 'CLE', teamB: 'OKC', teamAHome: true, neutralState: true, fatigueA: 0 },
+    { teamA: 'CLE', teamB: 'OKC', teamAHome: false, neutralState: true, fatigueA: 0 },
+    { teamA: 'DEN', teamB: 'MIN', teamAHome: true, neutralState: true, fatigueA: 0 },
+    { teamA: 'DEN', teamB: 'MIN', teamAHome: false, neutralState: true, fatigueA: 0 },
+    { teamA: 'GSW', teamB: 'PHX', teamAHome: true, neutralState: true, fatigueA: 0 },
+    { teamA: 'GSW', teamB: 'PHX', teamAHome: false, neutralState: true, fatigueA: 0 },
+    { teamA: 'NYK', teamB: 'MIL', teamAHome: true, neutralState: true, fatigueA: 0 },
+    { teamA: 'NYK', teamB: 'MIL', teamAHome: false, neutralState: true, fatigueA: 0 },
+    { teamA: 'PHI', teamB: 'MIA', teamAHome: true, neutralState: true, fatigueA: 0 },
+    { teamA: 'PHI', teamB: 'MIA', teamAHome: false, neutralState: true, fatigueA: 0 },
+    { teamA: 'DAL', teamB: 'SAC', teamAHome: true, neutralState: true, fatigueA: 0 },
+    { teamA: 'DAL', teamB: 'SAC', teamAHome: false, neutralState: true, fatigueA: 0 },
+    { teamA: 'LAL', teamB: 'BOS', teamAHome: true, neutralState: true, fatigueA: 1 },
+    { teamA: 'CLE', teamB: 'OKC', teamAHome: true, neutralState: false, fatigueA: 0 },
+    { teamA: 'BOS', teamB: 'LAL', teamAHome: true, neutralState: true, fatigueA: 0 },
+    { teamA: 'OKC', teamB: 'CLE', teamAHome: false, neutralState: true, fatigueA: 0 },
+    { teamA: 'MIN', teamB: 'DEN', teamAHome: true, neutralState: true, fatigueA: 0 },
+    { teamA: 'PHX', teamB: 'GSW', teamAHome: false, neutralState: true, fatigueA: 0 }
+  ];
+
+  function benchAvg(obj, n) {
+    return {
+      avgA: obj.a / n, avgB: obj.b / n,
+      userPts: obj.u / n, userReb: obj.r / n, userAst: obj.t / n,
+      win: obj.w / n
+    };
+  }
+
+  PP_LIVE.calibrateBenchmark = function (opts) {
+    opts = opts || {};
+    var gamesPerCase = Math.max(8, Math.min(80, parseInt(opts.gamesPerCase, 10) || 24));
+    var cases = opts.cases || CALIBRATION_CASES;
+    var attrs = opts.attrs || (typeof STATE !== 'undefined' && STATE.attrs) || {};
+    var pos = opts.position || (typeof STATE !== 'undefined' && STATE.position) || 'SG';
+    var oldTeam = typeof STATE !== 'undefined' ? STATE.careerTeam : null;
+    var oldPos = typeof STATE !== 'undefined' ? STATE.position : null;
+    var oldAttrs = typeof STATE !== 'undefined' ? STATE.attrs : null;
+    var rows = [];
+    var totSkip = { a: 0, b: 0, u: 0, r: 0, t: 0, w: 0, n: 0 };
+    var totLive = { a: 0, b: 0, u: 0, r: 0, t: 0, w: 0, n: 0 };
+    var ci, gi, c, r, st, p, skip, live, sAvg, lAvg;
+    for (ci = 0; ci < cases.length; ci++) {
+      c = cases[ci];
+      if (typeof STATE !== 'undefined') {
+        STATE.careerTeam = c.teamA;
+        STATE.position = pos;
+        STATE.attrs = attrs;
+      }
+      skip = { a: 0, b: 0, u: 0, r: 0, t: 0, w: 0 };
+      live = { a: 0, b: 0, u: 0, r: 0, t: 0, w: 0 };
+      for (gi = 0; gi < gamesPerCase; gi++) {
+        r = simulate82StyleMatchup(c.teamA, c.teamB, {
+          teamAHome: c.teamAHome, neutralState: c.neutralState, fatigueA: c.fatigueA || 0,
+          includeBoxScore: false
+        });
+        st = generatePlayerStatsNew(attrs, r, false);
+        skip.a += r.scoreA; skip.b += r.scoreB; skip.u += st.pts; skip.r += st.reb; skip.t += st.ast;
+        if (r.won) skip.w++;
+        p = run(c.teamA, c.teamB, {
+          teamAHome: c.teamAHome, neutralState: c.neutralState, fatigueA: c.fatigueA || 0,
+          attrs: attrs
+        });
+        live.a += p.result.scoreA; live.b += p.result.scoreB;
+        live.u += p.stats.pts; live.r += p.stats.reb; live.t += p.stats.ast;
+        if (p.result.won) live.w++;
+      }
+      sAvg = benchAvg(skip, gamesPerCase);
+      lAvg = benchAvg(live, gamesPerCase);
+      rows.push({
+        case: c,
+        games: gamesPerCase,
+        skip: sAvg,
+        live: lAvg,
+        delta: {
+          avgA: lAvg.avgA - sAvg.avgA, avgB: lAvg.avgB - sAvg.avgB,
+          userPts: lAvg.userPts - sAvg.userPts, userReb: lAvg.userReb - sAvg.userReb,
+          userAst: lAvg.userAst - sAvg.userAst, win: lAvg.win - sAvg.win
+        }
+      });
+      totSkip.a += skip.a; totSkip.b += skip.b; totSkip.u += skip.u; totSkip.r += skip.r; totSkip.t += skip.t;
+      totSkip.w += skip.w; totSkip.n += gamesPerCase;
+      totLive.a += live.a; totLive.b += live.b; totLive.u += live.u; totLive.r += live.r; totLive.t += live.t;
+      totLive.w += live.w; totLive.n += gamesPerCase;
+    }
+    if (typeof STATE !== 'undefined') {
+      if (oldTeam) STATE.careerTeam = oldTeam;
+      if (oldPos) STATE.position = oldPos;
+      if (oldAttrs) STATE.attrs = oldAttrs;
+    }
+    var skipAll = benchAvg(totSkip, totSkip.n);
+    var liveAll = benchAvg(totLive, totLive.n);
+    return {
+      cases: rows.length,
+      gamesPerCase: gamesPerCase,
+      totalGames: totSkip.n,
+      skip: skipAll,
+      live: liveAll,
+      delta: {
+        avgA: liveAll.avgA - skipAll.avgA, avgB: liveAll.avgB - skipAll.avgB,
+        userPts: liveAll.userPts - skipAll.userPts, userReb: liveAll.userReb - skipAll.userReb,
+        userAst: liveAll.userAst - skipAll.userAst, win: liveAll.win - skipAll.win
+      },
+      rows: rows
+    };
+  };
 
   PP_LIVE.compareEngines = function (games) {
     games = Math.max(40, Math.min(400, parseInt(games, 10) || 80));

@@ -18,8 +18,8 @@
       ['assets/js/perfect-player-awards.js?v=20260813-real-ballot-v1', '荣誉评选']
     ],
     live: [
-      ['assets/js/perfect-player-live-court.js?v=20260822-court-v31', '俯瞰球场'],
-      ['assets/js/perfect-player-live-sim.js?v=20260822-live-sim-v48', '文字直播']
+      ['assets/js/perfect-player-live-court.js?v=20260822-court-v32', '俯瞰球场'],
+      ['assets/js/perfect-player-live-sim.js?v=20260822-live-sim-v51', '文字直播']
     ]
   };
 
