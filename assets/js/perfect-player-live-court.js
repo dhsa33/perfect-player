@@ -59,13 +59,16 @@
     inbound: [COURT_L - 1.2, 8]
   };
 
-  /* 进攻向右时，己方后场篮筐（篮板/一传点） */
+  /* 进攻向右：己方后场篮筐（仅一传/篮板人）；转换跟进分散在后场深处 */
   var DEF_BACK = [HOOP_IN + 2.8, COURT_W / 2];
   var TRANS_FILL_SLOTS = [
-    [MID[0] - 18, 12], [MID[0] - 18, 38],
-    [MID[0] - 10, 10], [MID[0] - 10, 40],
-    [MID[0] - 22, 24]
+    [10, 10], [10, 40],
+    [14, 15], [14, 35],
+    [8, 24]
   ];
+  var TRANS_RUNNER_X_SET = 22;
+  var TRANS_RUNNER_X_ACT = 32;
+  var TRANS_RUNNER_X_TRAIL_ACT = 34;
 
   function transOutletPlay(tactic, branch, action, input) {
     if (tactic === 'trans_coast' || action === 'coast') return true;
@@ -280,10 +283,11 @@
     if (tactic === 'putback') return [Z.paint, sS, cS, cW, Z.top];
     if (tactic === 'ft') return [Z.ft, [RIM[0] - 3, 18], [RIM[0] - 3, 32], [68, 10], [68, 40]];
     if (tactic === 'trans_num' || tactic === 'trans_coast') {
+      /* slot0=下快攻侧翼，slot1=一传篮下；切勿把 runner 放在 slot0=篮下 */
       return [
+        [TRANS_RUNNER_X_SET, 19],
         clone(DEF_BACK),
-        [MID[0] - 14, 13], [MID[0] - 14, 37],
-        [MID[0] - 6, 11], [MID[0] - 6, 39]
+        [10, 11], [10, 39], [14, 25]
       ];
     }
     if (tactic === 'steal') {
@@ -378,8 +382,8 @@
       r.offOrder.forEach(function (pl) {
         if (!pl || skipIds[pl.id] || si >= TRANS_FILL_SLOTS.length) return;
         here = clone(TRANS_FILL_SLOTS[si]);
-        actPt = toward(here, [MID[0] + 6, here[1]], 9);
-        shotPt = toward(here, [RIM[0] - 28, here[1]], 16);
+        actPt = toward(here, [here[0] + 7, here[1]], 6);
+        shotPt = toward(here, [here[0] + 12, here[1]], 10);
         put(set, pl, here);
         put(act, pl, actPt);
         put(shot, pl, shotPt);
@@ -390,7 +394,7 @@
     if (tactic === 'steal') {
       var stealSkip = {};
       if (m.ball) {
-        put(set, m.ball, toward(clone(DEF_BACK), Z.midc, 10));
+        put(set, m.ball, [TRANS_RUNNER_X_SET, idHash(m.ball.id) > 0.52 ? 31.5 : 18.5]);
         put(act, m.ball, clone(Z.midc));
         put(shot, m.ball, clone(Z.rim));
         stealSkip[m.ball.id] = true;
@@ -404,37 +408,35 @@
       var outlet = (m.passer && runner && m.passer.id !== runner.id) ? m.passer : null;
       var laneY = runner ? (idHash(runner.id) > 0.52 ? 31.5 : 18.5) : 25;
       var isTrailThree = input.shot === 'threePT' && (action === 'trail' || branch === 'trail');
-      var runnerSet = [MID[0] - 10, laneY];
-      var runnerAct = isTrailThree ? [MID[0] - 2, laneY] : [MID[0] + 8, laneY];
+      var runnerSet = [TRANS_RUNNER_X_SET, laneY];
+      var runnerAct = isTrailThree
+        ? [TRANS_RUNNER_X_TRAIL_ACT, laneY]
+        : [TRANS_RUNNER_X_ACT, laneY];
       var finish = isTrailThree
-        ? pushOutsideThree([MID[0] + 14, laneY])
+        ? pushOutsideThree([MID[0] - 6, laneY])
         : clone(Z.rim);
       var outletSpot = clone(DEF_BACK);
-      var soloStart = [MID[0] - 12, laneY];
       var skipIds = {};
       ballCurve = null;
 
       if (outlet) {
         put(set, outlet, outletSpot);
         put(act, outlet, outletSpot);
-        put(shot, outlet, toward(outletSpot, [MID[0] - 6, 25], 3));
+        put(shot, outlet, toward(outletSpot, [outletSpot[0] + 4, outletSpot[1]], 2.5));
         skipIds[outlet.id] = true;
       }
       if (runner) {
+        if (!outlet) {
+          ballCurve = {
+            a: clone(runnerSet),
+            c: [runnerSet[0] + 6, laneY],
+            b: [runnerAct[0], laneY]
+          };
+        }
         put(set, runner, runnerSet);
         put(act, runner, runnerAct);
         put(shot, runner, finish);
         skipIds[runner.id] = true;
-      }
-      if (!outlet && runner) {
-        put(set, runner, soloStart);
-        put(act, runner, runnerAct);
-        put(shot, runner, finish);
-        ballCurve = {
-          a: clone(soloStart),
-          c: [MID[0] - 4, laneY],
-          b: [MID[0] + 4, laneY]
-        };
       }
       layoutTransFill(skipIds);
       noStitch = true;
