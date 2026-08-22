@@ -2557,7 +2557,8 @@ function liveOrSkipUserPack(opponent, options, onPack) {
         teamAHome: options.teamAHome,
         fatigueA: options.fatigueA,
         national: options.national,
-        attrs: options.attrs
+        attrs: options.attrs,
+        broadcastScale: 1
       }
     }, function (pack) {
       if (!pack) { runSkip(); return; }
@@ -4369,15 +4370,23 @@ function simulate82StyleMatchup(teamA, teamB, options) {
   var scoreB = regulationB;
   var ot = 0;
   var keyEvents = [];
-  while (scoreA === scoreB && ot < 3) {
+  while (scoreA === scoreB) {
     ot++;
     var otA = Math.max(4, Math.min(16, Math.round(simGaussian(9, 2.2))));
     var otB = Math.max(4, Math.min(16, Math.round(simGaussian(9, 2.2))));
-    if (otA === otB && ot === 3) otA++;
+    var otGuard = 0;
+    while (otA === otB && otGuard < 12) {
+      otA = Math.max(4, Math.min(16, Math.round(simGaussian(9, 2.2))));
+      otB = Math.max(4, Math.min(16, Math.round(simGaussian(9, 2.2))));
+      otGuard++;
+    }
+    if (otA === otB) otA++;
     scoreA += otA;
     scoreB += otB;
     keyEvents.push('⏱ 加时赛 #' + ot);
+    if (ot >= 20) break;
   }
+  if (scoreA === scoreB) scoreA++;
   var won = scoreA > scoreB;
   var expectedMargin = pace * (efficiencyA - efficiencyB);
   var expectedWinProb = 1 / (1 + Math.exp(-expectedMargin / 7.2));

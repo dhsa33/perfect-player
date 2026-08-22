@@ -361,6 +361,7 @@
     bp.userMins = bp.user.mins;
     bp.tgtA = clamp(Math.round(bp.pace * bp.efficiencyA + gauss(0, bp.varianceA)), 80, 155);
     bp.tgtB = clamp(Math.round(bp.pace * bp.efficiencyB + gauss(0, bp.varianceB)), 80, 155);
+    if (options.debugReboundLab) bp._debugReboundLab = true;
     return bp;
   }
 
@@ -1181,12 +1182,12 @@
     else if (hasTag(game, 'grind')) clock = irand(16, 22);
     else {
       var r = rand();
-      var transP = 0.08;
+      var transP = 0.05;
       if (ctx.userOn && game.styles) {
-        transP += (st(game.styles, 'fast_break') - 1) * 0.35;
+        transP += (st(game.styles, 'fast_break') - 1) * 0.18;
         transP -= (st(game.styles, 'post_bully') - 1) * 0.25;
       }
-      transP = clamp(transP, 0.04, 0.22);
+      transP = clamp(transP, 0.03, 0.14);
       if (r < transP) clock = irand(5, 9);
       else if (r < transP + 0.18) clock = irand(8, 13);
       else clock = irand(14, 18);
@@ -1235,9 +1236,40 @@
   function reboundRows(ctx, reb) {
     if (!reb || !reb.player) return [];
     if (reb.orb) {
-      return [{ kind: 'orb', tag: '前场板', tone: 'make', teamSide: ctx.side, text: nm(reb.player) + ' 抢到进攻篮板，球权还在' }];
+      return [{ kind: 'orb', tag: '前场板', tone: 'make', teamSide: ctx.side, text: nm(reb.player) + ' 抢到进攻篮板', rebounderPlayer: reb.player }];
     }
-    return [{ kind: 'drb', tag: '后场板', tone: 'stop', teamSide: ctx.defSide, text: nm(reb.player) + ' 保护后场篮板' }];
+    return [{ kind: 'drb', tag: '后场板', tone: 'stop', teamSide: ctx.defSide, text: nm(reb.player) + ' 拼下防守篮板', rebounderPlayer: reb.player }];
+  }
+
+  function mergeReboundClip(rows, ctx, game) {
+    if (!rows || !rows.length || !window.PP_COURT || typeof PP_COURT.appendReboundContest !== 'function') return;
+    var missI = -1, rebI = -1, i;
+    for (i = 0; i < rows.length; i++) {
+      if (rows[i].kind === 'miss' || rows[i].kind === 'blk') missI = i;
+      if (rows[i].kind === 'orb' || rows[i].kind === 'drb') rebI = i;
+    }
+    if (missI < 0 || rebI < 0 || !rows[rebI].rebounderPlayer) return;
+    var miss = rows[missI];
+    if (!miss.clip) return;
+    var rebPlayer = rows[rebI].rebounderPlayer;
+    var rebId = pid(rebPlayer);
+    var isOrb = rows[rebI].kind === 'orb';
+    var oppCourt = isOrb ? ctx.defCourt : ctx.offCourt;
+    var challenger = roleOn(oppCourt, 'big') || oppCourt[0];
+    if (challenger && pid(challenger) === rebId) challenger = oppCourt[1] || oppCourt[0];
+    var rest = (window.PP_COURT.ballRestFromClip && PP_COURT.ballRestFromClip(miss.clip))
+      || { x: 0, y: 0, z: 0.22 };
+    var bank = !!(miss._pbp && miss._pbp.bank);
+    PP_COURT.appendReboundContest(miss.clip, {
+      rebounder: rebId,
+      challenger: pid(challenger),
+      looseZ: rest.z != null ? rest.z : 0.22,
+      bank: bank,
+      kind: rows[rebI].kind,
+      rebPos: posOf(rebPlayer),
+      off: (ctx.offCourt || []).map(function (p) { return slimCourtPlayer(p, 'off'); }).filter(Boolean),
+      def: (ctx.defCourt || []).map(function (p) { return slimCourtPlayer(p, 'def'); }).filter(Boolean)
+    });
   }
 
   /* ============================================================
@@ -1295,6 +1327,20 @@
     if (/协防过度/.test(blob)) hint.contest = 'open';
     if (/转换|快攻/.test(blob)) hint.trans = true;
     return hint;
+  }
+
+  function pickOutletPasser(court, shooter) {
+    var pool = (court || []).filter(function (p) { return p && pid(p) !== pid(shooter); });
+    if (!pool.length) return null;
+    return pickWeighted(pool, function (p) {
+      var pos = posOf(p);
+      var w = 0.12 + skill01(attr(p, 'PAS')) * 1.15 + skill01(attr(p, 'REB')) * 0.35;
+      if (pos === 'PG') w += 1.6;
+      if (pos === 'C') w += 0.95;
+      if (pos === 'PF') w += 0.55;
+      if (p._isUser) w *= 1.12;
+      return w;
+    });
   }
 
   function pickMatchup(shooter, defCourt) {
@@ -1383,7 +1429,7 @@
         t3.push(['catch', 3.4], ['spot', 2.2], ['pin', 1.2], ['dho', 0.9]);
         if (contest === 'open' || contest === 'close') t3.push(['cut', 3.6], ['flare', 1.4]);
       }
-      if (trans) t3.push(['trail', 2.4]);
+      if (trans) t3.push(['trail', 1.2]);
       return pickWeightedId(t3) || 'pull3';
     }
     if (shot === 'MID') {
@@ -1394,7 +1440,10 @@
     }
     var dnk = attr(shooter, 'DNK');
     var han = attr(shooter, 'HAN');
-    if ((trans || (hint && hint.trans)) && !passer && (dnk >= 70 || han >= 72) && chance(0.40 + skill01(dnk) * 0.18)) {
+    if ((trans || (hint && hint.trans)) && passer && shot === 'FIN' && chance(0.20 + skill01(attr(shooter, 'ATH')) * 0.10)) {
+      return 'coast';
+    }
+    if ((trans || (hint && hint.trans)) && !passer && (dnk >= 76 || han >= 78) && chance(0.08 + skill01(dnk) * 0.06)) {
       return 'coast';
     }
     if (passer && dnk >= 82 && chance(0.032 + skill01(dnk) * 0.04)) {
@@ -1724,7 +1773,8 @@
   }
 
   function courtLiveAfter(kind) {
-    return kind === 'miss' || kind === 'blk' || kind === 'stl' || kind === 'orb' || kind === 'drb';
+    if (kind === 'drb') return false;
+    return kind === 'miss' || kind === 'blk' || kind === 'stl' || kind === 'orb';
   }
 
   function attachPbp(row, scene, ctx, game) {
@@ -1782,6 +1832,7 @@
 
   function resolvePossession(game, ctx, ev) {
     var bp = game.bp;
+    var labReb = !!(bp && bp._debugReboundLab);
     var side = ctx.side;
     var fx = liveFx(ev);
     var rows = [];
@@ -1799,13 +1850,13 @@
     var form = (side === 'A' ? game.formA : game.formB) + gauss(0, 0.008);
     var rush = ctx.secLeft <= 6 ? -0.10 : 0;
 
-    if (fx.tech) {
+    if (fx.tech && !labReb) {
       addScore(game, ctx.defSide, 1, ctx.qIdx, ctx.isOT);
       rows.push({ kind: 'tech', tag: '罚球', tone: 'make', teamSide: ctx.defSide, text: '技术犯规罚球命中' });
       return { clock: Math.min(clock, 8), orb: false, rows: rows };
     }
 
-    if (fx.hack) {
+    if (fx.hack && !labReb) {
       var victim = (ev && ev._bind && ev._bind.actor) || ctx.offCourt[0];
       if (!victim || ctx.offCourt.indexOf(victim) < 0) victim = ctx.offCourt[0];
       var hackFt = shotPctFor(victim, 'FT', 0, form * 0.4, 1, victim && victim._isUser ? styleMul('ice_ft', game) : 1);
@@ -1822,7 +1873,7 @@
       return { clock: Math.min(clock, 10), orb: false, rows: rows };
     }
 
-    if (fx.forceTov || fx.stl || chance(tovRate)) {
+    if (!labReb && (fx.forceTov || fx.stl || chance(tovRate))) {
       var loser = pickShooter(ctx.offCourt, ctx.userOn, ctx.usage * 0.55, false) || ctx.offCourt[0];
       lineOf(game, loser).tov++;
       var userOnDef = ctx.defCourt.filter(function (p) { return p && p._isUser; })[0];
@@ -1845,10 +1896,37 @@
           text: composeTurnoverText(loser, stealer, fx, ev)
         }, { kind: 'stl', shooter: loser, stealer: stealer, loser: loser, matchup: stealer, tactic: 'steal', branch: 'strip', camera: 'full', action: 'layup', contest: 'contest', outcome: 'miss' }, ctx, game));
       } else {
+        var tovText = composeTurnoverText(loser, null, fx, ev);
+        var passTov = /传球出界|传穿/.test(tovText);
+        var sceneShooter = loser;
+        var scenePasser = null;
+        if (passTov) {
+          scenePasser = loser;
+          sceneShooter = pickWeighted(ctx.offCourt.filter(function (p) { return p && pid(p) !== pid(loser); }), function (p) {
+            var w = 0.25 + skill01(attr(p, 'ATH')) * 0.9 + skill01(attr(p, 'HAN')) * 0.35;
+            if (p._isUser) w *= 1.2;
+            return w;
+          });
+          if (!sceneShooter) {
+            sceneShooter = ctx.offCourt.filter(function (p) { return p && pid(p) !== pid(loser); })[0];
+          }
+          if (!sceneShooter) sceneShooter = loser;
+        }
         rows.push(attachPbp({
           kind: 'tov', tag: '进攻失败', tone: 'miss', teamSide: side,
-          text: composeTurnoverText(loser, null, fx, ev)
-        }, { kind: 'tov', shooter: loser, loser: loser, tactic: 'iso_mid', branch: 'jumper', camera: 'half', action: 'slash', contest: 'contest', outcome: 'miss' }, ctx, game));
+          text: tovText
+        }, {
+          kind: 'tov',
+          shooter: sceneShooter,
+          passer: scenePasser,
+          loser: loser,
+          tactic: passTov ? 'pnr_side' : 'iso_mid',
+          branch: passTov ? 'extra' : 'jumper',
+          camera: 'half',
+          action: passTov ? 'catch' : 'slash',
+          contest: 'contest',
+          outcome: 'miss'
+        }, ctx, game));
       }
       return { clock: clock, orb: false, rows: rows };
     }
@@ -1872,10 +1950,13 @@
     if (shot === 'three') shot = 'threePT';
     var evHint = eventActionHint(ev, fx);
     var trans = clock <= 9 || hasTag(game, 'transition') || !!(evHint && evHint.trans);
+    if (trans && !passer && chance(0.74)) passer = pickOutletPasser(ctx.offCourt, shooter);
+    if (evHint.action === 'coast' && !passer) passer = pickOutletPasser(ctx.offCourt, shooter);
     var matchup = pickMatchup(shooter, ctx.defCourt);
     var help = pickHelp(shot, matchup, ctx.defCourt, evHint);
     var contest = rollContest(shot, shooter, matchup, help, evHint);
     var action = pickAction(shooter, shot, passer, contest, trans, evHint, fx);
+    if (action === 'coast' && !passer) passer = pickOutletPasser(ctx.offCourt, shooter);
     if (action === 'lob' && !passer) action = attr(shooter, 'DNK') >= 78 ? 'dunk' : 'layup';
     if ((action === 'cut' || action === 'spot' || action === 'catch' || action === 'flare' || action === 'pin' || action === 'dho') && !passer) action = shot === 'threePT' ? 'pull3' : 'jumper';
     if (passer && shot === 'threePT' && (action === 'catch' || action === 'spot' || action === 'cut' || action === 'flare' || action === 'pin')) {
@@ -1958,10 +2039,10 @@
     else if (fx.foul) foulP = Math.max(foulP, 0.72);
     var shootingFoul = chance(foulP);
 
-    if (shootingFoul) {
+    if (shootingFoul && !labReb) {
       var fta = shot === 'threePT' ? 3 : 2;
       var andOne = false;
-      if (!fx.hack && shot === 'FIN' && chance(0.20)) {
+      if (!labReb && !fx.hack && shot === 'FIN' && chance(0.20)) {
         if (chance(pct)) {
           recordShot(game, shooter, 'FIN', true, 2, passer, side, ctx.qIdx, ctx.isOT);
           fta = 1;
@@ -1986,13 +2067,13 @@
       scene.beat = driveAction(action) && (andOne || contest === 'help' || contest === 'heavy');
       if (andOne) scene.bank = rollBankShot(scene);
       rows.push(attachPbp({
-        kind: 'foul', tag: '造杀伤', tone: madeFt ? 'make' : 'miss', teamSide: side,
+        kind: andOne ? 'andone' : 'foul', tag: '造杀伤', tone: madeFt ? 'make' : 'miss', teamSide: side,
         text: composeShotText(scene)
       }, scene, ctx, game));
       return { clock: clock, orb: false, rows: rows };
     }
 
-    var made = chance(pct);
+    var made = labReb ? false : chance(pct);
     var pts = shot === 'threePT' ? 3 : 2;
     recordShot(game, shooter, shot, made, pts, passer, side, ctx.qIdx, ctx.isOT);
     scene.outcome = made ? 'make' : 'miss';
@@ -2049,6 +2130,10 @@
     game.plays.push(play);
     game.feed.push(play);
     sess.tickPlays.push(play);
+    if (game) {
+      if (row.kind === 'orb') game._courtLive = true;
+      else if (row.kind === 'drb') game._courtLive = false;
+    }
     return play;
   }
 
@@ -2057,6 +2142,55 @@
     emitPlay(sess, { q: sess.q, isOT: sess.isOT, secLeft: sess.clock }, {
       kind: 'meta', tag: '', tone: '', text: text, secLeft: sess.clock
     });
+  }
+
+  function emitJumpBall(sess) {
+    var game = sess.game;
+    var bp = game.bp;
+    var q = sess.q;
+    var clock = sess.clock;
+    var isOT = sess.isOT;
+    var margin = game.scoreA - game.scoreB;
+    var stint = stintOf(q, clock, margin, isOT);
+    var user = bp.rosterA.filter(function (p) { return p && p._isUser; })[0];
+    var userWanted = userWantedOn(game, stint, q, clock, margin, isOT);
+    var courtA = pickCourt(bp.rosterA, stint, userWanted, user);
+    var courtB = pickCourt(bp.rosterB, stint, false, null);
+    var centerA = roleOn(courtA, 'big') || courtA[0];
+    var centerB = roleOn(courtB, 'big') || courtB[0];
+    var winCourt = sess.possessor === 'A' ? courtA : courtB;
+    var tipTo = roleOn(winCourt, 'pg') || winCourt[0];
+    var winnerTeam = sess.possessor === 'A' ? teamName(bp.teamA) : teamName(bp.teamB);
+    var text = nm(centerA) + '与' + nm(centerB) + '中圈争球，球拨给' + nm(tipTo) + '，' + winnerTeam + '先攻';
+    var ctx = { q: q, isOT: isOT, secLeft: clock, side: sess.possessor };
+    var row = {
+      kind: 'jump',
+      tag: '跳球',
+      tone: '',
+      teamSide: sess.possessor,
+      text: text,
+      secLeft: clock
+    };
+    if (window.PP_COURT && typeof PP_COURT.composeJumpBall === 'function') {
+      try {
+        var clip = PP_COURT.composeJumpBall({
+          centerA: pid(centerA),
+          centerB: pid(centerB),
+          tipTo: pid(tipTo),
+          winner: sess.possessor,
+          off: courtA.map(function (p) { return slimCourtPlayer(p, 'off'); }).filter(Boolean),
+          def: courtB.map(function (p) { return slimCourtPlayer(p, 'def'); }).filter(Boolean),
+          teamAHome: !!bp.teamAHome,
+          attackRight: attackRightFor({ side: 'A', q: q, isOT: isOT })
+        });
+        if (clip) {
+          clip.attackRight = attackRightFor({ side: 'A', q: q, isOT: isOT });
+          row.clip = clip;
+        }
+      } catch (e) { /* ignore */ }
+    }
+    game._courtLive = false;
+    emitPlay(sess, ctx, row);
   }
 
   function stintLabel(stint) {
@@ -2141,6 +2275,7 @@
 
   function emitOutcomeRows(sess, ctx, outcome) {
     var after = Math.max(0, ctx.secLeft - (outcome.clock || 0));
+    mergeReboundClip(outcome.rows, ctx, sess.game);
     (outcome.rows || []).forEach(function (row) {
       row.secLeft = after;
       emitPlay(sess, ctx, row);
@@ -2179,32 +2314,44 @@
       emitMeta(sess, periodLabel(sess.q, false) + '开始');
       return true;
     }
-    if (game.scoreA === game.scoreB && game.ot < 3) {
-      game.ot++;
-      game.thisOtA = clamp(Math.round(gauss(9, 2.2)), 4, 16);
-      game.thisOtB = clamp(Math.round(gauss(9, 2.2)), 4, 16);
-      if (game.thisOtA === game.thisOtB && game.ot === 3) game.thisOtA++;
-      game.otTgtA = (game.otTgtA || 0) + game.thisOtA;
-      game.otTgtB = (game.otTgtB || 0) + game.thisOtB;
-      sess.q = 4;
-      sess.qIdx = 3;
-      sess.isOT = true;
-      sess.clock = 300;
-      sess.afterTimeout = true;
-      sess.lastStint = null;
-      sess.lastUserOn = null;
-      sess.possessor = rand() < 0.5 ? 'A' : 'B';
-      emitMeta(sess, periodLabel(4, true, game.ot) + '开始');
-      return true;
+    if (game.scoreA !== game.scoreB) {
+      return false;
     }
-    return false;
+    game.ot++;
+    game.thisOtA = clamp(Math.round(gauss(9, 2.2)), 4, 16);
+    game.thisOtB = clamp(Math.round(gauss(9, 2.2)), 4, 16);
+    if (game.thisOtA === game.thisOtB) game.thisOtA++;
+    game.otTgtA = (game.otTgtA || 0) + game.thisOtA;
+    game.otTgtB = (game.otTgtB || 0) + game.thisOtB;
+    game.otA = 0;
+    game.otB = 0;
+    sess.q = 4;
+    sess.qIdx = 3;
+    sess.isOT = true;
+    sess.clock = 300;
+    sess.afterTimeout = true;
+    sess.lastStint = null;
+    sess.lastUserOn = null;
+    if (game.ot === 1) {
+      sess.possessor = rand() < 0.5 ? 'A' : 'B';
+      emitMeta(sess, periodLabel(sess.q, true, game.ot) + '开始');
+      emitJumpBall(sess);
+    } else {
+      sess.possessor = sess.possessor === 'A' ? 'B' : 'A';
+      var otFirst = sess.possessor === 'A' ? teamName(game.bp.teamA) : teamName(game.bp.teamB);
+      emitMeta(sess, periodLabel(sess.q, true, game.ot) + '开始　' + otFirst + '先攻');
+    }
+    return true;
   }
 
   function finishGame(sess) {
     if (sess.done) return;
     var game = sess.game;
     var bp = game.bp;
-    if (game.scoreA === game.scoreB) game.scoreA++;
+    if (game.scoreA === game.scoreB) {
+      sess.awaitingPeriod = true;
+      if (openNextPeriod(sess)) return;
+    }
     calibrate(game, bp);
     emitMeta(sess, '终场　' + Math.round(game.scoreA) + '-' + Math.round(game.scoreB));
     var won = game.scoreA > game.scoreB;
@@ -2312,6 +2459,7 @@
     var sess = {
       watch: !!options.watch,
       fastForward: false,
+      broadcastScale: Math.max(0.25, Number(options.broadcastScale) || 1),
       bp: bp,
       game: game,
       q: 1,
@@ -2327,7 +2475,7 @@
       pack: null,
       tickPlays: []
     };
-    emitMeta(sess, periodLabel(1, false) + '开始');
+    emitJumpBall(sess);
     return sess;
   }
 
@@ -2386,6 +2534,19 @@
     return adj - left;
   }
 
+  function addCalibratedTeamPts(game, side, pts) {
+    if (!pts) return;
+    if (side === 'A') {
+      game.scoreA += pts;
+      if (game.ot > 0) game.otA += pts;
+      else game.qA[3] += pts;
+    } else {
+      game.scoreB += pts;
+      if (game.ot > 0) game.otB += pts;
+      else game.qB[3] += pts;
+    }
+  }
+
   function calibrate(game, bp) {
     var user = bp.rosterA.filter(function (p) { return p && p._isUser; })[0];
     if (user) {
@@ -2396,8 +2557,7 @@
         var before = ln.pts;
         addPtsToLine(ln, uAdj);
         var got = ln.pts - before;
-        game.scoreA += got;
-        game.qA[3] += got;
+        addCalibratedTeamPts(game, 'A', got);
       }
       ['reb', 'ast', 'stl', 'blk', 'tov'].forEach(function (k) {
         var exp = bp.user[k];
@@ -2416,8 +2576,7 @@
       if (Math.abs(diff) <= maxDev) return;
       var adj = Math.round((Math.abs(diff) - maxDev) * 0.94) * (diff > 0 ? -1 : 1);
       var applied = distributeAdj(game, side === 'A' ? bp.rosterA : bp.rosterB, adj, true);
-      if (side === 'A') { game.scoreA += applied; game.qA[3] += applied; }
-      else { game.scoreB += applied; game.qB[3] += applied; }
+      addCalibratedTeamPts(game, side, applied);
     }
     pullTeam('A');
     pullTeam('B');
@@ -2633,7 +2792,7 @@
     }
     var cls = 'pp-live-row';
     if (p.teamSide === 'A') cls += ' is-us';
-    if (p.tone) cls += ' is-' + p.tone;
+    if (p.tone && p.tone !== 'meta') cls += ' is-' + p.tone;
     var tag = p.tag ? '<span class="pp-live-tag">[' + esc(p.tag) + ']</span>' : '';
     return '<div class="' + cls + '">' +
       '<div class="pp-live-time">' + esc(p.clock) + '</div>' +
@@ -2793,18 +2952,104 @@
     renderHeroLine(sess, pack);
   }
 
-  function appendPlays(plays, opt) {
+  function insertPlayRows(plays) {
     var feedEl = document.getElementById('pp-live-feed');
     if (!feedEl || !plays || !plays.length) return;
     var html = '';
     for (var i = 0; i < plays.length; i++) html += playRowHtml(plays[i]);
     feedEl.insertAdjacentHTML('beforeend', html);
     feedEl.scrollTop = feedEl.scrollHeight;
-    if (opt && opt.court && window.PP_COURT && typeof PP_COURT.play === 'function') {
-      var clip = null;
-      for (i = 0; i < plays.length; i++) if (plays[i] && plays[i].clip) clip = plays[i].clip;
-      if (clip) PP_COURT.play(clip, opt.duration || 1400);
+  }
+
+  function pickCourtClip(plays) {
+    if (!plays || !plays.length) return null;
+    var clip = null, i, pl;
+    for (i = 0; i < plays.length; i++) {
+      pl = plays[i];
+      if (pl && pl.clip && (pl.kind === 'make' || pl.kind === 'andone' || pl.tone === 'make')) clip = pl.clip;
     }
+    if (!clip) {
+      for (i = 0; i < plays.length; i++) if (plays[i] && plays[i].clip) clip = plays[i].clip;
+    }
+    return clip;
+  }
+
+  function playMergedMissReb(missP, rebP, dur, next) {
+    var clip = missP.clip;
+    var missU = clip.missSplitU || 0.72;
+    var missDone = false;
+    var missTimer = setTimeout(function () {
+      if (!missDone) {
+        missDone = true;
+        insertPlayRows([missP]);
+      }
+    }, Math.round(dur * missU));
+    PP_COURT.play(clip, dur, function () {
+      clearTimeout(missTimer);
+      if (!missDone) {
+        missDone = true;
+        insertPlayRows([missP]);
+      }
+      insertPlayRows([rebP]);
+      if (next) next();
+    });
+  }
+
+  function appendPlays(plays, opt) {
+    opt = opt || {};
+    if (!plays || !plays.length) {
+      if (opt.onDone) opt.onDone();
+      return;
+    }
+    var baseDur = opt.duration || 1400;
+    var courtOn = opt.court && window.PP_COURT && typeof PP_COURT.play === 'function';
+    var deferText = !!opt.deferText;
+
+    function clipDuration(clip) {
+      var d = baseDur;
+      if (clip.reboundMerged) d = Math.round(d * 1.16);
+      if (clip.reboundMode === 'tipout') d = Math.round(d * 1.08);
+      if (clip.jumpBall) d = Math.round(d * 1.22);
+      return d;
+    }
+
+    function playSeq(idx) {
+      if (idx >= plays.length) {
+        if (opt.onDone) opt.onDone();
+        return;
+      }
+      var p = plays[idx];
+      if ((p.kind === 'miss' || p.kind === 'blk') && courtOn) {
+        var rebI = -1, j;
+        for (j = idx + 1; j < plays.length; j++) {
+          if (plays[j].kind === 'orb' || plays[j].kind === 'drb') { rebI = j; break; }
+        }
+        if (rebI >= 0 && p.clip && p.clip.reboundMerged) {
+          if (deferText) {
+            playMergedMissReb(p, plays[rebI], clipDuration(p.clip), function () { playSeq(rebI + 1); });
+            return;
+          }
+          insertPlayRows([p, plays[rebI]]);
+          PP_COURT.play(p.clip, clipDuration(p.clip), function () { playSeq(rebI + 1); });
+          return;
+        }
+      }
+      var clip = courtOn && p && p.clip ? p.clip : null;
+      if (deferText && clip) {
+        PP_COURT.play(clip, clipDuration(clip), function () {
+          insertPlayRows([p]);
+          playSeq(idx + 1);
+        });
+        return;
+      }
+      insertPlayRows([p]);
+      if (clip) {
+        PP_COURT.play(clip, clipDuration(clip), function () { playSeq(idx + 1); });
+        return;
+      }
+      playSeq(idx + 1);
+    }
+    playSeq(0);
   }
 
   function showFinalCard(pack) {
@@ -2835,12 +3080,18 @@
     var timer = null;
     var closed = false;
 
-    appendPlays(sess.game.plays);
+    appendPlays(sess.game.plays, {
+      court: !sess.fastForward,
+      deferText: !sess.fastForward,
+      duration: 1400 * (sess.broadcastScale || 1),
+      onDone: function () { pump(); }
+    });
     renderBoard(sess, null);
 
-    function delay() {
+    function readGap() {
       if (sess.fastForward) return 0;
-      return fast ? 280 : 1400;
+      var scale = sess.broadcastScale || 1;
+      return fast ? Math.round(160 * scale) : Math.round(360 * scale);
     }
     function stopTimer() {
       if (timer) { clearTimeout(timer); timer = null; }
@@ -2863,29 +3114,51 @@
       overlay.remove();
       if (done) done(sess.pack);
     }
-    function handleTick(out) {
-      appendPlays(out.plays, { court: !fast && !sess.fastForward, duration: 1400 });
-      renderBoard(sess, sess.done ? sess.pack : null);
-      if (sess.done) finishUI();
-    }
-    function pump() {
-      if (closed || paused || sess.done) return;
-      handleTick(tickSession(sess));
-      if (!sess.done) schedule();
-    }
-    function schedule() {
+    function scheduleNext() {
       stopTimer();
       if (closed || paused || sess.done) return;
-      if (delay() === 0) {
+      var gap = readGap();
+      if (gap === 0) {
+        pump();
+        return;
+      }
+      timer = setTimeout(pump, gap);
+    }
+    function scheduleGap() {
+      stopTimer();
+      if (closed || paused || sess.done) return;
+      if (readGap() === 0) {
         var n = 0;
         while (!sess.done && n < 12) {
           handleTick(tickSession(sess));
           n++;
         }
-        if (!sess.done) timer = setTimeout(schedule, 0);
+        if (!sess.done) timer = setTimeout(scheduleGap, 0);
         return;
       }
-      timer = setTimeout(pump, delay());
+      scheduleNext();
+    }
+    function handleTick(out) {
+      var scale = sess.broadcastScale || 1;
+      var courtOn = !fast && !sess.fastForward;
+      appendPlays(out.plays, {
+        court: courtOn,
+        deferText: courtOn,
+        duration: 1400 * scale,
+        onDone: function () {
+          renderBoard(sess, sess.done ? sess.pack : null);
+          if (sess.done) finishUI();
+          else if (courtOn) pump();
+          else scheduleNext();
+        }
+      });
+    }
+    function pump() {
+      if (closed || paused || sess.done) return;
+      handleTick(tickSession(sess));
+    }
+    function schedule() {
+      scheduleGap();
     }
     function skipToEnd() {
       sess.fastForward = true;
@@ -2916,7 +3189,6 @@
       if (!paused && !sess.done) schedule();
     };
     document.getElementById('pp-live-end').onclick = skipToEnd;
-    schedule();
   }
   PP_LIVE.playTheaterWatch = playTheaterWatch;
 
@@ -2958,9 +3230,16 @@
       }
       var p = plays[idx++];
       currentClockFromPlay(p);
-      appendPlays([p], { court: !fast, duration: 1400 });
-      renderBoard(fakeSess, null);
-      timer = setTimeout(pump, fast ? 280 : 1400);
+      var courtOn = !fast;
+      appendPlays([p], {
+        court: courtOn,
+        deferText: courtOn,
+        duration: 1400,
+        onDone: function () {
+          renderBoard(fakeSess, null);
+          timer = setTimeout(pump, fast ? 160 : 360);
+        }
+      });
     }
     document.getElementById('pp-live-pause').onclick = function () {
       paused = !paused;

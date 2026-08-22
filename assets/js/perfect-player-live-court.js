@@ -26,6 +26,9 @@
 
   var cornerInset = Math.sqrt(THREE_R * THREE_R - (COURT_W / 2 - SIDELINE_3) * (COURT_W / 2 - SIDELINE_3));
   var THREE_CORNER_X = RIM[0] - cornerInset;
+  var CORNER_Y_L = SIDELINE_3 + 0.6;
+  var CORNER_Y_R = COURT_W - SIDELINE_3 - 0.6;
+  var SHORT_CORNER_X = RIM[0] - Math.sqrt(CORNER_3 * CORNER_3 - (25 - 10) * (25 - 10));
 
   var Z = {
     rim: [RIM[0] - 2.2, 25],
@@ -34,20 +37,20 @@
     nail: [FT[0] - 5.5, 25],
     elbowL: [FT[0], 17],
     elbowR: [FT[0], 33],
-    slotL: [RIM[0] - 18, 11],
-    slotR: [RIM[0] - 18, 39],
-    wingL: [RIM[0] - 16.8, 8.2],
-    wingR: [RIM[0] - 16.8, 41.8],
-    cornerL: [RIM[0] + 2.4, SIDELINE_3 + 0.6],
-    cornerR: [RIM[0] + 2.4, COURT_W - SIDELINE_3 - 0.6],
+    slotL: [RIM[0] - 19.4, 11],
+    slotR: [RIM[0] - 19.4, 39],
+    wingL: [RIM[0] - 17.2, 8.2],
+    wingR: [RIM[0] - 17.2, 41.8],
+    cornerL: [THREE_CORNER_X, CORNER_Y_L],
+    cornerR: [THREE_CORNER_X, CORNER_Y_R],
     top: [RIM[0] - THREE_R, 25],
     logo: [RIM[0] - THREE_R - 8, 25],
     postL: [RIM[0] - 5.5, 18.5],
     postR: [RIM[0] - 5.5, 31.5],
     dunkerL: [RIM[0] - 2.5, 13.5],
     dunkerR: [RIM[0] - 2.5, 36.5],
-    shortL: [RIM[0] + 1.2, 10],
-    shortR: [RIM[0] + 1.2, 40],
+    shortL: [SHORT_CORNER_X, 10],
+    shortR: [SHORT_CORNER_X, 40],
     hashL: [MID[0] + 8, 10],
     hashR: [MID[0] + 8, 40],
     trail: [MID[0] + 6, 22],
@@ -63,6 +66,28 @@
   function dist(a, b) {
     var dx = a[0] - b[0], dy = a[1] - b[1];
     return Math.sqrt(dx * dx + dy * dy);
+  }
+  function minThreeDistFromRim(y) {
+    var dy = Math.abs(25 - y);
+    if (dy >= (COURT_W / 2 - SIDELINE_3) - 0.5) return CORNER_3 - 0.15;
+    return THREE_R - 0.2;
+  }
+  function isThreeInput(input) {
+    var action = String((input && input.action) || '');
+    return (input && input.shot === 'threePT') ||
+      /^(spot|catch|cut|pull3|stepback|snatch|flare|pin|dho|trail)$/.test(action);
+  }
+  function pushOutsideThree(xy) {
+    if (!xy) return xy;
+    var dx = xy[0] - RIM[0], dy = xy[1] - RIM[1];
+    var d = Math.sqrt(dx * dx + dy * dy) || 0.001;
+    var need = minThreeDistFromRim(xy[1]);
+    if (d >= need) return clone(xy);
+    var scale = need / d;
+    return [
+      clamp(RIM[0] + dx * scale, 1.6, COURT_L - 1.6),
+      clamp(RIM[1] + dy * scale, 1.6, COURT_W - 1.6)
+    ];
   }
   function toward(from, to, feet) {
     var dx = to[0] - from[0], dy = to[1] - from[1];
@@ -324,7 +349,7 @@
       put(shot, p, toward(here, here[1] < 25 ? cS : cW, 6));
     }
 
-    if (tactic === 'trans_coast' || tactic === 'steal' || action === 'coast') {
+    if (tactic === 'steal') {
       put(act, m.ball, clone(Z.midc));
       put(shot, m.ball, clone(Z.rim));
       relocate(m.wing, cS, 22);
@@ -332,6 +357,40 @@
       relocate(m.passer, sW, 20);
       relocate(m.extra, cW, 22);
       return { set: set, act: act, shot: shot, ballId: m.ball && m.ball.id, ballCurve: null };
+    }
+
+    if (tactic === 'trans_coast' || action === 'coast') {
+      var runner = m.ball;
+      var outlet = (m.passer && runner && m.passer.id !== runner.id) ? m.passer : null;
+      var laneY = runner ? (idHash(runner.id) > 0.52 ? 31.5 : 18.5) : 25;
+      var runnerSet = [MID[0] - 8, laneY];
+      var runnerAct = [MID[0] + 10, laneY];
+      var outletSpot = [HOOP_IN + 2.8, 25];
+      var soloWing = laneY < 25 ? clone(Z.wingL) : clone(Z.wingR);
+      var ballCurve = null;
+
+      if (outlet) {
+        put(set, outlet, clone(outletSpot));
+        put(act, outlet, clone(outletSpot));
+        put(shot, outlet, toward(outletSpot, Z.midc, 5));
+        put(set, runner, runnerSet);
+        put(act, runner, runnerAct);
+        put(shot, runner, clone(Z.rim));
+      } else {
+        put(set, runner, soloWing);
+        put(act, runner, runnerAct);
+        put(shot, runner, clone(Z.rim));
+        ballCurve = {
+          a: clone(soloWing),
+          c: [MID[0] - 2, laneY],
+          b: [MID[0] + 6, laneY]
+        };
+      }
+      relocate(m.wing, cS, 22);
+      relocate(m.big, dW, 22);
+      if (!outlet) relocate(m.passer, sW, 20);
+      relocate(m.extra, cW, 22);
+      return { set: set, act: act, shot: shot, ballId: runner && runner.id, ballCurve: ballCurve };
     }
 
     if (drive) {
@@ -342,8 +401,8 @@
       put(act, m.ball, [sS[0], (start[1] + zone[1]) / 2]);
       put(shot, m.ball, zone);
     } else if (action === 'stepback' || action === 'snatch' || branch === 'step') {
-      put(act, m.ball, toward(start, zone, 2.2));
-      put(shot, m.ball, toward(start, Z.logo, 5.5));
+      put(act, m.ball, toward(zone, RIM, 2.4));
+      put(shot, m.ball, zone);
     } else {
       put(act, m.ball, toward(start, zone, 5));
       put(shot, m.ball, zone);
@@ -384,6 +443,10 @@
       if (i % 2) dummyCut(p);
       else spaceOut(p);
     });
+
+    if (isThreeInput(input) && m.ball && shot[m.ball.id]) {
+      shot[m.ball.id] = pushOutsideThree(shot[m.ball.id]);
+    }
 
     return { set: set, act: act, shot: shot, ballId: m.ball && m.ball.id, ballCurve: ballCurve };
   }
@@ -534,10 +597,10 @@
     } else if (seg.swish) {
       if (u <= arrive) {
         t = arrive > 0.001 ? u / arrive : 1;
-        z = h * 3.1 * t * (1 - t) + 1.25 * t;
+        z = h * 2.6 * t * (1 - t) + 0.42 * t;
       } else {
         d = (u - arrive) / Math.max(0.0001, 1 - arrive);
-        z = 1.25 * (1 - d) * (1 - d) + 0.16;
+        z = 0.42 * (1 - d) * (1 - d) + 0.06;
       }
     } else {
       z = h * 4 * u * (1 - u);
@@ -566,6 +629,42 @@
     if (h < 0.56) return [rim[0] + ux * 3.6, clamp(rim[1] + uy * 1.8, 3, 47)];
     var side = h < 0.78 ? 2.7 : -2.7;
     return [rim[0] + px * side + ux * 0.6, clamp(rim[1] + py * side, 3, 47)];
+  }
+
+  function passOobDestination(passFrom, recvAt, attackRight) {
+    if (!passFrom || !recvAt) return [clamp((passFrom || recvAt)[0] - 5, 1.2, COURT_L - 1.2), recvAt ? recvAt[1] : 25];
+    var dx = recvAt[0] - passFrom[0], dy = recvAt[1] - passFrom[1];
+    var len = Math.sqrt(dx * dx + dy * dy) || 1;
+    var ux = dx / len, uy = dy / len;
+    var candidates = [], t, pt, d, best = null, bestD = 1e9, i;
+    if (uy > 0.02) {
+      t = (48.4 - recvAt[1]) / uy;
+      if (t > 1.5) candidates.push([recvAt[0] + ux * t, 48.4]);
+    }
+    if (uy < -0.02) {
+      t = (1.6 - recvAt[1]) / uy;
+      if (t > 1.5) candidates.push([recvAt[0] + ux * t, 1.6]);
+    }
+    if (ux > 0.02) {
+      t = (COURT_L - 1.3 - recvAt[0]) / ux;
+      if (t > 1.5) candidates.push([COURT_L - 1.3, recvAt[1] + uy * t]);
+    }
+    if (ux < -0.02) {
+      t = (1.3 - recvAt[0]) / ux;
+      if (t > 1.5) candidates.push([1.3, recvAt[1] + uy * t]);
+    }
+    for (i = 0; i < candidates.length; i++) {
+      pt = candidates[i];
+      d = dist(recvAt, pt);
+      if (d > 2.2 && d < bestD) {
+        bestD = d;
+        best = pt;
+      }
+    }
+    if (!best) {
+      best = [recvAt[0] + ux * 7.5, clamp(recvAt[1] + uy * 7.5, 1.4, 48.6)];
+    }
+    return [clamp(best[0], 0.6, COURT_L - 0.6), clamp(best[1], 0.9, 49.1)];
   }
 
   function posMapFrom(off, def) {
@@ -641,14 +740,27 @@
       return segs;
     }
     if (kind === 'tov') {
+      var attackRight = input.attackRight !== false;
       if (wantPass) {
-        pushHold(0, 0.26, passerId);
-        var out = xyHold(0.26, passerId) || [70, 25];
-        pushFly(0.26, 0.82, out, [clamp(out[0] - 6, 2, 92), out[1] < 25 ? 1.2 : 48.8], 4.2, 2.2);
+        var recvId = shooterId;
+        var tPass0 = 0.08, tPass1 = 0.30;
+        pushHold(0, tPass0, passerId);
+        var pa = xyHold(tPass0, passerId);
+        var pb = xyHold(tPass1, recvId) || xyHold(0.55, recvId);
+        if (!pa) pa = [FT[0], 25];
+        if (!pb) pb = [RIM[0] - 14, 25];
+        var oobPass = passOobDestination(pa, pb, attackRight);
+        pushFly(tPass0, tPass1, pa, pb, 4.4, 2.05);
+        pushFly(tPass1, 0.84, pb, oobPass, 2.4, 1.55);
       } else {
-        pushHold(0, 0.4, shooterId);
-        out = xyHold(0.4, shooterId) || [70, 25];
-        pushFly(0.4, 0.86, out, [clamp(out[0] - 4, 2, 92), out[1] < 25 ? 1.2 : 48.8], 3.4, 1.6);
+        pushHold(0, 0.34, shooterId);
+        var p0 = xyHold(0.18, shooterId) || xyHold(0.34, shooterId) || [FT[0], 25];
+        var p1 = xyHold(0.48, shooterId) || p0;
+        var dribFrom = xyHold(0.34, shooterId) || p1;
+        var oobDrib = dist(p0, p1) > 1.2
+          ? passOobDestination(p0, p1, attackRight)
+          : [p1[0] + 3.5, p1[1] < 25 ? 1.4 : 48.6];
+        pushFly(0.34, 0.84, dribFrom, oobDrib, 3.0, 1.35);
       }
       return segs;
     }
@@ -661,12 +773,16 @@
 
     var passH = lob ? 8.8 : (dho ? 2.15 : 4.5);
     var passCurve = lob ? 3.3 : (dho ? 0.65 : 2.25);
+    if (action === 'coast' && wantPass) {
+      passH = 6.2;
+      passCurve = 2.6;
+    }
     var shotH = dunk ? 2.6 : (drive ? 4.1 : (three ? 10.6 : 7.3));
     var shotCurve = dunk ? 0.12 : (drive ? 0.22 : (three ? 0.55 : 0.32));
     var isMake = kind === 'make' || kind === 'andone' || input.outcome === 'make' || input.outcome === 'andone';
     var bank = !!(input.bank && isMake && !dunk && !lob);
-    var shotDur = dunk ? 0.22 : (drive ? 0.32 : (three ? 0.46 : 0.38));
-    var tShot1 = isMake ? (bank ? 0.94 : 0.88) : 0.96;
+    var shotDur = dunk ? 0.24 : (drive ? 0.32 : (three ? 0.46 : 0.38));
+    var tShot1 = isMake ? (bank ? 0.92 : 0.82) : 0.96;
     var tShot0 = tShot1 - shotDur - (bank ? 0.08 : 0);
     var tPass1 = 0, tPass0 = 0;
     if (wantPass) {
@@ -675,6 +791,15 @@
       var passDur = clamp(0.18 + (pa && pb ? dist(pa, pb) : 18) / 85, 0.2, 0.36);
       tPass1 = Math.max(0.12, tShot0 - (dho ? 0.06 : 0.12));
       tPass0 = Math.max(0.1, tPass1 - passDur);
+      if (action === 'coast') {
+        pa = xyHold(0.12, passerId) || pa;
+        pb = xyHold(0.32, shooterId) || pb;
+        passDur = clamp(0.14 + (pa && pb ? dist(pa, pb) : 28) / 72, 0.16, 0.30);
+        tPass0 = 0.08;
+        tPass1 = tPass0 + passDur;
+        tShot0 = Math.max(tPass1 + 0.10, 0.40);
+        tShot1 = tShot0 + shotDur + (bank ? 0.08 : 0);
+      }
       if (tPass0 < 0.1) { tPass0 = 0.1; tPass1 = tPass0 + passDur; if (tPass1 > tShot0 - 0.06) tShot0 = Math.min(0.78, tPass1 + 0.08); }
       pushHold(0, tPass0, passerId);
       pushFly(tPass0, tPass1, xyHold(tPass0, passerId), xyHold(tPass1, shooterId), passH, passCurve);
@@ -689,22 +814,23 @@
       if (from) {
         var dest = clone(rim);
         var extra = null;
-        if (kind === 'miss' || kind === 'foul') dest = missTarget(from, rim, input);
+        if (kind === 'miss' || (kind === 'foul' && !isMake)) dest = missTarget(from, rim, input);
         if (kind === 'blk') {
           dest = lerp(from, rim, 0.62);
           extra = { blockU: 0.55, blockTo: missTarget(from, rim, input) };
           extra.blockTo[0] = clamp(extra.blockTo[0] - 5.5, 4, 90);
         }
-        if (isMake && !bank) extra = { arrive: dunk ? 0.58 : 0.7, swish: true };
+        if (isMake && !bank) extra = { arrive: dunk ? 0.72 : 0.88, swish: true };
         if (bank) {
           var glass = bankGlassPoint(from, rim);
           var tBoard = tShot0 + (tShot1 - tShot0) * 0.68;
           pushFly(tShot0, tBoard, from, glass, shotH * 0.82, shotCurve * 0.4, { landZ: 2.15, z0: 0.45 });
           pushFly(tBoard, tShot1, glass, rim, 1.05, 0.06, { arrive: 0.58, swish: true });
-          pushRest(tShot1, 1, rim, 0.2);
+          pushRest(tShot1, Math.min(1, tShot1 + 0.05), rim, 0.2);
         } else {
           pushFly(tShot0, tShot1, from, dest, shotH, shotCurve, extra);
-          pushRest(tShot1, 1, extra && extra.blockTo ? extra.blockTo : dest, isMake ? 0.2 : 0.22);
+          var tailEnd = Math.min(1, tShot1 + (isMake ? 0.04 : 0.06));
+          pushRest(tShot1, tailEnd, extra && extra.blockTo ? extra.blockTo : dest, isMake ? 0.06 : 0.22);
         }
       }
     } else {
@@ -763,6 +889,458 @@
       });
     }
     return { camera: camera, tactic: tactic, branch: input.branch, zone: input.zone, attackRight: input.attackRight !== false, frames: frames, ballScript: ballScript };
+  };
+
+  function dotXYFromPacked(dots, id) {
+    if (!dots || !id) return null;
+    var i;
+    for (i = 0; i < dots.length; i++) {
+      if (dots[i] && dots[i].id === id) return [dots[i].x, dots[i].y];
+    }
+    return null;
+  }
+
+  function setDotXY(dots, id, xy) {
+    var i;
+    for (i = 0; i < (dots || []).length; i++) {
+      if (dots[i] && dots[i].id === id) {
+        dots[i].x = xy[0];
+        dots[i].y = xy[1];
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function ballRestPoint(script) {
+    var i, seg;
+    for (i = script.length - 1; i >= 0; i--) {
+      seg = script[i];
+      if (seg.type === 'rest') return { x: seg.x, y: seg.y, z: seg.z || 0.22 };
+      if (seg.type === 'fly' && seg.b) return { x: seg.b[0], y: seg.b[1], z: 0.22 };
+    }
+    return null;
+  }
+
+  PP_COURT.appendReboundClip = function (clip, spec) {
+    return PP_COURT.appendReboundContest(clip, spec);
+  };
+
+  PP_COURT.ballRestFromClip = function (clip) {
+    return clip && clip.ballScript ? ballRestPoint(clip.ballScript) : null;
+  };
+
+  function cloneDotsPacked(dots) {
+    return (dots || []).map(function (d) {
+      return { id: d.id, x: d.x, y: d.y, kind: d.kind };
+    });
+  }
+
+  function mixDotsSimple(d0, d1, t) {
+    var m0 = {}, m1 = {}, ids = {}, id, out = [];
+    (d0 || []).forEach(function (d) { m0[d.id] = d; ids[d.id] = true; });
+    (d1 || []).forEach(function (d) { m1[d.id] = d; ids[d.id] = true; });
+    for (id in ids) {
+      var a = m0[id] || m1[id];
+      var b = m1[id] || m0[id];
+      if (!a) continue;
+      out.push({
+        id: id,
+        x: a.x + (b.x - a.x) * t,
+        y: a.y + (b.y - a.y) * t,
+        kind: b.kind || a.kind
+      });
+    }
+    return out;
+  }
+
+  function sampleDotsAtTime(frames, t) {
+    if (!frames || !frames.length) return [];
+    var i, local;
+    if (t <= frames[0].t) return cloneDotsPacked(frames[0].dots);
+    if (t >= frames[frames.length - 1].t) return cloneDotsPacked(frames[frames.length - 1].dots);
+    for (i = 0; i < frames.length - 1; i++) {
+      if (t >= frames[i].t && t <= frames[i + 1].t) {
+        local = (t - frames[i].t) / Math.max(0.0001, frames[i + 1].t - frames[i].t);
+        return mixDotsSimple(frames[i].dots, frames[i + 1].dots, local);
+      }
+    }
+    return cloneDotsPacked(frames[frames.length - 1].dots);
+  }
+
+  function rebBigPos(pos) {
+    return pos === 'C' || pos === 'PF';
+  }
+
+  function playerPosOf(id, offList, defList) {
+    var p = findPIn(offList, id) || findPIn(defList, id);
+    return p && p.pos;
+  }
+
+  function cappedToward(from, to, maxFeet) {
+    if (!from || !to) return from ? clone(from) : [FT[0], 25];
+    var d = dist(from, to);
+    if (d <= maxFeet || d < 0.01) return clone(to);
+    return toward(from, to, maxFeet);
+  }
+
+  function smoothStep(t) {
+    t = clamp(t, 0, 1);
+    return t * t * (3 - 2 * t);
+  }
+
+  function paintContestPoint(seed) {
+    seed = seed || 0;
+    var y = 17 + (seed % 15);
+    return [RIM[0] - 3.2 - (seed % 5) * 0.28, clamp(y, 15, 35)];
+  }
+
+  function rebOffBallDrift(from, contestPt, moveT) {
+    if (!from) return null;
+    moveT = smoothStep(clamp(moveT, 0, 1)) * 0.68;
+    var rimD = dist(from, RIM);
+    var cap = rimD > 17 ? 1.1 : (rimD > 11 ? 1.55 : 1.2);
+    var hub = rimD > 11 ? away(from, contestPt, 4.2) : away(from, RIM, 2.4);
+    var driftEnd = cappedToward(from, hub, cap);
+    return lerp(from, driftEnd, moveT);
+  }
+
+  function reboundModeOf(spec, rebAnchor) {
+    var pos = spec.rebPos || 'SF';
+    var distRim = dist(rebAnchor, RIM);
+    var big = rebBigPos(pos);
+    if (spec.bank) {
+      if (!big && distRim > 14) return 'tipout';
+      return 'glass';
+    }
+    if (!big && distRim > 15) return 'tipout';
+    if (!big && distRim > 9) return 'long';
+    if (big && distRim > 13) return 'trail';
+    return 'paint';
+  }
+
+  PP_COURT.appendReboundContest = function (clip, spec) {
+    if (!clip || !clip.ballScript || !spec || !spec.rebounder) return clip;
+    var rebId = spec.rebounder;
+    var chId = spec.challenger;
+    var looseZ = spec.looseZ != null ? spec.looseZ : 0.22;
+    var offList = spec.off || [];
+    var defList = spec.def || [];
+    var frames = clip.frames;
+    if (!frames || !frames.length) return clip;
+
+    var script = cloneScript(clip.ballScript);
+    var rest = ballRestPoint(script);
+    if (!rest) rest = { x: RIM[0] - 4, y: 25, z: 0.22 };
+    var missLandT = 0.78, i, seg;
+    for (i = 0; i < script.length; i++) {
+      seg = script[i];
+      if (seg.type === 'fly') missLandT = Math.max(missLandT, seg.t1);
+      if (seg.type === 'rest') missLandT = Math.max(missLandT, seg.t0);
+    }
+    missLandT = Math.min(missLandT, 0.98);
+    var rebBallStartT = missLandT;
+    var rebMoveStartT = Math.min(0.97, missLandT + 0.06);
+    var rebStartT = rebBallStartT;
+
+    for (i = script.length - 1; i >= 0; i--) {
+      if (script[i].type === 'rest' || script[i].type === 'hold') {
+        script[i].t1 = Math.min(script[i].t1, rebStartT);
+        if (script[i].t0 >= rebStartT) script.splice(i, 1);
+      }
+    }
+
+    var anchorDots = sampleDotsAtTime(frames, rebMoveStartT);
+    var anchorPos = {}, allIds = [];
+    anchorDots.forEach(function (d) {
+      anchorPos[d.id] = [d.x, d.y];
+      allIds.push(d.id);
+    });
+    var freezeT = Math.max(0.55, missLandT - 0.04);
+    var freezeDots = sampleDotsAtTime(frames, freezeT);
+    var freezePos = {};
+    freezeDots.forEach(function (d) { freezePos[d.id] = [d.x, d.y]; });
+
+    var rebAnchor = anchorPos[rebId];
+    if (!rebAnchor) return clip;
+
+    var seed = 0;
+    String(rebId).split('').forEach(function (c) { seed += c.charCodeAt(0); });
+    var attackRight = clip.attackRight !== false;
+    var mode = reboundModeOf(spec, rebAnchor);
+    var contestPt = paintContestPoint(seed);
+    if (spec.bank) {
+      contestPt = [lerp(rest.x, contestPt[0], 0.42), lerp(rest.y, contestPt[1], 0.42)];
+    }
+
+    var contesters = {};
+    var endPos = {};
+    var rebHold;
+    var rebLate = false;
+    var ranked = [];
+    allIds.forEach(function (pid) {
+      if (!anchorPos[pid]) return;
+      ranked.push({
+        id: pid,
+        d: dist(anchorPos[pid], contestPt),
+        pos: playerPosOf(pid, offList, defList)
+      });
+    });
+    ranked.sort(function (a, b) { return a.d - b.d; });
+
+    if (mode === 'tipout') {
+      if (chId) contesters[chId] = true;
+      ranked.forEach(function (r) {
+        if (r.id === rebId || contesters[r.id]) return;
+        if (rebBigPos(r.pos) || r.d < 9) {
+          if (Object.keys(contesters).length < 4) contesters[r.id] = true;
+        }
+      });
+      var catchXY = cappedToward(rebAnchor, lerp(contestPt, rebAnchor, 0.84), 3.2);
+      rebHold = holdBall(catchXY, attackRight);
+      Object.keys(contesters).forEach(function (pid) {
+        var cap = rebBigPos(playerPosOf(pid, offList, defList)) ? 5.5 : 4.2;
+        if (pid === chId && anchorPos[chId]) {
+          var side = anchorPos[chId][1] < contestPt[1] ? 2 : -2;
+          endPos[pid] = cappedToward(anchorPos[pid], [contestPt[0], contestPt[1] + side], cap);
+        } else {
+          endPos[pid] = cappedToward(anchorPos[pid], contestPt, cap);
+        }
+      });
+      rebLate = true;
+    } else if (mode === 'long' || mode === 'trail') {
+      var landPt = lerp(contestPt, rebAnchor, mode === 'long' ? 0.52 : 0.38);
+      contesters[rebId] = true;
+      if (chId) contesters[chId] = true;
+      for (i = 0; i < ranked.length && Object.keys(contesters).length < 3; i++) {
+        if (ranked[i].id !== rebId && ranked[i].d < 10) contesters[ranked[i].id] = true;
+      }
+      var rebCap = mode === 'long' ? 5.5 : 7;
+      var rebGrabXY = cappedToward(rebAnchor, landPt, rebCap);
+      rebHold = holdBall(toward(rebGrabXY, RIM, 1.2), attackRight);
+      Object.keys(contesters).forEach(function (pid) {
+        var cap = pid === rebId ? rebCap : 4.8;
+        if (pid === chId && anchorPos[chId]) {
+          var chSide = anchorPos[chId][1] < landPt[1] ? 2.2 : -2.2;
+          endPos[pid] = cappedToward(anchorPos[pid], [landPt[0], landPt[1] + chSide], cap);
+        } else {
+          endPos[pid] = cappedToward(anchorPos[pid], landPt, cap);
+        }
+      });
+      contestPt = landPt;
+    } else {
+      var paintLand = spec.bank ? [rest.x, rest.y] : lerp(contestPt, rebAnchor, 0.22);
+      contesters[rebId] = true;
+      if (chId) contesters[chId] = true;
+      for (i = 0; i < ranked.length && Object.keys(contesters).length < 3; i++) {
+        if (ranked[i].id !== rebId && ranked[i].d < 11) contesters[ranked[i].id] = true;
+      }
+      var grabXY = cappedToward(rebAnchor, toward(paintLand, RIM, 1.3), Math.min(dist(rebAnchor, paintLand), 7));
+      rebHold = holdBall(grabXY, attackRight);
+      Object.keys(contesters).forEach(function (pid) {
+        var cap = pid === rebId ? 7 : 5;
+        if (pid === chId && anchorPos[chId]) {
+          var pSide = anchorPos[chId][1] < paintLand[1] ? 2.2 : -2.2;
+          endPos[pid] = cappedToward(anchorPos[pid], [paintLand[0], paintLand[1] + pSide], cap);
+        } else {
+          endPos[pid] = cappedToward(anchorPos[pid], paintLand, cap);
+        }
+      });
+      contestPt = paintLand;
+    }
+
+    if (!rebHold) return clip;
+
+    var ballAtStart = [rest.x, rest.y];
+    var ballLoose = contestPt;
+    var tLand = rebStartT + 0.05;
+    if (dist(ballAtStart, ballLoose) > 2) {
+      script.push({
+        type: 'fly', t0: rebStartT, t1: tLand,
+        a: ballAtStart, b: ballLoose,
+        h: mode === 'tipout' ? 2.3 : 2.0, curve: 0.48,
+        z0: rest.z || looseZ, landZ: 0.32
+      });
+    } else {
+      script.push({
+        type: 'rest', t0: rebStartT, t1: tLand,
+        x: ballLoose[0], y: ballLoose[1], z: looseZ
+      });
+    }
+    var bouncePt = [ballLoose[0] + 0.28, ballLoose[1] + 0.12];
+    var tBattle = tLand + (mode === 'tipout' ? 0.17 : 0.1);
+    script.push({
+      type: 'rest', t0: tLand, t1: tBattle,
+      x: ballLoose[0], y: ballLoose[1], z: looseZ
+    });
+    script.push({
+      type: 'fly', t0: tBattle, t1: tBattle + 0.1,
+      a: ballLoose, b: bouncePt, h: 1.15, curve: 0.08, z0: looseZ, landZ: 0.34
+    });
+    var tToReb = tBattle + 0.1;
+    script.push({
+      type: 'fly', t0: tToReb, t1: 0.94,
+      a: bouncePt, b: [rebHold.x, rebHold.y],
+      h: mode === 'tipout' ? 3.5 : 2.25,
+      curve: mode === 'tipout' ? 1.4 : 0.82,
+      z0: 0.34, landZ: 0.36
+    });
+    script.push({ type: 'hold', t0: 0.94, t1: 0.99, who: rebId });
+
+    var span = Math.max(0.1, 1 - rebMoveStartT);
+    for (i = 0; i < frames.length; i++) {
+      var fr = frames[i];
+      if (fr.t < rebMoveStartT) continue;
+      var moveT = clamp((fr.t - rebMoveStartT) / span, 0, 1);
+      fr.dots.forEach(function (d) {
+        var pid = d.id;
+        if (!contesters[pid]) return;
+        var a = anchorPos[pid];
+        if (!a) return;
+        var b = endPos[pid] || a;
+        var pt = moveT;
+        if (rebLate && pid === rebId) {
+          pt = smoothStep(clamp((moveT - 0.4) / 0.6, 0, 1));
+        } else if (mode === 'tipout') {
+          pt = smoothStep(clamp(moveT / 0.52, 0, 1));
+        } else {
+          pt = smoothStep(moveT);
+        }
+        var xy = pt <= 0 ? a : lerp(a, b, pt);
+        d.x = xy[0];
+        d.y = xy[1];
+      });
+    }
+    var driftSpan = Math.max(0.14, 1 - freezeT);
+    for (i = 0; i < frames.length; i++) {
+      var fr = frames[i];
+      if (fr.t < freezeT) continue;
+      var driftT = clamp((fr.t - freezeT) / driftSpan, 0, 1);
+      fr.dots.forEach(function (d) {
+        if (contesters[d.id]) return;
+        var fp = freezePos[d.id];
+        if (!fp) return;
+        var xy = rebOffBallDrift(fp, contestPt, driftT);
+        if (xy) {
+          d.x = xy[0];
+          d.y = xy[1];
+        }
+      });
+    }
+
+    for (i = 0; i < frames.length; i++) {
+      frames[i].ball = evalBall(script, frames[i].t, posMapFromDots(frames[i].dots), attackRight);
+    }
+    clip.ballScript = script;
+    clip.missSplitU = Math.max(0.55, missLandT - 0.05);
+    clip.reboundMode = mode;
+    clip.reboundMerged = true;
+    return clip;
+  };
+
+  function findPIn(list, id) {
+    if (!id || !list) return null;
+    var i;
+    for (i = 0; i < list.length; i++) if (list[i] && list[i].id === id) return list[i];
+    return null;
+  }
+
+  function jumpDotKind(p, teamAHome) {
+    if (!p) return 'away';
+    if (p.hero) return 'hero';
+    var offHome = !!teamAHome;
+    if (p.team === 'off') return offHome ? 'home' : 'away';
+    return offHome ? 'away' : 'home';
+  }
+
+  function packJumpDots(posOff, posDef, offList, defList, teamAHome) {
+    var dots = [], id, p;
+    for (id in posOff) {
+      p = findPIn(offList, id);
+      if (p) dots.push({ id: id, x: posOff[id][0], y: posOff[id][1], kind: jumpDotKind(p, teamAHome) });
+    }
+    for (id in posDef) {
+      p = findPIn(defList, id);
+      if (p) dots.push({ id: id, x: posDef[id][0], y: posDef[id][1], kind: jumpDotKind(p, teamAHome) });
+    }
+    return dots;
+  }
+
+  PP_COURT.composeJumpBall = function (input) {
+    input = input || {};
+    var centerAId = input.centerA;
+    var centerBId = input.centerB;
+    var tipToId = input.tipTo;
+    var winner = input.winner === 'B' ? 'B' : 'A';
+    var offList = input.off || [];
+    var defList = input.def || [];
+    var teamAHome = input.teamAHome !== false;
+    if (!centerAId || !centerBId || !tipToId) return null;
+
+    var jumpA = [MID[0] - 1.6, 24.2];
+    var jumpB = [MID[0] + 1.6, 25.8];
+    var tipXY = winner === 'A' ? [MID[0] - 17.5, 25] : [MID[0] + 17.5, 25];
+    var spreadA = [
+      [MID[0] - 14, 11], [MID[0] - 14, 39], [MID[0] - 22, 18], [MID[0] - 22, 32]
+    ];
+    var spreadB = [
+      [MID[0] + 14, 39], [MID[0] + 14, 11], [MID[0] + 22, 32], [MID[0] + 22, 18]
+    ];
+    var posOff = {}, posDef = {}, i, pl, slotsA = spreadA.slice(), slotsB = spreadB.slice();
+
+    posOff[centerAId] = clone(jumpA);
+    posDef[centerBId] = clone(jumpB);
+    if (winner === 'A') posOff[tipToId] = clone(tipXY);
+    else posDef[tipToId] = clone(tipXY);
+
+    offList.forEach(function (p) {
+      if (!p || posOff[p.id] || slotsA.length === 0) return;
+      posOff[p.id] = clone(slotsA.shift());
+    });
+    defList.forEach(function (p) {
+      if (!p || posDef[p.id] || slotsB.length === 0) return;
+      posDef[p.id] = clone(slotsB.shift());
+    });
+
+    var tipHold = holdBall(tipXY, true);
+    if (!tipHold) return null;
+    var tipSide = winner === 'A' ? -1.1 : 1.1;
+    var script = [
+      { type: 'rest', t0: 0, t1: 0.34, x: MID[0], y: 25, z: 0.42 },
+      { type: 'fly', t0: 0.34, t1: 0.54, a: [MID[0], 25], b: [MID[0] + tipSide, 25], h: 6.8, curve: 0.12, z0: 0.42 },
+      { type: 'fly', t0: 0.54, t1: 0.82, a: [MID[0] + tipSide, 25], b: [tipHold.x, tipHold.y], h: 3.0, curve: 1.6, z0: 0.48, landZ: 0.36 },
+      { type: 'hold', t0: 0.82, t1: 0.94, who: tipToId }
+    ];
+
+    var attackRight = input.attackRight !== false;
+    var frames = [], n = 10, t, o, d, rise, jt;
+    for (i = 0; i < n; i++) {
+      t = i / (n - 1);
+      o = cloneMap(posOff);
+      d = cloneMap(posDef);
+      if (t > 0.36 && t < 0.72) {
+        jt = (t - 0.36) / 0.36;
+        rise = Math.sin(jt * Math.PI) * 1.15;
+        o[centerAId] = [jumpA[0] - rise * 0.25, jumpA[1] - rise * 0.55];
+        d[centerBId] = [jumpB[0] + rise * 0.25, jumpB[1] + rise * 0.55];
+      }
+      frames.push({
+        t: t,
+        dots: packJumpDots(o, d, offList, defList, teamAHome),
+        ball: evalBall(script, t, posMapFrom(o, d), attackRight)
+      });
+    }
+
+    return {
+      camera: 'full',
+      tactic: 'jump_ball',
+      branch: 'tip',
+      zone: 'midc',
+      attackRight: attackRight,
+      frames: frames,
+      ballScript: script,
+      jumpBall: true
+    };
   };
 
   /* ---------- SVG 球场（NBA 94×50） ---------- */
@@ -899,6 +1477,35 @@
       copy.push({ t: split + fr.t * (1 - split), dots: fr.dots, ball: fr.ball });
     }
     return { frames: copy, split: split };
+  }
+
+  /* 换回合过渡光点速度（相对 stitch 默认）；0.7 = 降为原速度的 70% */
+  var POSS_TRANS_PACE = 0.7;
+
+  function restretchFrames(frames, oldSplit, newSplit) {
+    if (!frames || oldSplit === newSplit) return frames;
+    return frames.map(function (fr) {
+      if (fr.t <= oldSplit) {
+        return { t: fr.t / oldSplit * newSplit, dots: fr.dots, ball: fr.ball };
+      }
+      var mainU = (fr.t - oldSplit) / (1 - oldSplit);
+      return { t: newSplit + mainU * (1 - newSplit), dots: fr.dots, ball: fr.ball };
+    });
+  }
+
+  function stretchPossessionTransition(stitched, duration) {
+    var oldSplit = stitched.split;
+    if (!oldSplit || oldSplit <= 0.02 || POSS_TRANS_PACE <= 0 || POSS_TRANS_PACE >= 1) {
+      return { frames: stitched.frames, split: oldSplit, duration: duration };
+    }
+    var newSplit = oldSplit / (POSS_TRANS_PACE + oldSplit * (1 - POSS_TRANS_PACE));
+    newSplit = Math.min(0.38, newSplit);
+    var newDuration = Math.round(duration * (1 - oldSplit) / (1 - newSplit));
+    return {
+      frames: restretchFrames(stitched.frames, oldSplit, newSplit),
+      split: newSplit,
+      duration: newDuration
+    };
   }
 
   function indexDots(dots) {
@@ -1282,6 +1889,12 @@
     return (z || 0) * 0.22 * fade;
   }
 
+  function hoopSink(x, y, z) {
+    var d = Math.min(dist([x, y], [HOOP_IN, COURT_W / 2]), dist([x, y], [COURT_L - HOOP_IN, COURT_W / 2]));
+    if (d > RIM_R * 2.4 || (z || 0) > 0.55) return 0;
+    return 0.22 * (1 - d / (RIM_R * 2.4)) * (1 - (z || 0) / 0.55);
+  }
+
   function paintBall(b, trail) {
     var i, g, op, rr;
     if (!ballEl) return;
@@ -1309,13 +1922,13 @@
       rr = 0.26 + g.z * 0.032;
       trailEls[i].style.display = '';
       trailEls[i].setAttribute('cx', g.x.toFixed(3));
-      trailEls[i].setAttribute('cy', (g.y - hoopLift(g.x, g.y, g.z)).toFixed(3));
+      trailEls[i].setAttribute('cy', (g.y - hoopLift(g.x, g.y, g.z) - hoopSink(g.x, g.y, g.z)).toFixed(3));
       trailEls[i].setAttribute('r', rr.toFixed(3));
       trailEls[i].setAttribute('opacity', op.toFixed(3));
     }
     ballEl.style.display = '';
     ballEl.setAttribute('cx', b.x.toFixed(3));
-    ballEl.setAttribute('cy', (b.y - hoopLift(b.x, b.y, b.z)).toFixed(3));
+    ballEl.setAttribute('cy', (b.y - hoopLift(b.x, b.y, b.z) - hoopSink(b.x, b.y, b.z)).toFixed(3));
     ballEl.setAttribute('r', (0.56 + Math.min(0.7, (b.z || 0) * 0.07)).toFixed(3));
   }
 
@@ -1362,8 +1975,23 @@
     }
   }
 
-  PP_COURT.play = function (clip, duration) {
-    if (!enabled || !clip || !clip.frames || !svg) return;
+  function scriptFinishU(script) {
+    if (!script || !script.length) return 1;
+    var maxFly = 0, restTail = false, i, seg;
+    for (i = 0; i < script.length; i++) {
+      seg = script[i];
+      if (seg.type === 'fly') maxFly = Math.max(maxFly, seg.t1);
+      if (seg.type === 'rest' && seg.t0 >= maxFly - 0.02) restTail = true;
+    }
+    if (restTail && maxFly > 0) return Math.min(1, maxFly + 0.02);
+    return 1;
+  }
+
+  PP_COURT.play = function (clip, duration, onDone) {
+    if (!enabled || !clip || !clip.frames || !svg) {
+      if (onDone) onDone();
+      return;
+    }
     capturePose();
     stopIdle();
     if (raf) { cancelAnimationFrame(raf); raf = 0; }
@@ -1374,6 +2002,12 @@
     });
     var live = !!clip.chain;
     var stitched = pose ? stitch(pose, world, live) : { frames: world, split: 0 };
+    if (!live && stitched.split > 0.02) {
+      var stretched = stretchPossessionTransition(stitched, duration);
+      stitched.frames = stretched.frames;
+      stitched.split = stretched.split;
+      duration = stretched.duration;
+    }
     var frames = stitched.frames;
     var script = worldScript(clip.ballScript, attackRight);
     if (stitched.split > 0.02) {
@@ -1383,11 +2017,24 @@
     flight = {
       frames: frames, t0: performance.now(), duration: duration,
       box0: FULL_BOX.slice(), box1: FULL_BOX.slice(),
-      script: script, attackRight: attackRight
+      script: script, attackRight: attackRight,
+      finishU: scriptFinishU(script),
+      done: false
     };
     applyBox(FULL_BOX);
     drawDots(frames[0].dots);
     paintBall(evalBall(script, 0, posMapFromDots(frames[0].dots), attackRight), null);
+    function finishPlay(cur) {
+      if (flight.done) return;
+      flight.done = true;
+      pose = frames[frames.length - 1].dots;
+      poseBall = cur && cur.ball ? cur.ball : (frames[frames.length - 1].ball || poseBall);
+      camBox = FULL_BOX.slice();
+      flight = null;
+      raf = 0;
+      if (onDone) onDone();
+      else startIdle();
+    }
     function tick(now) {
       if (!flight) return;
       var u = Math.min(1, (now - flight.t0) / flight.duration);
@@ -1396,13 +2043,8 @@
         drawDots(cur.dots);
         paintBall(cur.ball, cur.trail);
       }
-      if (u >= 1) {
-        pose = frames[frames.length - 1].dots;
-        poseBall = cur && cur.ball ? cur.ball : (frames[frames.length - 1].ball || poseBall);
-        camBox = FULL_BOX.slice();
-        flight = null;
-        raf = 0;
-        startIdle();
+      if (u >= flight.finishU || u >= 1) {
+        finishPlay(cur);
         return;
       }
       raf = requestAnimationFrame(tick);

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>局内模拟实验室 · Perfect Player</title>
+  <link rel="stylesheet" href="assets/css/perfect-player.css?v=20260821-phase-a">
+  <link rel="stylesheet" href="assets/css/perfect-player-premium.css">
+  <style>
+    html, body { margin: 0; min-height: 100%; background: var(--bg, #faf5eb); }
+  #live-lab-banner {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 2147483001;
+      padding: 10px 14px; font-size: 12px; line-height: 1.45;
+      background: rgba(250, 245, 235, 0.96); border-bottom: 1px solid var(--border, #f0e0cc);
+      color: var(--text-dim, #8a7a66); text-align: center;
+      font-family: 'Noto Sans SC', sans-serif;
+    }
+    #live-lab-banner strong { color: var(--text, #2d1f0e); }
+    #live-lab-replay {
+      position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
+      z-index: 2147483002; display: none;
+    }
+    #live-lab-replay.is-on { display: block; }
+  </style>
+</head>
+<body>
+  <div id="live-lab-banner">正在加载局内模拟…</div>
+  <button type="button" class="btn btn-primary" id="live-lab-replay">再打一场</button>
+
+  <!-- 联盟名单与总评（与主游戏同源） -->
+  <script src="assets/js/hupu/script-01-2678-5hu3djrc-upload-1783494754597-12.js"></script>
+  <script src="assets/js/current-player-ratings-2026.js"></script>
+  <script src="assets/js/hupu/script-02-2678-gd4jvxrc-upload-1783494754597-15.js"></script>
+  <script src="assets/js/hupu/script-03-2678-456sfprc-upload-1783494754597-18.js"></script>
+  <script src="assets/js/hupu/script-04-2678-mdo4zerc-upload-1783494754597-21.js"></script>
+  <script src="assets/js/hupu/script-05-2678-qlg35lrc-upload-1783494754597-24.js"></script>
+  <script src="assets/js/perfect-player-core.js?v=20260822-core-v6"></script>
+  <script src="assets/js/perfect-player-live-court.js?v=20260822-court-v28"></script>
+  <script src="assets/js/perfect-player-live-sim.js?v=20260822-live-sim-v47"></script>
+  <script src="assets/js/perfect-player-live-lab.js?v=20260822-lab-v4"></script>
+  <script>
+    (function () {
+      var btn = document.getElementById('live-lab-replay');
+      function showReplay() {
+        if (btn) btn.classList.add('is-on');
+      }
+      function startLab() {
+        if (btn) btn.classList.remove('is-on');
+        if (window.PP_LIVE_LAB && PP_LIVE_LAB.run) {
+          PP_LIVE_LAB.run(showReplay);
+        }
+      }
+      if (btn) btn.addEventListener('click', startLab);
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', startLab);
+      } else {
+        startLab();
+      }
+    })();
+  </script>
+</body>
+</html>

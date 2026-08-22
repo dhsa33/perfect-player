@@ -6,7 +6,7 @@
 
   var GROUPS = {
     create: [
-      ['assets/js/perfect-player-hupu-extensions.js?v=20260821-boot-v4', '角色扩展']
+      ['assets/js/perfect-player-hupu-extensions.js?v=20260822-boot-v16', '角色扩展']
     ],
     career: [
       ['assets/js/perfect-player-skills.js?v=20260820-skill-no-slot', '球风技能'],
@@ -18,8 +18,8 @@
       ['assets/js/perfect-player-awards.js?v=20260813-real-ballot-v1', '荣誉评选']
     ],
     live: [
-      ['assets/js/perfect-player-live-court.js?v=20260821-court-v11', '俯瞰球场'],
-      ['assets/js/perfect-player-live-sim.js?v=20260821-live-sim-v32', '文字直播']
+      ['assets/js/perfect-player-live-court.js?v=20260822-court-v28', '俯瞰球场'],
+      ['assets/js/perfect-player-live-sim.js?v=20260822-live-sim-v47', '文字直播']
     ]
   };
 
