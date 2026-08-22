@@ -978,16 +978,8 @@
 
   function renderLegacyBody(root) {
     var avail = availableLP(), total = totalLP();
-    var ach = achievementLP();
-    var archives = archiveRecordCount();
-    var fromArchive = archiveLP();
     root.querySelector('.pp-lg-lp').innerHTML =
-      '可用传承点 <b>' + avail + '</b> · 累计 ' + total +
-      '<div style="margin-top:4px;font-size:12px;font-weight:600;opacity:.78;">成就 ' + ach + ' · 档案 ' + archives + '×' + LP_PER_ARCHIVE_RECORD + '=' + fromArchive + '</div>';
-    var hint = root.querySelector('.pp-lg-hint');
-    if (hint) {
-      hint.textContent = '解锁成就积累传承点；生涯档案馆每多一条退役记录再加 ' + LP_PER_ARCHIVE_RECORD + ' 点。投入永久强化。每条路线越往后越贵；全部成就最多提供 ' + maxAchievementLP() + ' 点，当前档案加成 ' + fromArchive + ' 点，而全路线共需 ' + legacyTreeCost() + ' 点，无法同时点满，请选择自己的长期专精。';
-    }
+      '可用传承点 <b>' + avail + '</b> · 累计 ' + total;
     root.querySelector('.pp-lg-grid').innerHTML =
       LEGACY_PERKS.map(legacyPerkCardHtml).join('');
     root.querySelectorAll('.pp-lg-buy').forEach(function (b) {
@@ -1010,7 +1002,6 @@
           '<button class="pp-ach-close" id="pp-lg-close" aria-label="关闭">✕</button>' +
         '</div>' +
         '<div class="pp-lg-lp"></div>' +
-        '<div class="pp-lg-hint"></div>' +
         '<div class="pp-ach-grid pp-lg-grid"></div>' +
         '<div class="pp-lg-foot"><button class="pp-lg-respec" id="pp-lg-respec">重置强化并返还全部传承点</button></div>' +
       '</div>';

@@ -15675,7 +15675,7 @@ function renderLegacyTop100Ranking(r) {
     '<div class="legacy-rank-summary"><div><span class="legacy-rank-kicker">ALL-TIME TOP 100</span><strong>' + rankLabel + '</strong><small>' + gapText + '</small></div><div class="legacy-rank-score">' + r.score + '<small>历史分</small></div></div>' +
     '<div class="legacy-score-grid"><span>荣誉贡献<b>+' + honorScore + '</b></span><span>生涯数据<b>+' + careerScore + '</b></span><span>巅峰与忠诚<b>+' + bonusScore + '</b></span><span>历史档位<b>' + escapeLegacyHtml(r.tier) + '</b></span></div>' +
     '<div class="legacy-ranking-stage">' +
-      '<div class="legacy-ranking-caption"><span>游戏历史百大完整榜</span><small>按名次插入，其后顺延 · 可滑动查看</small></div>' +
+      '<div class="legacy-ranking-caption"><span>游戏历史百大完整榜</span></div>' +
       '<div class="legacy-ranking-list">' + rows + '</div>' +
       '<div class="legacy-rank-climber"><img src="' + avatar + '" alt="上升中的主角头像"><span>从第150名向上冲刺</span></div>' +
     '</div>' +

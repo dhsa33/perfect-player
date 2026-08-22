@@ -10,7 +10,7 @@
     ],
     career: [
       ['assets/js/perfect-player-skills.js?v=20260820-skill-no-slot', '球风技能'],
-      ['assets/js/perfect-player-enhancements.js?v=20260820-legacy-create', '成就特效']
+      ['assets/js/perfect-player-enhancements.js?v=20260823-legacy-ui', '成就特效']
     ],
     story: [
       ['assets/js/perfect-player-event-library.js?v=20260821-events-v3', '赛季事件'],
