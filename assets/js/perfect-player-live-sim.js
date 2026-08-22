@@ -1,8 +1,7 @@
 /* ============================================================
  * Perfect Player — 单局回合模拟
- * 夜场总分先按跳过引擎同一套 pace × 效率 + 方差抽蓝图，
- * 再按 NBA 球权把出手/罚球/篮板拆开。观看与跳过不必同种子，
- * 分布对齐（队分、胜率、你的场均）。
+ * 队分蓝图与跳过同源（pace × 效率 + 方差）；回合内逐球模拟。
+ * 禁止终场改比分/数据栏——与跳过对齐只调回合参数（usage、neededPPP 等）。
  * ============================================================ */
 (function () {
   'use strict';
@@ -295,31 +294,6 @@
     };
   }
 
-  function userBlueprintFromSkip(attrs, bp, isPlayoff) {
-    var base = expectedUserLine(attrs, bp, isPlayoff);
-    if (typeof generatePlayerStatsNew !== 'function') return base;
-    var syn = {
-      scoreA: bp.tgtA, scoreB: bp.tgtB, pace: bp.pace,
-      teamB: { power: bp.powerB }, home: bp.teamAHome
-    };
-    var st = generatePlayerStatsNew(attrs, syn, isPlayoff);
-    return {
-      usage: base.usage,
-      mins: base.mins,
-      fga: st.fga || base.fga,
-      pts: st.pts,
-      reb: st.reb,
-      ast: st.ast,
-      stl: st.stl,
-      blk: st.blk,
-      tov: st.tov,
-      threePct: base.threePct,
-      midPct: base.midPct,
-      finPct: base.finPct,
-      threeShare: base.threeShare
-    };
-  }
-
   function buildBlueprint(teamA, teamB, options) {
     options = options || {};
     var powerA = typeof calcTeamPowerWithPlayer === 'function' ? calcTeamPowerWithPlayer(teamA) : { offense: 70, defense: 70, athletic: 70, clutch: 70, depth: 70 };
@@ -384,7 +358,7 @@
     };
     bp.tgtA = clamp(Math.round(bp.pace * bp.efficiencyA + gauss(0, bp.varianceA)), 80, 155);
     bp.tgtB = clamp(Math.round(bp.pace * bp.efficiencyB + gauss(0, bp.varianceB)), 80, 155);
-    bp.user = userBlueprintFromSkip(options.attrs || STATE.attrs || {}, bp, bp.isPlayoff);
+    bp.user = expectedUserLine(options.attrs || STATE.attrs || {}, bp, bp.isPlayoff);
     bp.userMins = bp.user.mins;
     if (options.debugReboundLab) bp._debugReboundLab = true;
     if (options.flavorLab) bp._flavorLab = true;
@@ -678,9 +652,16 @@
     return 1;
   }
 
+  function userLiveScoringScale() {
+    return (typeof USER_PLAYER_SCORING_SCALE === 'number') ? USER_PLAYER_SCORING_SCALE : 0.85;
+  }
+
   function pickShooter(court, userOnCourt, usage, clutch) {
     var user = court.filter(function (p) { return p && p._isUser; })[0];
-    if (userOnCourt && user && usage > 0 && chance(clamp(usage, 0.06, 0.39))) return user;
+    if (userOnCourt && user && usage > 0) {
+      var uUsage = clamp(usage * userLiveScoringScale(), 0.06, 0.39);
+      if (chance(uUsage)) return user;
+    }
     var pool = (userOnCourt && user) ? court.filter(function (p) { return p && !p._isUser; }) : court;
     if (!pool.length) pool = court;
     if (clutch) {
@@ -1866,17 +1847,7 @@
     var ln = lineOf(game, user);
     var frac = clamp(ln.mins / Math.max(4, bp.userMins), 0, 1.35);
     var gap = bp.user.fga * frac - ln.fga;
-    return clamp(bp.user.usage * 0.98 * (1 + gap * 0.05), 0.06, 0.39);
-  }
-
-  function userHunger(game, ctx) {
-    var bp = game.bp;
-    var user = bp.rosterA.filter(function (p) { return p && p._isUser; })[0];
-    if (!user || !ctx.userOn) return 0;
-    var ln = lineOf(game, user);
-    var frac = clamp(ln.mins / Math.max(4, bp.userMins), 0, 1.35);
-    var gap = bp.user.fga * frac - ln.fga;
-    return clamp(bp.user.usage * 0.98 * (1 + gap * 0.05), 0.06, 0.39);
+    return clamp(bp.user.usage * 0.96 * (1 + gap * 0.03), 0.06, 0.36);
   }
 
   var FLAVOR_ACTION_POOL = [
@@ -2204,7 +2175,7 @@
       defP *= (1 - (st(game.styles, 'mid_craftsman') - 1) * 0.7);
     }
     var pct = shotPctFor(shooter, shot, defP, form, clutchMul, userBoost);
-    pct += (e - 1.154) * (e >= 1.154 ? 0.58 : 0.52);
+    pct += (e - 1.154) * (e >= 1.154 ? 0.54 : 0.48);
     if (ctx.home) pct += 0.005;
     pct += rush;
     if (hasTag(game, 'transition') && shot === 'FIN') pct += 0.06;
@@ -2662,108 +2633,6 @@
     }
     if (!sess.done) finishGame(sess);
     return sess.pack;
-  }
-
-  function addPtsToLine(ln, pts) {
-    var left = pts;
-    if (left > 0) {
-      while (left >= 3) { ln.fga++; ln.threeA++; ln.threeM++; ln.fgm++; ln.pts += 3; left -= 3; }
-      while (left >= 2) { ln.fga++; ln.twoM++; ln.fgm++; ln.pts += 2; left -= 2; }
-      if (left > 0) { ln.fta += left; ln.ftm += left; ln.pts += left; }
-      return pts;
-    }
-    var need = -left;
-    while (need > 0 && ln.pts > 0) {
-      if (ln.threeM > 0 && need >= 3) {
-        ln.threeM--; ln.fgm--; ln.fga = Math.max(ln.fgm, ln.fga - 1);
-        ln.threeA = Math.max(ln.threeM, ln.threeA - 1); ln.pts -= 3; need -= 3;
-      } else if (ln.twoM > 0) {
-        ln.twoM--; ln.fgm--; ln.pts -= 2; need -= 2;
-      } else if (ln.ftm > 0) {
-        ln.ftm--; ln.pts--; need--;
-      } else break;
-    }
-    return pts + need;
-  }
-
-  function distributeAdj(game, roster, adj, skipUser) {
-    if (!adj) return 0;
-    var cands = roster.filter(function (p) {
-      if (!p) return false;
-      if (skipUser && p._isUser) return false;
-      return lineOf(game, p).mins >= 6;
-    });
-    if (!cands.length) cands = roster.filter(Boolean);
-    cands.sort(function (a, b) { return lineOf(game, b).pts - lineOf(game, a).pts; });
-    var left = adj;
-    var guard = 0;
-    while (left !== 0 && cands.length && guard < 80) {
-      var p = cands[guard % cands.length];
-      var ln = lineOf(game, p);
-      var step = left > 0 ? Math.min(3, left) : Math.max(-3, left);
-      if (left < 0 && ln.pts < -step) { guard++; continue; }
-      var applied = addPtsToLine(ln, step);
-      left -= applied;
-      guard++;
-    }
-    return adj - left;
-  }
-
-  function addCalibratedTeamPts(game, side, pts) {
-    if (!pts) return;
-    if (side === 'A') {
-      game.scoreA += pts;
-      if (game.ot > 0) game.otA += pts;
-      else game.qA[3] += pts;
-    } else {
-      game.scoreB += pts;
-      if (game.ot > 0) game.otB += pts;
-      else game.qB[3] += pts;
-    }
-  }
-
-  function calibrate(game, bp) {
-    var user = bp.rosterA.filter(function (p) { return p && p._isUser; })[0];
-    if (user) {
-      var ln = lineOf(game, user);
-      var diff = ln.pts - bp.user.pts;
-      if (Math.abs(diff) > 2.8) {
-        var uAdj = Math.round((Math.abs(diff) - 2.8) * 0.82) * (diff > 0 ? -1 : 1);
-        var before = ln.pts;
-        addPtsToLine(ln, uAdj);
-        var got = ln.pts - before;
-        addCalibratedTeamPts(game, 'A', got);
-      }
-      ['reb', 'ast', 'stl', 'blk', 'tov'].forEach(function (k) {
-        var exp = bp.user[k];
-        if (exp == null) return;
-        if (Math.abs(ln[k] - exp) > 0.85) {
-          ln[k] = Math.max(0, Math.round(exp * 0.76 + ln[k] * 0.24));
-        }
-      });
-    }
-
-    var maxDev = bp.isPlayoff ? 2.0 : 1.2;
-    function pullTeam(side) {
-      var tgt = (side === 'A' ? game.tgtA : game.tgtB) + (side === 'A' ? (game.otTgtA || 0) : (game.otTgtB || 0));
-      var cur = side === 'A' ? game.scoreA : game.scoreB;
-      var diff = cur - tgt;
-      if (Math.abs(diff) <= maxDev) return;
-      var adj = Math.round((Math.abs(diff) - maxDev) * 0.92) * (diff > 0 ? -1 : 1);
-      var applied = distributeAdj(game, side === 'A' ? bp.rosterA : bp.rosterB, adj, true);
-      addCalibratedTeamPts(game, side, applied);
-    }
-    pullTeam('A');
-    pullTeam('B');
-
-    function syncBox(roster, teamPts) {
-      var sum = 0;
-      roster.forEach(function (p) { sum += lineOf(game, p).pts; });
-      var gap = Math.round(teamPts - sum);
-      if (gap) distributeAdj(game, roster, gap, true);
-    }
-    syncBox(bp.rosterA, game.scoreA);
-    syncBox(bp.rosterB, game.scoreB);
   }
 
   function toBox(game, team, roster) {
