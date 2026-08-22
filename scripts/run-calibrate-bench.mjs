@@ -35,11 +35,19 @@ const sandbox = {
   STATE: {
     careerTeam: 'LAL',
     position: 'SG',
+    finalOVR: 90,
     attrs: { threePT: 90, MID: 88, FIN: 82, DNK: 76, HAN: 90, PAS: 86, PDEF: 68, IDEF: 58, BLK: 52, REB: 58, ATH: 88, STR: 72, CLU: 86 },
     career: { flags: {} },
     season: { schedule: [] }
   },
+  Storage: {
+    waitForReady: function () { return Promise.resolve(); },
+    getValue: function () { return Promise.resolve(null); },
+    setValue: function () { return Promise.resolve(); }
+  },
   USER_PLAYER_SCORING_SCALE: 0.85,
+  getHupuDisplayName: function () { return '测试球员'; },
+  getCustomPlayerName: function () { return '测试球员'; },
   SIM_CONFIG: { ATTR_LIST: ['threePT', 'MID', 'FIN', 'DNK', 'HAN', 'PAS', 'PDEF', 'IDEF', 'BLK', 'REB', 'ATH', 'STR', 'CLU'], SHOT_DIST: { PG: { threePT: 0.28, MID: 0.26, FIN: 0.22 }, SG: { threePT: 0.34, MID: 0.24, FIN: 0.22 }, SF: { threePT: 0.30, MID: 0.26, FIN: 0.24 }, PF: { threePT: 0.22, MID: 0.28, FIN: 0.30 }, C: { threePT: 0.12, MID: 0.22, FIN: 0.38 } } }
 };
 

@@ -2743,13 +2743,13 @@
       });
     }
 
-    var maxDev = bp.isPlayoff ? 2.2 : 1.35;
+    var maxDev = bp.isPlayoff ? 2.0 : 1.2;
     function pullTeam(side) {
       var tgt = (side === 'A' ? game.tgtA : game.tgtB) + (side === 'A' ? (game.otTgtA || 0) : (game.otTgtB || 0));
       var cur = side === 'A' ? game.scoreA : game.scoreB;
       var diff = cur - tgt;
       if (Math.abs(diff) <= maxDev) return;
-      var adj = Math.round((Math.abs(diff) - maxDev) * 0.88) * (diff > 0 ? -1 : 1);
+      var adj = Math.round((Math.abs(diff) - maxDev) * 0.92) * (diff > 0 ? -1 : 1);
       var applied = distributeAdj(game, side === 'A' ? bp.rosterA : bp.rosterB, adj, true);
       addCalibratedTeamPts(game, side, applied);
     }
@@ -3498,6 +3498,10 @@
         STATE.careerTeam = c.teamA;
         STATE.position = pos;
         STATE.attrs = attrs;
+        if (!STATE.finalOVR) {
+          STATE.finalOVR = typeof calcOVR === 'function' ? calcOVR(attrs, pos) : 88;
+        }
+        STATE._lineupCache = {};
       }
       skip = { a: 0, b: 0, u: 0, r: 0, t: 0, w: 0 };
       live = { a: 0, b: 0, u: 0, r: 0, t: 0, w: 0 };
