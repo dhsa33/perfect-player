@@ -2527,7 +2527,7 @@
       sess.awaitingPeriod = true;
       if (openNextPeriod(sess)) return;
     }
-    calibrate(game, bp);
+    // 终场比分与数据栏以回合模拟结果为准，不再事后校准
     emitMeta(sess, '终场　' + Math.round(game.scoreA) + '-' + Math.round(game.scoreB));
     var won = game.scoreA > game.scoreB;
     var margin = Math.abs(game.scoreA - game.scoreB);
