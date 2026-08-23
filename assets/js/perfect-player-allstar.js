@@ -1167,9 +1167,28 @@
     html += renderRosterColumn('东部', pack.roster && pack.roster.EAST, pack.captains && pack.captains.EAST);
     html += renderRosterColumn('西部', pack.roster && pack.roster.WEST, pack.captains && pack.captains.WEST);
     html += '</div>';
-    html += '<div style="padding:0 14px 14px;"><button type="button" class="btn btn-primary btn-sm" style="width:100%;" id="allstar-weekend-close">' + btnLabel + '</button></div>';
+    if (user.selected) {
+      html += '<div style="padding:0 14px 14px;display:flex;gap:8px;">';
+      html += '<button type="button" class="btn btn-primary btn-sm" style="flex:1;" id="allstar-weekend-close">' + btnLabel + '</button>';
+      html += '<button type="button" class="btn btn-secondary btn-sm" style="flex:1;" id="allstar-weekend-skip">跳过全明星周末</button>';
+      html += '</div>';
+    } else {
+      html += '<div style="padding:0 14px 14px;"><button type="button" class="btn btn-primary btn-sm" style="width:100%;" id="allstar-weekend-close">' + btnLabel + '</button></div>';
+    }
     html += '</div></div>';
     document.body.insertAdjacentHTML('beforeend', html);
+
+    function skipAllStarWeekend() {
+      var el = document.getElementById('allstar-weekend-modal');
+      if (el) el.remove();
+      pack.phase = 'done';
+      pack.skippedWeekend = true;
+      if (STATE.season) STATE.season.allStar = pack;
+      if (typeof done === 'function') done();
+    }
+
+    var skipBtn = document.getElementById('allstar-weekend-skip');
+    if (skipBtn) skipBtn.onclick = skipAllStarWeekend;
     var btn = document.getElementById('allstar-weekend-close');
     if (btn) {
       btn.onclick = function () {
