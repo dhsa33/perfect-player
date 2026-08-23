@@ -927,52 +927,6 @@
     });
   }
 
-  function beginAllStarStoryWindow() {
-    if (STATE.season) STATE.season._allStarStoryActive = true;
-  }
-
-  function endAllStarStoryWindow() {
-    if (STATE.season) STATE.season._allStarStoryActive = false;
-  }
-
-  function runAllStarStoryChain(done) {
-    if (!packUserSelected(STATE.season && STATE.season.allStar)) {
-      if (typeof done === 'function') done();
-      return;
-    }
-    if (typeof showSeasonBranchEvent !== 'function' || typeof getBranchEventById !== 'function') {
-      if (typeof done === 'function') done();
-      return;
-    }
-    beginAllStarStoryWindow();
-    var order = ['story_allstar_skills', 'story_allstar_dunk', 'story_allstar_game'];
-
-    function nextInChain() {
-      var picked = null;
-      var i;
-      for (i = 0; i < order.length; i++) {
-        var ev = getBranchEventById(order[i]);
-        if (!ev) continue;
-        try {
-          if (!ev.requires || ev.requires()) {
-            picked = ev;
-            break;
-          }
-        } catch (e) { /* ignore */ }
-      }
-      if (!picked) {
-        endAllStarStoryWindow();
-        if (typeof done === 'function') done();
-        return;
-      }
-      if (typeof markSeasonEventSeen === 'function' && STATE.career) {
-        markSeasonEventSeen(picked, STATE.career);
-      }
-      showSeasonBranchEvent(picked, nextInChain);
-    }
-    nextInChain();
-  }
-
   function runDraftFlow(pack, done) {
     pack.phase = 'draft';
     if (STATE.season) STATE.season.allStar = pack;
@@ -1055,9 +1009,6 @@
     var pack = buildWeekend(asOfGame || AS_OF_GAME);
     if (!pack) return null;
     STATE.season.allStar = pack;
-    if (pack.userMeta && pack.userMeta.selected && typeof setBranchNode === 'function') {
-      setBranchNode('allstar_story', 'start');
-    }
     syncAllStarAwardRecord(pack);
     maybePushSeasonHonor();
     if (typeof updateAwardStreaks === 'function') updateAwardStreaks();
@@ -1072,19 +1023,12 @@
     return games >= AS_OF_GAME;
   }
 
-  function captainMethodLabel(method) {
-    if (method === 'mvp_pop') return 'MVP表现+人气';
-    if (method === 'lottery') return '分区票选Top3抽签';
-    return '';
-  }
-
   function renderRosterColumn(title, list, captain) {
     var html = '<div style="flex:1;min-width:0;">';
     html += '<div style="font-size:12px;font-weight:800;color:var(--text);margin-bottom:6px;">' + title + '</div>';
     if (captain && captain.name) {
       html += '<div style="font-size:11px;color:var(--orange);margin-bottom:8px;padding:6px 8px;background:var(--orange-bg);border-radius:8px;">';
       html += '队长：<strong>' + captain.name + '</strong>';
-      if (captain.method) html += '<span style="color:var(--text-dim);"> · ' + captainMethodLabel(captain.method) + '</span>';
       html += '</div>';
     }
     html += '<div style="font-size:11px;line-height:1.55;color:var(--text-dim);">';
@@ -1153,9 +1097,7 @@
           return;
         }
         var ensureLive = function () {
-          runAllStarStoryChain(function () {
-            runDraftFlow(pack, done);
-          });
+          runDraftFlow(pack, done);
         };
         if (window.__PP_ensure && !window.__PP_groupsReady(['live'])) {
           window.__PP_ensure(['live']).then(ensureLive, ensureLive);
@@ -1175,8 +1117,8 @@
       runWeekend(AS_OF_GAME);
       showWeekendModal(done);
     };
-    if (window.__PP_ensure && !window.__PP_groupsReady(['story'])) {
-      window.__PP_ensure(['story']).then(run, run);
+    if (window.__PP_ensure && !window.__PP_groupsReady(['allstar'])) {
+      window.__PP_ensure(['allstar']).then(run, run);
       return true;
     }
     if (!engine()) {

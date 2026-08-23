@@ -358,56 +358,6 @@ function initGame() {
   renderModeSelect();
 }
 
-// ==================== 玩法说明弹窗 ====================
-var _helpPage = 0;
-var _helpPages = [
-  { title: '建球员', content: '先抽签选队并选定球员，凑满十三人。人选锁定时还不决定属性。十三人到齐后，点「抽取」逐项揭晓每人贡献哪一项属性（十三项各出现一次，取该球员的原始数值）。全部揭晓后再选择位置，总评按所选位置计算。' },
-  { title: '赛季', content: '抽签决定我的生涯球队后进入赛季。系统根据我与队内同位置球员的总评比较判定首发或替补。每场比赛可点单场推进，也可点击日历日期批量模拟到当天。比赛数据根据属性和位置动态生成，方差较大，有爆发也有低迷。赛季中可随时点我的数据查看场均表现。' },
-  { title: '季后赛', content: '常规赛结束后根据排名决定季后赛或附加赛资格。附加赛在七到十名之间进行，逐场淘汰。季后赛每轮七场四胜，我的系列赛会一场一场模拟，每场生成简报。点击简报可展开查看详细比分、我的数据和全队数据。一路赢下去直到总冠军。' },
-  { title: '球员状态', content: '赛季与生涯中的压力、体力、士气、媒体关系、教练信任、球迷支持等状态会直接显示在页面上；事件选择会改变这些数值，并继续沿用原有比赛和生涯判定。' },
-];
-
-function showHelpModal() {
-  _helpPage = 0;
-  var modal = document.getElementById('helpModal');
-  modal.style.display = 'flex';
-  modal.onclick = function(e) { if (e.target === modal) closeHelpModal(); };
-  renderHelpPage();
-}
-
-function closeHelpModal() {
-  document.getElementById('helpModal').style.display = 'none';
-}
-
-function getIsInApp() { return true; }
-function showDownloadModal() { /* removed */ }
-
-function renderHelpPage() {
-  var page = _helpPages[_helpPage];
-  document.getElementById('helpPageIndicator').textContent = (_helpPage + 1) + '/' + _helpPages.length;
-  document.getElementById('helpPrevBtn').disabled = _helpPage === 0;
-  document.getElementById('helpNextBtn').disabled = _helpPage >= _helpPages.length - 1;
-  document.getElementById('helpBody').innerHTML = '<div style="font-family:var(--font-body);font-size:14px;line-height:1.7;color:var(--text);padding:4px 2px;">' + page.content + '</div>';
-  var tabsHtml = '';
-  _helpPages.forEach(function(p, i) {
-    tabsHtml += '<button class="' + (i === _helpPage ? 'active' : '') + '" onclick="helpGoTo(' + i + ')">' + p.title + '</button>';
-  });
-  document.getElementById('helpTabs').innerHTML = tabsHtml;
-}
-
-function helpPrevPage() {
-  if (_helpPage > 0) { _helpPage--; renderHelpPage(); }
-}
-
-function helpNextPage() {
-  if (_helpPage < _helpPages.length - 1) { _helpPage++; renderHelpPage(); }
-}
-
-function helpGoTo(idx) {
-  _helpPage = idx;
-  renderHelpPage();
-}
-
 // ==================== 1. 模式选择 ====================
 function renderModeSelect() {
   const container = html('feature-grid');
@@ -9075,7 +9025,6 @@ function checkSeasonBranchEvent(game, result, stats) {
   if (!c.branchSeasonEvents._storyArc && totalGames > 0) {
     var storyStepPool = getBranchEventSource().filter(function(ev) {
       if (storyArcs.indexOf(ev.branch) < 0) return false;
-      if (ev.branch === 'allstar_story') return false;
       if (getEventPhases(ev).indexOf('season') < 0) return false;
       if (hasSeasonEventBeenSeen(ev, c)) return false;
       if (c.branchSeasonEvents[ev.branch]) return false;
@@ -9109,7 +9058,6 @@ function checkSeasonBranchEvent(game, result, stats) {
   if ((c.branchSeasonEvents._count || 0) >= maxRandomEvents) return null;
   var pool = getBranchEventSource().filter(function(ev) {
     if (getEventPhases(ev).indexOf('season') < 0) return false;
-    if (ev.branch === 'allstar_story') return false;
     if (c.branchSeasonEvents[ev.branch]) return false;
     // 日常见过后仍可进池（降权），长线剧情继续生涯去重
     if (!isDailySeasonEvent(ev) && hasSeasonEventBeenSeen(ev, c)) return false;

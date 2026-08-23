@@ -202,29 +202,7 @@ html.pp-booting #app{visibility:hidden}
     <div class="debug-btn">
       <button onclick="initGame()" style="display:none;background:var(--bg-card);color:var(--text);border:2px dashed var(--border);padding:10px 18px;border-radius:12px;font-family:var(--font-display);font-size:12px;cursor:pointer;font-weight:600;">🔄 重置</button>
     </div>
-    <div class="debug-btn" style="margin-top:6px">
-      <button onclick="trackEvent({act:'click',blk:'BMC098',pos:'TC18',label:'玩法说明'});showHelpModal()" class="btn-help">📖 玩法说明</button>
-
-    </div>
   </div>
-
-  <!-- ====== 玩法说明弹窗 ====== -->
-  <div id="helpModal" class="modal-overlay" style="display:none;">
-    <div class="modal-content" style="max-width:360px;">
-      <div class="modal-header">
-        <span style="font-family:var(--font-display);font-size:18px;">📖 玩法说明</span>
-        <button class="modal-close" onclick="closeHelpModal()">✕</button>
-      </div>
-      <div class="modal-tabs" id="helpTabs"></div>
-      <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;">
-        <button class="cal-nav" onclick="helpPrevPage()" id="helpPrevBtn" style="width:36px;height:36px;">◀</button>
-        <div style="flex:1;text-align:center;font-family:var(--font-display);font-size:13px;color:var(--text-dim);" id="helpPageIndicator">1/4</div>
-        <button class="cal-nav" onclick="helpNextPage()" id="helpNextBtn" style="width:36px;height:36px;">▶</button>
-      </div>
-      <div class="modal-body" id="helpBody" style="min-height:260px;"></div>
-    </div>
-  </div>
-
 
   <!-- ====== 角色创建 ====== -->
   <div class="screen" id="screen-character">
@@ -374,8 +352,6 @@ html.pp-booting #app{visibility:hidden}
   <div class="screen" id="screen-roster-review">
     <div id="roster-review-content" style="padding:0 12px 20px;overflow-y:auto;-webkit-overflow-scrolling:touch;"></div>
   </div>
-
-  <div style="text-align:center;padding:12px 16px 8px;font-size:10px;color:var(--text-muted);line-height:1.4;">本活动为球迷制作，非NBA官方活动</div>
 
 </div>
 
@@ -854,7 +830,7 @@ var Storage = {
   });
 })();
 </script>
-<script src="assets/js/perfect-player-core.js?v=20260823-core-v13"></script>
+<script src="assets/js/perfect-player-core.js?v=20260823-core-v14"></script>
 
 <!-- ====== 随机事件系统 — EVENT REGISTRY ====== -->
 <script src="assets/js/perfect-player-event-runtime.js?v=20260821-phase-a"></script>

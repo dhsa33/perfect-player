@@ -201,9 +201,6 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);min-hei
 .debug-btn button{background:var(--bg-card);border:none;color:var(--text-dim);padding:10px 18px;border-radius:12px;font-family:var(--font-display);font-size:12px;cursor:pointer}
 .btn-conquest{display:inline-flex;align-items:center;justify-content:center;gap:6px;background:#d4af37;color:#1a1a2e;border:none;padding:12px 20px;border-radius:12px;font-family:var(--font-display);font-size:13px;cursor:pointer;font-weight:700;letter-spacing:1px;box-shadow:0 4px 0 #b8962e,0 6px 12px rgba(212,175,55,0.25);transition:all .1s ease;position:relative;top:0;min-height:44px}
 .btn-conquest:active{transform:translateY(3px);box-shadow:0 1px 0 #b8962e,0 3px 8px rgba(212,175,55,0.15)}
-.btn-help{display:inline-flex;align-items:center;justify-content:center;gap:6px;background:var(--bg-card);color:var(--text);border:2px solid var(--border);padding:12px 16px;border-radius:12px;font-family:var(--font-display);font-size:13px;cursor:pointer;font-weight:600;box-shadow:0 3px 0 var(--border);transition:all .1s ease;position:relative;top:0;min-height:44px}
-.btn-help:hover{border-color:var(--orange);color:var(--orange)}
-.btn-help:active{transform:translateY(2px);box-shadow:0 1px 0 var(--border)}
 .br-player .bp-headshot:empty,.bl-headshot:empty{background:var(--border)}
 .bp-headshot{border-radius:50%;border:2px solid var(--border)}
 .bl-headshot{width:22px;height:22px;border-radius:50%;background-size:cover;background-position:center;display:inline-block;vertical-align:middle;border:2px solid var(--border)}
