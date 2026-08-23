@@ -6,7 +6,7 @@
 
   var GROUPS = {
     create: [
-      ['assets/js/perfect-player-hupu-extensions.js?v=20260822-boot-v16', '角色扩展']
+      ['assets/js/perfect-player-hupu-extensions.js?v=20260823-boot-v17', '角色扩展']
     ],
     career: [
       ['assets/js/perfect-player-skills.js?v=20260823-skill-grant', '球风技能'],
@@ -14,9 +14,9 @@
     ],
     story: [
       ['assets/js/perfect-player-event-library.js?v=20260821-events-v3', '赛季事件'],
-      ['assets/js/perfect-player-story-events.js?v=20260823-story-v7', '生涯剧情'],
+      ['assets/js/perfect-player-story-events.js?v=20260823-story-v8', '生涯剧情'],
       ['assets/js/perfect-player-awards.js?v=20260823-allstar-v2', '荣誉评选'],
-      ['assets/js/perfect-player-allstar.js?v=20260823-allstar-v8', '全明星周末']
+      ['assets/js/perfect-player-allstar.js?v=20260823-allstar-v9', '全明星周末']
     ],
     live: [
       ['assets/js/perfect-player-live-court.js?v=20260823-court-v35', '俯瞰球场'],

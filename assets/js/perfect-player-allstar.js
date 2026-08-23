@@ -1005,6 +1005,7 @@
 
   function runWeekend(asOfGame) {
     if (!STATE || !STATE.season) return null;
+    if (typeof closeRemovedAllStarStoryBranch === 'function') closeRemovedAllStarStoryBranch();
     if (STATE.season.allStar && STATE.season.allStar.locked) return STATE.season.allStar;
     var pack = buildWeekend(asOfGame || AS_OF_GAME);
     if (!pack) return null;

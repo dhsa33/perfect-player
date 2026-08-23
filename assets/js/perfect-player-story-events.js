@@ -534,6 +534,7 @@
 
   function pushEvent(ev) {
     if (!ev || !ev.id) return;
+    if (ev.branch === 'allstar_story' || String(ev.id).indexOf('story_allstar_') === 0) return;
     if (STAGED_BRANCH_EVENTS.some(function (item) { return item.id === ev.id; })) return;
     STAGED_BRANCH_EVENTS.push(ev);
   }

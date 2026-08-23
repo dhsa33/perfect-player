@@ -8144,8 +8144,26 @@ function buildOffseasonEventQueue() {
   return buildBranchEventQueue('offseason');
 }
 
+function isRemovedBranchEvent(ev) {
+  if (!ev) return false;
+  if (ev.branch === 'allstar_story') return true;
+  if (ev.id && String(ev.id).indexOf('story_allstar_') === 0) return true;
+  return false;
+}
+
+function closeRemovedAllStarStoryBranch() {
+  if (!STATE.career || typeof getBranchNode !== 'function') return;
+  var node = getBranchNode('allstar_story');
+  if (!node || node === 'start' || node === 'allstar_done') return;
+  if (typeof setBranchNode === 'function') setBranchNode('allstar_story', 'allstar_done', { close: 'removed' });
+  ['story_allstar_skills', 'story_allstar_dunk', 'story_allstar_game'].forEach(function(id) {
+    if (typeof markSeasonEventSeen === 'function') markSeasonEventSeen({ id: id }, STATE.career);
+  });
+}
+
 function getBranchEventSource() {
-  return (typeof STAGED_BRANCH_EVENTS !== 'undefined') ? STAGED_BRANCH_EVENTS : BRANCH_EVENTS;
+  var source = (typeof STAGED_BRANCH_EVENTS !== 'undefined') ? STAGED_BRANCH_EVENTS : BRANCH_EVENTS;
+  return source.filter(function(ev) { return !isRemovedBranchEvent(ev); });
 }
 
 function getEventPhases(ev) {
@@ -13912,6 +13930,7 @@ function manualLoadGame(slot) {
         if (STATE.season && STATE.season._processedDays && !(STATE.season._processedDays instanceof Set)) {
           STATE.season._processedDays = new Set((Array.isArray(STATE.season._processedDays) ? STATE.season._processedDays : []).map(Number));
         }
+        closeRemovedAllStarStoryBranch();
         if (snap.league && typeof NBA2K_DATA !== 'undefined') {
           Object.keys(NBA2K_DATA).forEach(function(k) { delete NBA2K_DATA[k]; });
           Object.assign(NBA2K_DATA, snap.league);
