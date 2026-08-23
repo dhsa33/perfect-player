@@ -3132,21 +3132,27 @@
     var clip = missP.clip;
     var missU = clip.missSplitU || 0.72;
     var missDone = false;
-    var missTimer = setTimeout(function () {
-      if (!missDone) {
-        missDone = true;
-        insertPlayRows([missP]);
-      }
-    }, Math.round(dur * missU));
-    PP_COURT.play(clip, dur, function () {
+    var finished = false;
+    function complete() {
+      if (finished) return;
+      finished = true;
       clearTimeout(missTimer);
+      clearTimeout(watchdog);
       if (!missDone) {
         missDone = true;
         insertPlayRows([missP]);
       }
       insertPlayRows([rebP]);
       if (next) next();
-    });
+    }
+    var missTimer = setTimeout(function () {
+      if (!missDone) {
+        missDone = true;
+        insertPlayRows([missP]);
+      }
+    }, Math.round(dur * missU));
+    var watchdog = setTimeout(complete, dur + 900);
+    PP_COURT.play(clip, dur, complete);
   }
 
   function appendPlays(plays, opt) {
@@ -3158,6 +3164,13 @@
     var baseDur = opt.duration || 1400;
     var courtOn = opt.court && window.PP_COURT && typeof PP_COURT.play === 'function';
     var deferText = !!opt.deferText;
+    var seqDone = false;
+
+    function finishSeq() {
+      if (seqDone) return;
+      seqDone = true;
+      if (opt.onDone) opt.onDone();
+    }
 
     function clipDuration(clip) {
       var d = baseDur;
@@ -3169,7 +3182,7 @@
 
     function playSeq(idx) {
       if (idx >= plays.length) {
-        if (opt.onDone) opt.onDone();
+        finishSeq();
         return;
       }
       var p = plays[idx];
@@ -3198,7 +3211,12 @@
       }
       insertPlayRows([p]);
       if (clip) {
-        PP_COURT.play(clip, clipDuration(clip), function () { playSeq(idx + 1); });
+        var clipDur = clipDuration(clip);
+        var clipWatchdog = setTimeout(function () { playSeq(idx + 1); }, clipDur + 900);
+        PP_COURT.play(clip, clipDur, function () {
+          clearTimeout(clipWatchdog);
+          playSeq(idx + 1);
+        });
         return;
       }
       playSeq(idx + 1);

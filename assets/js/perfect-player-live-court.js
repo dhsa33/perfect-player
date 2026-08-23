@@ -1424,6 +1424,35 @@
   var camBox = null;
   var svgSize = null;
   var flight = null;
+  var playDoneCallback = null;
+  var playWatchdogTimer = null;
+
+  function clearPlayWatchdog() {
+    if (playWatchdogTimer) {
+      clearTimeout(playWatchdogTimer);
+      playWatchdogTimer = null;
+    }
+  }
+
+  function finishActivePlay(cur, doneCb) {
+    clearPlayWatchdog();
+    if (!flight || flight.done) {
+      if (doneCb) doneCb();
+      return;
+    }
+    var frames = flight.frames;
+    flight.done = true;
+    pose = frames[frames.length - 1].dots;
+    poseBall = cur && cur.ball ? cur.ball : (frames[frames.length - 1].ball || poseBall);
+    camBox = FULL_BOX.slice();
+    flight = null;
+    if (raf) {
+      cancelAnimationFrame(raf);
+      raf = 0;
+    }
+    if (doneCb) doneCb();
+    else startIdle();
+  }
 
   function nsEl(name) { return document.createElementNS('http://www.w3.org/2000/svg', name); }
 
@@ -2051,17 +2080,21 @@
 
   function scriptFinishU(script) {
     if (!script || !script.length) return 1;
-    var maxFly = 0, restTail = false, i, seg;
+    var endT = 0, i, seg;
     for (i = 0; i < script.length; i++) {
       seg = script[i];
-      if (seg.type === 'fly') maxFly = Math.max(maxFly, seg.t1);
-      if (seg.type === 'rest' && seg.t0 >= maxFly - 0.02) restTail = true;
+      if (seg.t1 != null) endT = Math.max(endT, seg.t1);
     }
-    if (restTail && maxFly > 0) return Math.min(1, maxFly + 0.02);
-    return 1;
+    return Math.min(1, Math.max(0.88, endT));
   }
 
   PP_COURT.play = function (clip, duration, onDone) {
+    if (playDoneCallback) {
+      var prevDone = playDoneCallback;
+      playDoneCallback = null;
+      clearPlayWatchdog();
+      prevDone();
+    }
     if (!enabled || !clip || !clip.frames || !svg) {
       if (onDone) onDone();
       return;
@@ -2095,19 +2128,18 @@
       finishU: scriptFinishU(script),
       done: false
     };
+    playDoneCallback = onDone;
+    playWatchdogTimer = setTimeout(function () {
+      if (flight && !flight.done) finishActivePlay(null, playDoneCallback);
+      playDoneCallback = null;
+    }, duration + 700);
     applyBox(FULL_BOX);
     drawDots(frames[0].dots);
     paintBall(evalBall(script, 0, posMapFromDots(frames[0].dots), attackRight), null);
     function finishPlay(cur) {
-      if (flight.done) return;
-      flight.done = true;
-      pose = frames[frames.length - 1].dots;
-      poseBall = cur && cur.ball ? cur.ball : (frames[frames.length - 1].ball || poseBall);
-      camBox = FULL_BOX.slice();
-      flight = null;
-      raf = 0;
-      if (onDone) onDone();
-      else startIdle();
+      var doneCb = playDoneCallback;
+      playDoneCallback = null;
+      finishActivePlay(cur, doneCb);
     }
     function tick(now) {
       if (!flight) return;
