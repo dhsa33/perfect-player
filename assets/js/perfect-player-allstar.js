@@ -5,6 +5,9 @@
   var AS_OF_GAME = 55;
   var MAX_PER_NBA_TEAM = 4;
   var DRAFT_PICKS = 11;
+  var STARTER_POS = ['PG', 'SG', 'SF', 'PF', 'C'];
+  var BENCH_SIZE = 7;
+  var POS_LABEL = { PG: '控卫', SG: '分卫', SF: '小前', PF: '大前', C: '中锋' };
 
   function clamp(v, min, max) {
     return Math.max(min, Math.min(max, v));
@@ -262,25 +265,140 @@
     return (captain && captain.name) ? captain.name + '队' : '全明星队';
   }
 
+  function posLabel(slot) {
+    return POS_LABEL[slot] || slot || '';
+  }
+
+  function canPlaySlot(p, slot) {
+    if (!p || !slot) return false;
+    if (typeof canPlayPosition === 'function') return canPlayPosition(p.pos || '', slot);
+    var pos = String(p.pos || '').toUpperCase();
+    return pos.indexOf(slot) >= 0 || slot === pos;
+  }
+
+  function teamRosterPlayers(roster) {
+    if (!roster) return [];
+    return STARTER_POS.map(function (k) { return roster.starters[k]; }).filter(Boolean).concat(roster.bench || []);
+  }
+
+  function openStarterSlots(roster) {
+    return STARTER_POS.filter(function (k) { return !roster.starters[k]; });
+  }
+
+  function startersComplete(roster) {
+    return openStarterSlots(roster).length === 0;
+  }
+
+  function draftPhase(state) {
+    if (!startersComplete(state.rosterE) || !startersComplete(state.rosterW)) return 'starters';
+    return 'bench';
+  }
+
+  function rosterForSide(state, side) {
+    return side === 'EAST' ? state.rosterE : state.rosterW;
+  }
+
+  function pickStarterSlotForPlayer(p, starters) {
+    var open = STARTER_POS.filter(function (k) { return !starters[k]; });
+    if (!open.length) return null;
+    var natural = String(p.pos || 'SF').toUpperCase();
+    var best = open[0];
+    var bestScore = -1e9;
+    open.forEach(function (slot) {
+      var score = ovrOf(p);
+      if (canPlaySlot(p, slot)) score += 18;
+      if (natural.indexOf(slot) >= 0 || slot === natural) score += 10;
+      if (score > bestScore) {
+        bestScore = score;
+        best = slot;
+      }
+    });
+    return best;
+  }
+
+  function validStarterSlotsForPlayer(p, starters) {
+    return STARTER_POS.filter(function (slot) {
+      return !starters[slot] && canPlaySlot(p, slot);
+    });
+  }
+
+  function initTeamRoster(captain, captainSlim) {
+    var starters = { PG: null, SG: null, SF: null, PF: null, C: null };
+    var capSlot = pickStarterSlotForPlayer(captain, starters);
+    if (capSlot) starters[capSlot] = captain;
+    return { starters: starters, bench: [], captainSlim: captainSlim };
+  }
+
+  function addPickToTeam(roster, player, phase, slot) {
+    if (phase === 'starters') {
+      var pickSlot = slot || pickStarterSlotForPlayer(player, roster.starters);
+      if (!pickSlot || roster.starters[pickSlot]) return null;
+      roster.starters[pickSlot] = player;
+      return { role: 'starter', slot: pickSlot };
+    }
+    roster.bench.push(player);
+    return { role: 'bench', slot: String(player.pos || '') };
+  }
+
+  function exportTeamSlims(roster) {
+    var out = [];
+    STARTER_POS.forEach(function (k) {
+      var p = roster.starters[k];
+      if (!p) return;
+      var slim = slimFromLive(p);
+      slim.draftRole = 'starter';
+      slim.draftSlot = k;
+      slim.ovr = ovrOf(p);
+      out.push(slim);
+    });
+    (roster.bench || []).forEach(function (p) {
+      var slim = slimFromLive(p);
+      slim.draftRole = 'bench';
+      slim.draftSlot = String(p.pos || slim.pos || '');
+      slim.ovr = ovrOf(p);
+      out.push(slim);
+    });
+    return out;
+  }
+
+  function playerCardLabel(p, slim) {
+    slim = slim || slimFromLive(p);
+    var ovr = ovrOf(p) || n(slim.ovr, 75);
+    var nat = slim.pos || p.pos || '';
+    var team = slim.team || nbaTeamOf(p) || '';
+    return {
+      name: slim.name || p.cname || p.name || '',
+      ovr: ovr,
+      nat: nat,
+      team: team,
+      isUser: !!(p && p._isUser)
+    };
+  }
+
   function nbaTeamOf(p) {
     return p._nbaTeam || p.team || '';
   }
 
-  function countNbaTeam(teamArr, nbaTeam) {
+  function countNbaTeam(roster, nbaTeam) {
     if (!nbaTeam) return 0;
-    return teamArr.filter(function (p) { return nbaTeamOf(p) === nbaTeam; }).length;
+    return teamRosterPlayers(roster).filter(function (p) { return nbaTeamOf(p) === nbaTeam; }).length;
   }
 
-  function aiDraftPick(remaining, teamArr, slimRemaining) {
+  function aiDraftPick(remaining, slimRemaining, roster, phase) {
     var best = null;
     var bestScore = -1e9;
-  var i;
+    var i;
     for (i = 0; i < remaining.length; i++) {
       var p = remaining[i];
       var slim = slimRemaining[i];
       var score = ovrOf(p) + n(slim && slim.allStarScore) * 0.25 + n(slim && slim.mvpScore) * 0.08 + rand() * 4;
       var t = nbaTeamOf(p) || (slim && slim.team);
-      if (countNbaTeam(teamArr, t) >= MAX_PER_NBA_TEAM) score -= 500;
+      if (countNbaTeam(roster, t) >= MAX_PER_NBA_TEAM) score -= 500;
+      if (phase === 'starters') {
+        var slot = pickStarterSlotForPlayer(p, roster.starters);
+        if (!slot) score -= 400;
+        else if (canPlaySlot(p, slot)) score += 14;
+      }
       if (score > bestScore) {
         bestScore = score;
         best = { p: p, slim: slim, idx: i };
@@ -289,8 +407,9 @@
     if (!best) return null;
     remaining.splice(best.idx, 1);
     slimRemaining.splice(best.idx, 1);
-    teamArr.push(best.p);
-    return { player: best.p, slim: best.slim };
+    var meta = addPickToTeam(roster, best.p, phase);
+    if (!meta) return null;
+    return { player: best.p, slim: best.slim, meta: meta };
   }
 
   function initDraftState(pack) {
@@ -309,8 +428,8 @@
       remaining.push(resolveSlimToLive(slim));
     });
     return {
-      teamE: [eastCap],
-      teamW: [westCap],
+      rosterE: initTeamRoster(eastCap, eastCapSlim),
+      rosterW: initTeamRoster(westCap, westCapSlim),
       remaining: remaining,
       remainingSlim: remainingSlim,
       first: firstPickSide(pack),
@@ -334,8 +453,8 @@
   function finalizeDraft(state) {
     return {
       firstPick: state.first,
-      teamEast: state.teamE.map(slimFromLive),
-      teamWest: state.teamW.map(slimFromLive),
+      teamEast: exportTeamSlims(state.rosterE),
+      teamWest: exportTeamSlims(state.rosterW),
       picks: state.picks.slice()
     };
   }
@@ -344,10 +463,11 @@
     var state = initDraftState(pack);
     while (!draftFinished(state)) {
       var side = pickSideForIndex(state);
-      var team = side === 'EAST' ? state.teamE : state.teamW;
-      var pick = aiDraftPick(state.remaining, team, state.remainingSlim);
+      var roster = rosterForSide(state, side);
+      var phase = draftPhase(state);
+      var pick = aiDraftPick(state.remaining, state.remainingSlim, roster, phase);
       if (!pick) break;
-      state.picks.push({ side: side, slim: pick.slim });
+      state.picks.push({ side: side, slim: pick.slim, role: pick.meta && pick.meta.role, slot: pick.meta && pick.meta.slot });
       state.pickIndex++;
     }
     return finalizeDraft(state);
@@ -358,18 +478,83 @@
     if (el) el.remove();
   }
 
-  function renderDraftRoster(title, players, captainSlim) {
+  function renderNeedSlots(roster) {
+    var open = openStarterSlots(roster);
+    if (!open.length) return '<span style="color:#1f8a4c;">首发已满</span>';
+    return '缺 ' + open.map(function (s) {
+      return '<span style="color:var(--orange);font-weight:700;">' + s + '</span>';
+    }).join(' ');
+  }
+
+  function renderDraftRoster(title, roster) {
+    var captainSlim = roster.captainSlim;
     var html = '<div style="flex:1;min-width:0;">';
     html += '<div style="font-size:11px;font-weight:800;color:var(--text);margin-bottom:4px;">' + title + '</div>';
-    html += '<div style="font-size:10px;line-height:1.5;color:var(--text-dim);">';
-    players.forEach(function (p, i) {
-      var slim = slimFromLive(p);
-      var cap = captainSlim && slimId(captainSlim) === slimId(slim) ? ' 👑' : '';
-      var you = p._isUser ? ' <span style="color:var(--orange);">你</span>' : '';
-      html += '<div>' + (i + 1) + '. ' + (slim.name || '') + cap + you + '</div>';
+    html += '<div style="font-size:10px;font-weight:700;color:var(--text-dim);margin-bottom:4px;">首发</div>';
+    html += '<div style="font-size:10px;line-height:1.55;color:var(--text-dim);margin-bottom:6px;">';
+    STARTER_POS.forEach(function (slot) {
+      var p = roster.starters[slot];
+      if (!p) {
+        html += '<div style="opacity:.55;">' + slot + ' · <span style="color:var(--orange);">待选</span></div>';
+        return;
+      }
+      var card = playerCardLabel(p);
+      var cap = captainSlim && slimId(captainSlim) === slimId(slimFromLive(p)) ? ' 👑' : '';
+      var you = card.isUser ? ' <span style="color:var(--orange);">你</span>' : '';
+      html += '<div><span style="font-weight:700;color:var(--text);">' + slot + '</span> · ' + card.name
+        + ' <span style="color:var(--orange);font-weight:800;">' + card.ovr + '</span>'
+        + (card.nat && card.nat !== slot ? ' <span style="opacity:.75;">(' + card.nat + ')</span>' : '')
+        + cap + you + '</div>';
     });
+    html += '</div>';
+    html += '<div style="font-size:10px;font-weight:700;color:var(--text-dim);margin-bottom:4px;">替补 ' + (roster.bench.length || 0) + '/' + BENCH_SIZE + '</div>';
+    html += '<div style="font-size:10px;line-height:1.55;color:var(--text-dim);">';
+    if (!roster.bench.length) {
+      html += '<div style="opacity:.55;">暂无</div>';
+    } else {
+      roster.bench.forEach(function (p, i) {
+        var card = playerCardLabel(p);
+        var you = card.isUser ? ' <span style="color:var(--orange);">你</span>' : '';
+        html += '<div>' + (i + 1) + '. ' + card.name + ' <span style="color:var(--orange);font-weight:800;">' + card.ovr + '</span>'
+          + ' · ' + (card.nat || '—') + you + '</div>';
+      });
+    }
     html += '</div></div>';
     return html;
+  }
+
+  function renderDraftPoolCard(slim, p, idx, side, roster, phase, blocked) {
+    var card = playerCardLabel(p, slim);
+    var slots = phase === 'starters' ? validStarterSlotsForPlayer(p, roster.starters) : [];
+    var slotHint = phase === 'starters' && slots.length
+      ? '可落位 ' + slots.join('/') : (phase === 'bench' ? '替补' : '');
+    var html = '<button type="button" class="btn btn-secondary btn-sm allstar-pick-btn" data-idx="' + idx + '"'
+      + (blocked ? ' disabled' : '')
+      + ' style="text-align:left;font-size:11px;padding:8px 10px;' + (blocked ? 'opacity:.45;' : '') + '">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;">';
+    html += '<strong style="font-size:12px;">' + card.name + (card.isUser ? ' <span style="color:var(--orange);">你</span>' : '') + '</strong>';
+    html += '<span style="font-family:var(--font-display);font-size:15px;font-weight:800;color:var(--orange);">' + card.ovr + '</span>';
+    html += '</div>';
+    html += '<div style="color:var(--text-dim);font-size:10px;margin-top:2px;">' + card.nat + ' · ' + (card.team || '—') + '</div>';
+    if (slotHint) html += '<div style="font-size:10px;color:var(--text);margin-top:3px;">' + slotHint + '</div>';
+    if (blocked) html += '<div style="color:var(--orange);font-size:10px;margin-top:2px;">该NBA队已满4人</div>';
+    html += '</button>';
+    return html;
+  }
+
+  function draftStatusHtml(state, side, turnName, isUserTurn) {
+    var phase = draftPhase(state);
+    var roster = rosterForSide(state, side);
+    var phaseLabel = phase === 'starters' ? '阶段一 · 挑选首发' : '阶段二 · 挑选替补';
+    var need = phase === 'starters'
+      ? renderNeedSlots(roster)
+      : ('还需 <strong>' + (BENCH_SIZE - roster.bench.length) + '</strong> 人');
+    var turn = '第 <strong>' + (state.pickIndex + 1) + '</strong> 顺位 · <strong>' + turnName + '</strong> 选人';
+    if (isUserTurn) turn += ' <span style="color:var(--orange);">（轮到你了）</span>';
+    else turn += '（模拟中）';
+    return '<div style="margin-bottom:4px;">' + phaseLabel + '</div>'
+      + '<div>' + turn + '</div>'
+      + '<div style="margin-top:4px;font-size:11px;">本队' + need + '</div>';
   }
 
   function showDraftModal(pack, done) {
@@ -387,6 +572,25 @@
     html += '</div></div>';
     document.body.insertAdjacentHTML('beforeend', html);
 
+    function commitUserPick(pickIdx, slot) {
+      var side = pickSideForIndex(state);
+      var roster = rosterForSide(state, side);
+      var phase = draftPhase(state);
+      var slim = state.remainingSlim[pickIdx];
+      var player = state.remaining[pickIdx];
+      var meta = addPickToTeam(roster, player, phase, slot);
+      if (!meta) return;
+      state.remaining.splice(pickIdx, 1);
+      state.remainingSlim.splice(pickIdx, 1);
+      state.picks.push({ side: side, slim: slim, role: meta.role, slot: meta.slot });
+      state.pickIndex++;
+      state._pendingSlotPick = null;
+      render();
+      if (!draftFinished(state) && !(userCaptain && state.userCaptainSide === pickSideForIndex(state))) {
+        setTimeout(aiStep, 280);
+      }
+    }
+
     function render() {
       var statusEl = document.getElementById('allstar-draft-status');
       var teamsEl = document.getElementById('allstar-draft-teams');
@@ -396,11 +600,11 @@
 
       var eastName = captainLabel(state.eastCapSlim);
       var westName = captainLabel(state.westCapSlim);
-      teamsEl.innerHTML = renderDraftRoster(eastName, state.teamE, state.eastCapSlim)
-        + renderDraftRoster(westName, state.teamW, state.westCapSlim);
+      teamsEl.innerHTML = renderDraftRoster(eastName, state.rosterE)
+        + renderDraftRoster(westName, state.rosterW);
 
       if (draftFinished(state)) {
-        statusEl.textContent = '选秀完成，双方各12人出战。';
+        statusEl.innerHTML = '选秀完成：双方各5名首发 + 7名替补（同NBA球队最多4人）。';
         poolEl.innerHTML = '';
         actionsEl.innerHTML = '<button type="button" class="btn btn-primary btn-sm" style="width:100%;" id="allstar-draft-finish">开始全明星赛</button>';
         var fin = document.getElementById('allstar-draft-finish');
@@ -418,48 +622,69 @@
       var side = pickSideForIndex(state);
       var turnName = side === 'EAST' ? eastName : westName;
       var isUserTurn = userCaptain && state.userCaptainSide === side;
-      statusEl.innerHTML = '第 <strong>' + (state.pickIndex + 1) + '</strong> 顺位 · ' + turnName + ' 选人'
-        + (isUserTurn ? ' <span style="color:var(--orange);">（轮到你了）</span>' : '（模拟中）');
+      var phase = draftPhase(state);
+      var roster = rosterForSide(state, side);
+      statusEl.innerHTML = draftStatusHtml(state, side, turnName, isUserTurn);
 
       if (isUserTurn) {
-        var poolHtml = '<div style="font-size:11px;font-weight:700;margin-bottom:6px;">可选球员</div>';
+        var poolHtml = '<div style="font-size:11px;font-weight:700;margin-bottom:6px;">可选球员（按总评）</div>';
         poolHtml += '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px;">';
-        state.remainingSlim.forEach(function (slim, idx) {
-          var p = state.remaining[idx];
-          var t = slim.team || nbaTeamOf(p);
-          var blocked = countNbaTeam(side === 'EAST' ? state.teamE : state.teamW, t) >= MAX_PER_NBA_TEAM;
-          poolHtml += '<button type="button" class="btn btn-secondary btn-sm allstar-pick-btn" data-idx="' + idx + '"'
-            + (blocked ? ' disabled style="opacity:.45;"' : '')
-            + ' style="text-align:left;font-size:11px;padding:6px 8px;">';
-          poolHtml += '<div><strong>' + (slim.name || '') + '</strong></div>';
-          poolHtml += '<div style="color:var(--text-dim);">' + (slim.pos || '') + ' · ' + (t || '') + '</div>';
-          if (blocked) poolHtml += '<div style="color:var(--orange);font-size:10px;">该队已满4人</div>';
-          poolHtml += '</button>';
+        var ranked = state.remainingSlim.map(function (slim, idx) {
+          return { slim: slim, p: state.remaining[idx], idx: idx, ovr: ovrOf(state.remaining[idx]) };
+        }).sort(function (a, b) { return b.ovr - a.ovr; });
+        ranked.forEach(function (row) {
+          var t = row.slim.team || nbaTeamOf(row.p);
+          var blocked = countNbaTeam(roster, t) >= MAX_PER_NBA_TEAM;
+          poolHtml += renderDraftPoolCard(row.slim, row.p, row.idx, side, roster, phase, blocked);
         });
         poolHtml += '</div>';
+        if (state._pendingSlotPick != null) {
+          var pend = state._pendingSlotPick;
+          var pendPlayer = state.remaining[pend.idx];
+          var slots = validStarterSlotsForPlayer(pendPlayer, roster.starters);
+          poolHtml += '<div style="margin-top:10px;padding:10px;background:var(--bg-card);border:1px solid var(--border);border-radius:10px;">';
+          poolHtml += '<div style="font-size:11px;font-weight:700;margin-bottom:6px;">落位 · ' + playerCardLabel(pendPlayer, pend.slim).name + '</div>';
+          poolHtml += '<div style="display:flex;flex-wrap:wrap;gap:6px;">';
+          slots.forEach(function (slot) {
+            poolHtml += '<button type="button" class="btn btn-primary btn-sm allstar-slot-btn" data-slot="' + slot + '">' + slot + ' ' + posLabel(slot) + '</button>';
+          });
+          poolHtml += '<button type="button" class="btn btn-secondary btn-sm allstar-slot-cancel">取消</button>';
+          poolHtml += '</div></div>';
+        }
         poolEl.innerHTML = poolHtml;
         actionsEl.innerHTML = '';
-        var btns = poolEl.querySelectorAll('.allstar-pick-btn');
-        btns.forEach(function (btn) {
+        poolEl.querySelectorAll('.allstar-pick-btn').forEach(function (btn) {
           if (btn.disabled) return;
           btn.onclick = function () {
             var pickIdx = parseInt(btn.getAttribute('data-idx'), 10);
-            var team = side === 'EAST' ? state.teamE : state.teamW;
             var slim = state.remainingSlim[pickIdx];
             var player = state.remaining[pickIdx];
-            team.push(player);
-            state.remaining.splice(pickIdx, 1);
-            state.remainingSlim.splice(pickIdx, 1);
-            state.picks.push({ side: side, slim: slim });
-            state.pickIndex++;
-            render();
-            if (!draftFinished(state) && !(userCaptain && state.userCaptainSide === pickSideForIndex(state))) {
-              setTimeout(aiStep, 280);
+            if (phase === 'starters') {
+              var slots = validStarterSlotsForPlayer(player, roster.starters);
+              if (slots.length > 1) {
+                state._pendingSlotPick = { idx: pickIdx, slim: slim };
+                render();
+                return;
+              }
+              commitUserPick(pickIdx, slots[0] || pickStarterSlotForPlayer(player, roster.starters));
+            } else {
+              commitUserPick(pickIdx, null);
             }
           };
         });
+        poolEl.querySelectorAll('.allstar-slot-btn').forEach(function (btn) {
+          btn.onclick = function () {
+            if (!state._pendingSlotPick) return;
+            commitUserPick(state._pendingSlotPick.idx, btn.getAttribute('data-slot'));
+          };
+        });
+        var cancelBtn = poolEl.querySelector('.allstar-slot-cancel');
+        if (cancelBtn) cancelBtn.onclick = function () {
+          state._pendingSlotPick = null;
+          render();
+        };
       } else {
-        poolEl.innerHTML = '<div style="font-size:11px;color:var(--text-dim);">剩余 ' + state.remaining.length + ' 人待选…</div>';
+        poolEl.innerHTML = '<div style="font-size:11px;color:var(--text-dim);">剩余 ' + state.remaining.length + ' 人 · ' + (phase === 'starters' ? '补首发' : '补替补') + '…</div>';
         actionsEl.innerHTML = '';
         setTimeout(aiStep, 320);
       }
@@ -475,10 +700,11 @@
         render();
         return;
       }
-      var team = side === 'EAST' ? state.teamE : state.teamW;
-      var pick = aiDraftPick(state.remaining, team, state.remainingSlim);
+      var roster = rosterForSide(state, side);
+      var phase = draftPhase(state);
+      var pick = aiDraftPick(state.remaining, state.remainingSlim, roster, phase);
       if (pick) {
-        state.picks.push({ side: side, slim: pick.slim });
+        state.picks.push({ side: side, slim: pick.slim, role: pick.meta && pick.meta.role, slot: pick.meta && pick.meta.slot });
       }
       state.pickIndex++;
       render();
@@ -488,6 +714,23 @@
     }
 
     render();
+  }
+
+  function renderDraftSlimColumn(title, slims) {
+    var html = '<div style="flex:1;font-size:11px;line-height:1.55;color:var(--text-dim);">';
+    html += '<strong style="color:var(--text);">' + title + '</strong><br>';
+    html += '<span style="font-size:10px;font-weight:700;">首发</span><br>';
+    (slims || []).forEach(function (p) {
+      if (!p || p.draftRole !== 'starter') return;
+      html += p.draftSlot + ' · ' + (p.name || '') + ' <span style="color:var(--orange);font-weight:800;">' + n(p.ovr, '—') + '</span><br>';
+    });
+    html += '<span style="font-size:10px;font-weight:700;">替补</span><br>';
+    (slims || []).forEach(function (p) {
+      if (!p || p.draftRole !== 'bench') return;
+      html += (p.name || '') + ' <span style="color:var(--orange);font-weight:800;">' + n(p.ovr, '—') + '</span> · ' + (p.draftSlot || p.pos || '') + '<br>';
+    });
+    html += '</div>';
+    return html;
   }
 
   function showDraftSummaryModal(pack, done) {
@@ -502,14 +745,11 @@
     var html = '<div class="team-picker-overlay" id="allstar-draft-modal">';
     html += '<div class="team-picker-modal" style="max-width:520px;">';
     html += '<div class="team-picker-header"><span>⭐ 选秀完成</span></div>';
-    html += '<div style="padding:8px 14px;font-size:12px;color:var(--text-dim);">双方队长完成交替选秀，每队12人（同NBA球队最多4人）。</div>';
+    html += '<div style="padding:8px 14px;font-size:12px;color:var(--text-dim);">先补满双方首发，再交替挑选替补。同NBA球队最多4人。</div>';
     html += '<div style="display:flex;gap:10px;padding:8px 14px;">';
-    html += '<div style="flex:1;font-size:11px;line-height:1.5;color:var(--text-dim);"><strong>' + eastName + '</strong><br>';
-    (draft.teamEast || []).forEach(function (p, i) { html += (i + 1) + '. ' + (p.name || '') + '<br>'; });
+    html += renderDraftSlimColumn(eastName, draft.teamEast);
+    html += renderDraftSlimColumn(westName, draft.teamWest);
     html += '</div>';
-    html += '<div style="flex:1;font-size:11px;line-height:1.5;color:var(--text-dim);"><strong>' + westName + '</strong><br>';
-    (draft.teamWest || []).forEach(function (p, i) { html += (i + 1) + '. ' + (p.name || '') + '<br>'; });
-    html += '</div></div>';
     html += '<div style="padding:0 14px 14px;"><button type="button" class="btn btn-primary btn-sm" style="width:100%;" id="allstar-draft-play">观看全明星正赛</button></div>';
     html += '</div></div>';
     document.body.insertAdjacentHTML('beforeend', html);
