@@ -7718,7 +7718,7 @@ function saveCurrentSeasonToCareer() {
   var seasonNumForHonor = c.seasonCount + 1;
   function honorAlready(label) {
     return c.honors && c.honors.some(function (h) {
-      return n(h.seasonNum) === seasonNumForHonor && String(h.label || '').indexOf(label) >= 0;
+      return (parseInt(h.seasonNum, 10) || 0) === seasonNumForHonor && String(h.label || '').indexOf(label) >= 0;
     });
   }
   awards.forEach(function(a) {
