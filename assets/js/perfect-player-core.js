@@ -2335,8 +2335,8 @@ window.TEAM_LOGOS = {
   'WAS':'assets/images/teams/WAS.svg'
 };
 window.CONFERENCE_LOGOS = {
-  EAST:'assets/images/conference/east.svg',
-  WEST:'assets/images/conference/west.svg'
+  EAST:'assets/images/conference/east.png',
+  WEST:'assets/images/conference/west.png'
 };
 if (!window.TEAM_CITY) window.TEAM_CITY = {
   'ATL':'亚特兰大','BKN':'布鲁克林','BOS':'波士顿','CHA':'夏洛特','CHI':'芝加哥',
