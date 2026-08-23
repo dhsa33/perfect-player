@@ -2869,13 +2869,17 @@ function quickSimAllGames() {
         if (esEl2) esEl2.outerHTML = renderEventStatus();
 
         gi++;
-        if (evData && typeof showEventModal === 'function') {
-          showEventModal(evData, function() { setTimeout(simNextWithDelay, 120); });
-        } else if (branchEv) {
-          showSeasonBranchEvent(branchEv, function() { setTimeout(simNextWithDelay, 120); });
-        } else {
-          setTimeout(simNextWithDelay, 120);
+        function chainAfterGame() {
+          if (evData && typeof showEventModal === 'function') {
+            showEventModal(evData, function() { setTimeout(simNextWithDelay, 120); });
+          } else if (branchEv) {
+            showSeasonBranchEvent(branchEv, function() { setTimeout(simNextWithDelay, 120); });
+          } else {
+            setTimeout(simNextWithDelay, 120);
+          }
         }
+        if (window.PP_ALLSTAR && PP_ALLSTAR.maybeShowWeekend(chainAfterGame)) return;
+        chainAfterGame();
       };
 
       var paused = liveOrSkipUserPack(g.opponent, {
@@ -7752,12 +7756,19 @@ function saveCurrentSeasonToCareer() {
   var sp = STATE.season.playerStats || {};
   var awards = STATE.season.awards || [];
   var honorList = [];
+  var seasonNumForHonor = c.seasonCount + 1;
+  function honorAlready(label) {
+    return c.honors && c.honors.some(function (h) {
+      return n(h.seasonNum) === seasonNumForHonor && String(h.label || '').indexOf(label) >= 0;
+    });
+  }
   awards.forEach(function(a) {
     if (typeof a === 'string') {
       // 字符串类奖项：属于玩家
       var l = a;
       if (!l) return;
       if (c.seasonCount > 0 && l.indexOf('最佳新秀') >= 0) return;
+      if (honorAlready(l)) return;
       var emoji = '🏅';
       if (l.indexOf('总冠军') >= 0) emoji = '🏆';
       else if (l.indexOf('MVP') >= 0 || l.indexOf('FMVP') >= 0) emoji = '👑';
@@ -7771,6 +7782,7 @@ function saveCurrentSeasonToCareer() {
       var l = a.userHonorLabel || a.label || '';
       if (!l) return;
       if (c.seasonCount > 0 && l.indexOf('最佳新秀') >= 0) return;
+      if (honorAlready(l)) return;
       var emoji = '🏅';
       if (l.indexOf('总冠军') >= 0) emoji = '🏆';
       else if (l.indexOf('MVP') >= 0 || l.indexOf('FMVP') >= 0) emoji = '👑';
@@ -13706,7 +13718,6 @@ function renderTrainingCamp() {
   html += '<div class="tp-header">';
   html += '<div class="tp-points">' + used + ' / ' + tp + '</div>';
   html += '<div class="tp-points-label">训练点数</div>';
-  html += '<div style="margin-top:6px;font-size:11px;color:var(--text-muted);line-height:1.5;">' + calcTrainingBreakdown() + '</div>';
   html += '</div>';
 
   var skillPts = 0;
@@ -13721,7 +13732,6 @@ function renderTrainingCamp() {
   html += '<div style="min-width:0;">';
   html += '<div style="font-size:12px;font-weight:800;color:#2d1f0e;">⚡ 球风点 <span style="color:#ff6b35;font-size:18px;">' + skillPts + '</span></div>';
   if (grantLine) html += '<div style="margin-top:3px;font-size:11px;color:#8a7a66;line-height:1.45;">' + grantLine + '</div>';
-  html += '<div style="margin-top:3px;font-size:10px;color:#9a8a76;line-height:1.4;">与训练点分开，用于左侧技能面板。激活立即生效，本季最多获得 15 点。</div>';
   html += '</div>';
   html += '<button type="button" class="btn btn-secondary btn-sm" onclick="if(window.PP_FX)PP_FX.openSkillPanel()">技能</button>';
   html += '</div></div>';

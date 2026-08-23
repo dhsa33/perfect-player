@@ -14,12 +14,13 @@
     ],
     story: [
       ['assets/js/perfect-player-event-library.js?v=20260821-events-v3', '赛季事件'],
-      ['assets/js/perfect-player-story-events.js?v=20260822-story-v4', '生涯剧情'],
-      ['assets/js/perfect-player-awards.js?v=20260813-real-ballot-v1', '荣誉评选']
+      ['assets/js/perfect-player-story-events.js?v=20260823-story-v5', '生涯剧情'],
+      ['assets/js/perfect-player-awards.js?v=20260823-allstar-v2', '荣誉评选'],
+      ['assets/js/perfect-player-allstar.js?v=20260823-allstar-v3', '全明星周末']
     ],
     live: [
-      ['assets/js/perfect-player-live-court.js?v=20260822-court-v32', '俯瞰球场'],
-      ['assets/js/perfect-player-live-sim.js?v=20260822-live-sim-v55', '文字直播']
+      ['assets/js/perfect-player-live-court.js?v=20260823-court-v35', '俯瞰球场'],
+      ['assets/js/perfect-player-live-sim.js?v=20260823-live-sim-v60', '文字直播']
     ]
   };
 

@@ -435,11 +435,16 @@ body {
 .progress-fill { background: linear-gradient(90deg,var(--navy-light),var(--orange)); }
 
 .team-picker-overlay { background: rgba(7,17,30,.64); }
-.team-picker-modal { border-top: 4px solid var(--orange); box-shadow: 0 18px 60px rgba(7,17,30,.3); }
+.team-picker-modal {
+  border-top: 0;
+  overflow: hidden;
+  box-shadow: 0 18px 60px rgba(7,17,30,.3);
+}
 .team-picker-header {
   background: linear-gradient(90deg,var(--navy),var(--navy-light));
   color: #fff;
-  border-bottom-color: var(--orange);
+  border-top: 4px solid var(--orange);
+  border-bottom: 1px solid var(--orange);
 }
 .team-picker-header span { font-family: var(--font-athletic); letter-spacing: .5px; }
 .team-picker-header .team-picker-close { border-color: rgba(255,255,255,.2); background: rgba(255,255,255,.1); color: #fff; }

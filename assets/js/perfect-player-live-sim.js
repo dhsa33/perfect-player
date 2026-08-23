@@ -63,8 +63,9 @@
     size = size || 28;
     return '<img class="pp-live-logo" src="' + esc(url) + '" width="' + size + '" height="' + size + '" alt="' + esc(code) + '">';
   }
-  function teamBoardHtml(code) {
-    return teamLogoHtml(code, 36) + '<span>' + esc(teamName(code)) + '</span>';
+  function teamBoardHtml(code, displayName) {
+    var label = displayName || teamName(code);
+    return teamLogoHtml(code, 36) + '<span>' + esc(label) + '</span>';
   }
   function esc(s) {
     return String(s == null ? '' : s)
@@ -85,10 +86,12 @@
     var s = sec % 60;
     return m + ':' + (s < 10 ? '0' : '') + s;
   }
-  function elapsedSec(q, secLeft, isOT, ot) {
+  function elapsedSec(q, secLeft, isOT, ot, quarterSec) {
+    var qSec = Number(quarterSec) || 720;
     var left = Math.max(0, Number(secLeft) || 0);
-    if (!isOT) return (Math.max(1, q) - 1) * 720 + (720 - left);
-    return 48 * 60 + Math.max(0, (ot || 1) - 1) * 300 + (300 - left);
+    if (!isOT) return (Math.max(1, q) - 1) * qSec + (qSec - left);
+    var gameMins = (Number(quarterSec) && quarterSec < 720) ? 40 : 48;
+    return gameMins * 60 + Math.max(0, (ot || 1) - 1) * 300 + (300 - left);
   }
   function periodLabel(q, isOT, ot) {
     if (isOT) return (ot && ot > 1) ? ('第' + ot + '加时') : '加时';
@@ -296,8 +299,8 @@
 
   function buildBlueprint(teamA, teamB, options) {
     options = options || {};
-    var powerA = typeof calcTeamPowerWithPlayer === 'function' ? calcTeamPowerWithPlayer(teamA) : { offense: 70, defense: 70, athletic: 70, clutch: 70, depth: 70 };
-    var powerB = typeof calcTeamPowerWithPlayer === 'function' ? calcTeamPowerWithPlayer(teamB) : { offense: 70, defense: 70, athletic: 70, clutch: 70, depth: 70 };
+    var powerA = options.customPowerA || (typeof calcTeamPowerWithPlayer === 'function' ? calcTeamPowerWithPlayer(teamA) : { offense: 70, defense: 70, athletic: 70, clutch: 70, depth: 70 });
+    var powerB = options.customPowerB || (typeof calcTeamPowerWithPlayer === 'function' ? calcTeamPowerWithPlayer(teamB) : { offense: 70, defense: 70, athletic: 70, clutch: 70, depth: 70 });
     var baseline = typeof getSimulationPowerBaseline === 'function' ? getSimulationPowerBaseline() : { offense: 70, defense: 70, athletic: 70, depth: 70 };
     var modA = options.neutralState ? { offense: 0, defense: 0, variance: 0 } : (typeof getCareerTeamGameModifiers === 'function' ? getCareerTeamGameModifiers(teamA) : { offense: 0, defense: 0, variance: 0 });
     var modB = options.neutralState ? { offense: 0, defense: 0, variance: 0 } : (typeof getCareerTeamGameModifiers === 'function' ? getCareerTeamGameModifiers(teamB) : { offense: 0, defense: 0, variance: 0 });
@@ -335,10 +338,13 @@
     var injuryPts = options.probMultiplier == null ? 0 : (Number(options.probMultiplier) - 1) * 28;
     var efficiencyA = clamp(1.154 + edgeA * 0.0034 + depthEdge + homeA - fatigueA * 0.012 + seedPts / pace + injuryPts / pace, 0.91, 1.36);
     var efficiencyB = clamp(1.154 + edgeB * 0.0034 - depthEdge + homeB - fatigueB * 0.012 - seedPts / pace, 0.91, 1.36);
-    var lineupA = typeof calcTeamLineup === 'function' ? calcTeamLineup(teamA) : { starters: {}, bench: [], isUserStarter: false };
-    var lineupB = typeof calcTeamLineup === 'function' ? calcTeamLineup(teamB) : { starters: {}, bench: [], isUserStarter: false };
+    var lineupA = options.customLineupA || (typeof calcTeamLineup === 'function' ? calcTeamLineup(teamA) : { starters: {}, bench: [], isUserStarter: false });
+    var lineupB = options.customLineupB || (typeof calcTeamLineup === 'function' ? calcTeamLineup(teamB) : { starters: {}, bench: [], isUserStarter: false });
+    var rosterSize = Math.max(10, Math.min(12, Number(options.rosterSize) || 10));
     var userMins = 28;
-    if (teamA === STATE.careerTeam && typeof getPlayerRotationMinutes === 'function') {
+    if (options.allStarExhibition) {
+      userMins = Number(options.userAllStarMins) || 22;
+    } else if (teamA === STATE.careerTeam && typeof getPlayerRotationMinutes === 'function') {
       userMins = getPlayerRotationMinutes(options.attrs || STATE.attrs, STATE.position || 'SF', !!options.isPlayoff);
     }
     var defPressure = clamp((Number(powerB.defense) - baseline.defense) * 0.003, -0.035, 0.045);
@@ -349,8 +355,10 @@
       edgeA: edgeA, edgeB: edgeB, modA: modA, modB: modB,
       expA: pace * efficiencyA, expB: pace * efficiencyB,
       lineupA: lineupA, lineupB: lineupB,
-      rosterA: roster10(lineupA), rosterB: roster10(lineupB),
-      userStarter: !!(lineupA.isUserStarter && !(STATE.career && STATE.career.flags && STATE.career.flags.startBench)),
+      rosterA: rosterFromLineup(lineupA, rosterSize), rosterB: rosterFromLineup(lineupB, rosterSize),
+      userStarter: options.allStarExhibition
+        ? !!lineupA.isUserStarter
+        : !!(lineupA.isUserStarter && !(STATE.career && STATE.career.flags && STATE.career.flags.startBench)),
       userMins: userMins, defPressure: defPressure,
       varianceA: clamp(6.4 + (modA.variance || 0), 4.6, 10),
       varianceB: clamp(6.4 + (modB.variance || 0), 4.6, 10),
@@ -358,14 +366,36 @@
     };
     bp.tgtA = clamp(Math.round(bp.pace * bp.efficiencyA + gauss(0, bp.varianceA)), 80, 155);
     bp.tgtB = clamp(Math.round(bp.pace * bp.efficiencyB + gauss(0, bp.varianceB)), 80, 155);
-    bp.user = expectedUserLine(options.attrs || STATE.attrs || {}, bp, bp.isPlayoff);
-    bp.userMins = bp.user.mins;
+    if (!options.allStarExhibition) {
+      bp.user = expectedUserLine(options.attrs || STATE.attrs || {}, bp, bp.isPlayoff);
+      bp.userMins = bp.user.mins;
+    }
+    if (options.allStarExhibition) {
+      bp._allStarExhibition = true;
+      bp._quarterSec = Number(options.quarterSec) || 600;
+      bp._gameMins = Number(options.gameMins) || 40;
+      bp._noOT = !!options.noOT;
+      bp.displayNameA = options.displayNameA || '';
+      bp.displayNameB = options.displayNameB || '';
+      bp.pace = clamp(Math.round(102 + gauss(0, 2.2)), 98, 108);
+      bp.efficiencyA = clamp(1.118 + gauss(0, 0.035), 1.02, 1.28);
+      bp.efficiencyB = clamp(1.118 + gauss(0, 0.035), 1.02, 1.28);
+      bp.expA = bp.pace * bp.efficiencyA;
+      bp.expB = bp.pace * bp.efficiencyB;
+      bp.varianceA = 8.2;
+      bp.varianceB = 8.2;
+      bp.defPressure = 0;
+      bp.tgtA = clamp(Math.round(bp.pace * bp.efficiencyA + gauss(0, bp.varianceA)), 95, 145);
+      bp.tgtB = clamp(Math.round(bp.pace * bp.efficiencyB + gauss(0, bp.varianceB)), 95, 145);
+    }
     if (options.debugReboundLab) bp._debugReboundLab = true;
     if (options.flavorLab) bp._flavorLab = true;
+    if (options.threeOnlyLab) bp._threeOnlyLab = true;
     return bp;
   }
 
-  function roster10(lineup) {
+  function rosterFromLineup(lineup, max) {
+    max = Math.max(5, Number(max) || 10);
     var order = ['PG', 'SG', 'SF', 'PF', 'C'];
     var starters = order.map(function (k) { return lineup.starters && lineup.starters[k]; }).filter(Boolean);
     if (starters.length < 5) {
@@ -384,11 +414,15 @@
     var user = roster.filter(function (p) { return p && p._isUser; })[0]
       || (lineup.bench || []).filter(function (p) { return p && p._isUser; })[0]
       || (lineup.allPlayers || []).filter(function (p) { return p && p._isUser; })[0];
-    if (user && !roster.slice(0, 10).some(function (p) { return p && p._isUser; })) {
-      if (roster.length >= 10) roster[9] = user;
+    if (user && !roster.slice(0, max).some(function (p) { return p && p._isUser; })) {
+      if (roster.length >= max) roster[max - 1] = user;
       else roster.push(user);
     }
-    return roster.slice(0, 10);
+    return roster.slice(0, max);
+  }
+
+  function roster10(lineup) {
+    return rosterFromLineup(lineup, 10);
   }
 
   function emptyLine() {
@@ -434,7 +468,16 @@
     };
   }
 
-  function stintOf(q, secLeft, margin, isOT) {
+  function stintOf(q, secLeft, margin, isOT, opts) {
+    opts = opts || {};
+    if (opts.allStar) {
+      var qSec = Number(opts.quarterSec) || 600;
+      var played = (qSec - secLeft) / 60;
+      if (played < 3) return 'starters';
+      if (played < 6) return 'mix';
+      if (played < 9) return 'bench';
+      return 'mix';
+    }
     if (isOT) return Math.abs(margin) >= 10 ? 'mix' : 'starters';
     var played = (720 - secLeft) / 60;
     if (q === 4 && Math.abs(margin) >= 18 && played >= 3) return 'bench';
@@ -497,9 +540,11 @@
   }
 
   function remainingMins(q, secLeft, isOT, game) {
+    var qSec = (game.bp && game.bp._quarterSec) || 720;
+    var qMins = qSec / 60;
     if (isOT) return secLeft / 60;
-    var left = secLeft / 60 + Math.max(0, 4 - q) * 12;
-    if (game.scoreA === game.scoreB && q === 4 && secLeft < 20) left += 5;
+    var left = secLeft / 60 + Math.max(0, 4 - q) * qMins;
+    if (game.scoreA === game.scoreB && q === 4 && secLeft < 20 && !game.bp._allStarExhibition) left += 5;
     return left;
   }
 
@@ -1070,9 +1115,9 @@
 
   function maybeEvent(game, ctx) {
     if (game.cooldown > 0) { game.cooldown--; return null; }
-    var target = game.bp.isPlayoff ? 11 : 8;
+    var target = game.bp.isPlayoff ? 11 : (game.bp._allStarExhibition ? 5 : 8);
     if (game.eventCount >= target + 2) return null;
-    var baseP = game.bp.isPlayoff ? 0.12 : 0.095;
+    var baseP = game.bp.isPlayoff ? 0.12 : (game.bp._allStarExhibition ? 0.06 : 0.095);
     if (ctx.clutch) baseP += 0.06;
     if (!chance(baseP)) return null;
     var pool = LIVE_EVENTS.filter(function (ev) {
@@ -1165,7 +1210,8 @@
     var bp = game.bp;
     if (ctx.isOT) return Math.max(1.15, bp.pace * (ctx.secLeft / 60) / 48);
     var minsLeft = remainingMins(ctx.q, ctx.secLeft, false, game);
-    return Math.max(1.15, bp.pace * (minsLeft / 48));
+    var gameMins = bp._gameMins || 48;
+    return Math.max(1.15, bp.pace * (minsLeft / gameMins));
   }
 
   function neededPPP(game, ctx) {
@@ -1475,7 +1521,18 @@
     return !!(fx && fx.dunk && action !== 'euro' && action !== 'hop');
   }
 
-  function movePhrase(action, dunk) {
+  function syncShotAction(shot, action) {
+    if (shot === 'threePT') {
+      if (/^(pullup|jumper|fade|float|runner|jab|hook|skyhook|postspin)$/.test(action)) return 'pull3';
+      return action;
+    }
+    if (/^(pull3|stepback|snatch|logo|trail|spot|catch|cut|flare|pin|dho)$/.test(action)) {
+      return (action === 'stepback' || action === 'snatch') ? 'pullup' : 'jumper';
+    }
+    return action;
+  }
+
+  function movePhrase(action, dunk, shot) {
     if (action === 'euro') return '欧洲步上篮';
     if (action === 'hop') return '跳步上篮';
     if (action === 'upunder') return '上下步上篮';
@@ -1500,14 +1557,12 @@
     if (action === 'postspin') return '低位转身跳投';
     if (action === 'pullup') return '急停跳投';
     if (action === 'jumper') return '跳投';
-    if (action === 'stepback') return '后撤步三分';
-    if (action === 'snatch') return '后撤一步拔三分';
+    if (action === 'stepback') return shot === 'threePT' ? '后撤步三分' : '后撤步跳投';
+    if (action === 'snatch') return shot === 'threePT' ? '后撤一步拔三分' : '后撤一步拔投';
     if (action === 'pull3') return '持球拔三分';
     if (action === 'trail') return '快攻跟进三分';
-    if (action === 'flare') return '投三分';
-    if (action === 'pin') return '投三分';
-    if (action === 'dho') return '投三分';
-    if (action === 'spot' || action === 'catch' || action === 'cut') return '投三分';
+    if (action === 'flare' || action === 'pin' || action === 'dho') return shot === 'threePT' ? '投三分' : '跳投';
+    if (action === 'spot' || action === 'catch' || action === 'cut') return shot === 'threePT' ? '投三分' : '跳投';
     if (action === 'logo') return '超远三分';
     return dunk ? '扣篮' : '跳投';
   }
@@ -1549,13 +1604,21 @@
     if (/^(hook|skyhook|dropstep|upunder|postspin)$/.test(action) && !canPostUp(shooter, matchup)) {
       return attr(shooter, 'MID') >= 72 ? 'fade' : 'jumper';
     }
-    if (action === 'fade' && pos === 'PG' && matchup && posOf(matchup) === 'C') return 'stepback';
+    if (action === 'fade' && pos === 'PG' && matchup && posOf(matchup) === 'C') return 'pullup';
     if (action === 'euro' && pos === 'C' && !trans) return 'dropstep';
     if (action === 'skyhook' && pos !== 'C' && pos !== 'PF') return 'hook';
     return action;
   }
 
-  function pickZone(action, tactic) {
+  function pickZone(action, tactic, shot) {
+    if (shot === 'threePT') {
+      if (action === 'spot' || action === 'flare' || action === 'pin') return 'corner';
+      if (action === 'catch' || action === 'dho') return chance(0.45) ? 'corner' : 'top';
+      if (action === 'pull3' || action === 'snatch' || action === 'trail') return chance(0.5) ? 'top' : 'corner';
+      if (action === 'stepback') return chance(0.5) ? 'top' : 'corner';
+      if (action === 'logo') return 'logo';
+      return chance(0.55) ? 'top' : 'corner';
+    }
     if (action === 'spot' || action === 'flare') return 'corner';
     if (action === 'cut' || action === 'backdoor') return 'slot';
     if (action === 'catch' || action === 'pin' || action === 'dho') return chance(0.5) ? 'slot' : 'wing';
@@ -1612,12 +1675,13 @@
 
   function fillSceneMeta(scene, trans, ev, fx) {
     scene.action = remapActionForBody(scene.shooter, scene.matchup, scene.action, trans);
+    scene.action = syncShotAction(scene.shot, scene.action);
     var meta = pickTactic(scene.action, trans, ev, fx, scene.shooter, scene.passer, scene.shot);
     scene.tactic = meta.tactic;
     scene.branch = meta.branch;
     scene.camera = meta.camera;
     scene.strong = chance(0.54) ? 'R' : 'L';
-    scene.zone = pickZone(scene.action, scene.tactic);
+    scene.zone = pickZone(scene.action, scene.tactic, scene.shot);
     if (scene.action === 'fade' && scene.tactic !== 'post') scene.zone = 'elbow';
     if (scene.zone === 'post' && !canPostUp(scene.shooter, scene.matchup)) {
       scene.zone = 'elbow';
@@ -1656,7 +1720,7 @@
     var h = s.help ? nm(s.help) : '';
     var p = s.passer ? nm(s.passer) : '';
     var dunk = !!s.dunk;
-    var move = movePhrase(s.action, dunk);
+    var move = movePhrase(s.action, dunk, s.shot);
     var zcn = ZONE_CN[s.zone] || '';
     var finishMove = /上篮|扣篮|杀篮下|补篮|补扣/.test(move);
     var useZ = !!(zcn && !/^(spot|cut|coast|lob|trail|putback)$/.test(s.action || '') && !(s.zone === 'rim' && finishMove));
@@ -1977,6 +2041,8 @@
     var bp = game.bp;
     var labReb = !!(bp && bp._debugReboundLab);
     var flavorLab = !!(bp && bp._flavorLab);
+    var threeOnlyLab = !!(bp && bp._threeOnlyLab);
+    var labShotOnly = flavorLab || threeOnlyLab;
     var side = ctx.side;
     var fx = liveFx(ev);
     var rows = [];
@@ -1989,19 +2055,19 @@
     if (ctx.userOn) {
       tovRate = clamp(tovRate / (1 + (st(game.styles, 'tempo_master') - 1) * 0.7) * (1 + (st(game.styles, 'steal_instinct') - 1) * 0.25), 0.09, 0.18);
     }
-    if (flavorLab) tovRate = 0;
+    if (labShotOnly) tovRate = 0;
     var orbRate = clamp(0.265 + offEdge * 0.003 + (fx.orb || 0), 0.16, 0.38);
     var clock = possessionClock(ctx, ev, game);
     var form = (side === 'A' ? game.formA : game.formB) + gauss(0, 0.008);
     var rush = ctx.secLeft <= 6 ? -0.10 : 0;
 
-    if (fx.tech && !labReb && !flavorLab) {
+    if (fx.tech && !labReb && !labShotOnly) {
       addScore(game, ctx.defSide, 1, ctx.qIdx, ctx.isOT);
       rows.push({ kind: 'tech', tag: '罚球', tone: 'make', teamSide: ctx.defSide, text: '技术犯规罚球命中' });
       return { clock: Math.min(clock, 8), orb: false, rows: rows };
     }
 
-    if (fx.hack && !labReb && !flavorLab) {
+    if (fx.hack && !labReb && !labShotOnly) {
       var victim = (ev && ev._bind && ev._bind.actor) || ctx.offCourt[0];
       if (!victim || ctx.offCourt.indexOf(victim) < 0) victim = ctx.offCourt[0];
       var hackFt = shotPctFor(victim, 'FT', 0, form * 0.4, 1, victim && victim._isUser ? styleMul('ice_ft', game) : 1);
@@ -2018,7 +2084,7 @@
       return { clock: Math.min(clock, 10), orb: false, rows: rows };
     }
 
-    if (!labReb && !flavorLab && (fx.forceTov || fx.stl || chance(tovRate))) {
+    if (!labReb && !labShotOnly && (fx.forceTov || fx.stl || chance(tovRate))) {
       var loser = pickShooter(ctx.offCourt, ctx.userOn, ctx.usage * 0.55, false) || ctx.offCourt[0];
       lineOf(game, loser).tov++;
       var userOnDef = ctx.defCourt.filter(function (p) { return p && p._isUser; })[0];
@@ -2090,11 +2156,16 @@
       });
     }
 
-    var hint = fx.shot === 'three' ? 'threePT' : fx.shot;
-    var shot = hint || pickShotType(shooter, null, game.styles);
-    if (shot === 'three') shot = 'threePT';
+    var shot;
+    if (threeOnlyLab) shot = 'threePT';
+    else {
+      var hint = fx.shot === 'three' ? 'threePT' : fx.shot;
+      shot = hint || pickShotType(shooter, null, game.styles);
+      if (shot === 'three') shot = 'threePT';
+    }
     var evHint = eventActionHint(ev, fx);
     var trans = clock <= 9 || hasTag(game, 'transition') || !!(evHint && evHint.trans);
+    if (threeOnlyLab) trans = false;
     if (trans) {
       if (!passer) passer = pickOutletPasser(ctx.offCourt, shooter);
     }
@@ -2104,7 +2175,12 @@
     var contest = rollContest(shot, shooter, matchup, help, evHint);
     var action = pickAction(shooter, shot, passer, contest, trans, evHint, fx);
     if (action === 'coast' && !passer) passer = pickOutletPasser(ctx.offCourt, shooter);
-    if (action === 'lob' && !passer) action = attr(shooter, 'DNK') >= 78 ? 'dunk' : 'layup';
+    if (action === 'lob' && !passer) {
+      action = threeOnlyLab ? 'pull3' : (attr(shooter, 'DNK') >= 78 ? 'dunk' : 'layup');
+    }
+    if (threeOnlyLab && /^(layup|dunk|euro|hop|upunder|slash|cross|hesi|reverse|faceup|backdoor|dropstep|putback|coast)$/.test(action)) {
+      action = passer ? (chance(0.55) ? 'catch' : 'spot') : (chance(0.35) ? 'stepback' : 'pull3');
+    }
     if ((action === 'cut' || action === 'spot' || action === 'catch' || action === 'flare' || action === 'pin' || action === 'dho') && !passer) action = shot === 'threePT' ? 'pull3' : 'jumper';
     if (passer && shot === 'threePT' && (action === 'catch' || action === 'spot' || action === 'cut' || action === 'flare' || action === 'pin')) {
       if (contest === 'heavy') contest = 'help';
@@ -2113,18 +2189,36 @@
       else if (contest === 'contest' && chance(0.22)) contest = 'open';
     }
     if (/^(fade|hook|skyhook|stepback|pullup|jab|postspin|snatch|runner)$/.test(action) && contest === 'open') contest = 'close';
-    if (contest === 'open' && /^(euro|hop|upunder|slash|cross|hesi|faceup|reverse)$/.test(action)) {
+    if (!threeOnlyLab && contest === 'open' && /^(euro|hop|upunder|slash|cross|hesi|faceup|reverse)$/.test(action)) {
       action = attr(shooter, 'DNK') >= 82 && chance(0.4) ? 'dunk' : 'layup';
     }
     if (action === 'cut' && contest !== 'open' && contest !== 'close') action = passer ? 'catch' : 'pull3';
     if (contest === 'open') help = null;
     action = remapActionForBody(shooter, matchup, action, trans);
+    action = syncShotAction(shot, action);
     var dunk = actionIsDunk(action, shooter, fx);
     var scene = {
       shooter: shooter, passer: passer, matchup: matchup, help: help,
       shot: shot, contest: contest, action: action, dunk: dunk
     };
     fillSceneMeta(scene, trans, ev, fx);
+    if (threeOnlyLab) {
+      scene.shot = 'threePT';
+      scene.dunk = false;
+      if (/^(layup|dunk|euro|hop|upunder|slash|cross|hesi|reverse|faceup|backdoor|dropstep|putback|lob|coast|trail)$/.test(scene.action)) {
+        scene.action = scene.passer ? (chance(0.55) ? 'catch' : 'spot') : (chance(0.35) ? 'stepback' : 'pull3');
+      }
+      scene.action = syncShotAction('threePT', scene.action);
+      scene.dunk = false;
+      var labMeta = pickTactic(scene.action, false, ev, fx, scene.shooter, scene.passer, 'threePT');
+      scene.tactic = labMeta.tactic;
+      scene.branch = labMeta.branch;
+      scene.camera = labMeta.camera;
+      scene.zone = pickZone(scene.action, scene.tactic, 'threePT');
+      shot = 'threePT';
+      action = scene.action;
+      dunk = false;
+    }
     if (trans && scene.passer && scene.shooter && pid(scene.passer) === pid(scene.shooter)) {
       scene.passer = pickOutletPasser(ctx.offCourt.filter(function (p) { return p && pid(p) !== pid(scene.shooter); }), scene.shooter);
     }
@@ -2247,6 +2341,7 @@
 
   function emitPlay(sess, ctx, row) {
     var game = sess.game;
+    var bp = game.bp;
     var sec = row.secLeft != null ? row.secLeft : (ctx && ctx.secLeft != null ? ctx.secLeft : sess.clock);
     var q = ctx && ctx.q != null ? ctx.q : sess.q;
     var isOT = ctx ? !!ctx.isOT : !!sess.isOT;
@@ -2257,8 +2352,8 @@
       ot: game.ot,
       secLeft: sec,
       clock: fmtClock(sec),
-      elapsed: elapsedSec(q, sec, isOT, game.ot),
-      elapsedLabel: fmtElapsed(elapsedSec(q, sec, isOT, game.ot)),
+      elapsed: elapsedSec(q, sec, isOT, game.ot, bp._quarterSec),
+      elapsedLabel: fmtElapsed(elapsedSec(q, sec, isOT, game.ot, bp._quarterSec)),
       team: row.teamSide === 'B' ? teamName(game.bp.teamB) : (row.teamSide === 'A' ? teamName(game.bp.teamA) : ''),
       teamCode: row.teamSide === 'B' ? game.bp.teamB : (row.teamSide === 'A' ? game.bp.teamA : ''),
       teamSide: row.teamSide || '',
@@ -2298,7 +2393,8 @@
     var clock = sess.clock;
     var isOT = sess.isOT;
     var margin = game.scoreA - game.scoreB;
-    var stint = stintOf(q, clock, margin, isOT);
+    var stintOpts = { allStar: bp._allStarExhibition, quarterSec: bp._quarterSec };
+    var stint = stintOf(q, clock, margin, isOT, stintOpts);
     var user = bp.rosterA.filter(function (p) { return p && p._isUser; })[0];
     var userWanted = userWantedOn(game, stint, q, clock, margin, isOT);
     var courtA = pickCourt(bp.rosterA, stint, userWanted, user);
@@ -2307,7 +2403,9 @@
     var centerB = roleOn(courtB, 'big') || courtB[0];
     var winCourt = sess.possessor === 'A' ? courtA : courtB;
     var tipTo = roleOn(winCourt, 'pg') || winCourt[0];
-    var winnerTeam = sess.possessor === 'A' ? teamName(bp.teamA) : teamName(bp.teamB);
+    var winnerTeam = sess.possessor === 'A'
+      ? (bp.displayNameA || teamName(bp.teamA))
+      : (bp.displayNameB || teamName(bp.teamB));
     var text = nm(centerA) + '与' + nm(centerB) + '中圈争球，球拨给' + nm(tipTo) + '，' + winnerTeam + '先攻';
     var ctx = { q: q, isOT: isOT, secLeft: clock, side: sess.possessor };
     var row = {
@@ -2354,7 +2452,8 @@
     var isOT = sess.isOT;
     var qIdx = sess.qIdx;
     var margin = game.scoreA - game.scoreB;
-    var stint = stintOf(q, clock, margin, isOT);
+    var stintOpts = { allStar: bp._allStarExhibition, quarterSec: bp._quarterSec };
+    var stint = stintOf(q, clock, margin, isOT, stintOpts);
     var user = bp.rosterA.filter(function (p) { return p && p._isUser; })[0];
     var userWanted = userWantedOn(game, stint, q, clock, margin, isOT);
     var courtA = pickCourt(bp.rosterA, stint, userWanted, user);
@@ -2437,6 +2536,11 @@
 
   function closePeriod(sess) {
     var game = sess.game;
+    var bp = game.bp;
+    if (!sess.isOT && sess.q === 4 && bp._noOT && game.scoreA === game.scoreB) {
+      if (rand() < 0.5) game.scoreA++;
+      else game.scoreB++;
+    }
     var qA = sess.isOT ? game.otA : game.qA[sess.qIdx];
     var qB = sess.isOT ? game.otB : game.qB[sess.qIdx];
     emitMeta(sess, periodLabel(sess.q, sess.isOT, game.ot) + '结束　' + qA + '-' + qB);
@@ -2452,7 +2556,7 @@
     if (!sess.isOT && sess.q < 4) {
       sess.q += 1;
       sess.qIdx = sess.q - 1;
-      sess.clock = 720;
+      sess.clock = game.bp._quarterSec || 720;
       sess.isOT = false;
       sess.afterTimeout = true;
       sess.lastStint = null;
@@ -2464,6 +2568,7 @@
     if (game.scoreA !== game.scoreB) {
       return false;
     }
+    if (game.bp._noOT) return false;
     game.ot++;
     game.thisOtA = clamp(Math.round(gauss(9, 2.2)), 4, 16);
     game.thisOtB = clamp(Math.round(gauss(9, 2.2)), 4, 16);
@@ -2611,7 +2716,7 @@
       game: game,
       q: 1,
       qIdx: 0,
-      clock: 720,
+      clock: bp._quarterSec || 720,
       isOT: false,
       possessor: rand() < 0.5 ? 'A' : 'B',
       afterTimeout: true,
@@ -2856,9 +2961,9 @@
     overlay.innerHTML =
       '<div class="pp-live-card">' +
         '<div class="pp-live-board">' +
-          '<div class="pp-live-team" id="pp-live-name-a">' + teamBoardHtml(bp.teamA) + '</div>' +
+          '<div class="pp-live-team" id="pp-live-name-a">' + teamBoardHtml(bp.teamA, bp.displayNameA) + '</div>' +
           '<div class="pp-live-score" id="pp-live-score">0-0</div>' +
-          '<div class="pp-live-team" id="pp-live-name-b">' + teamBoardHtml(bp.teamB) + '</div>' +
+          '<div class="pp-live-team" id="pp-live-name-b">' + teamBoardHtml(bp.teamB, bp.displayNameB) + '</div>' +
         '</div>' +
         '<div class="pp-live-clockline">' +
           '<span><b id="pp-live-periodclock">第一节 12:00</b></span>' +
@@ -2916,7 +3021,10 @@
     var on = sess.lastUserOn;
     if (on == null) {
       var margin = game.scoreA - game.scoreB;
-      var stint = stintOf(sess.q, sess.clock, margin, sess.isOT);
+      var stint = stintOf(sess.q, sess.clock, margin, sess.isOT, {
+        allStar: bp._allStarExhibition,
+        quarterSec: bp._quarterSec
+      });
       on = userWantedOn(game, stint, sess.q, sess.clock, margin, sess.isOT);
     }
     return { player: user, ln: lineOf(game, user), on: !!on };
@@ -2986,12 +3094,13 @@
     var sa = pack && pack.result ? pack.result.scoreA : Math.round(game.scoreA);
     var sb = pack && pack.result ? pack.result.scoreB : Math.round(game.scoreB);
     scoreEl.textContent = sa + '-' + sb;
+    var qSec = game.bp._quarterSec || 720;
     if (sess.done) {
       clockEl.textContent = '终场';
-      elapsedEl.textContent = fmtElapsed(elapsedSec(4, 0, !!game.ot, game.ot || 1));
+      elapsedEl.textContent = fmtElapsed(elapsedSec(4, 0, !!game.ot, game.ot || 1, qSec));
     } else {
       clockEl.textContent = periodLabel(sess.q, sess.isOT, game.ot) + ' ' + fmtClock(sess.clock);
-      elapsedEl.textContent = fmtElapsed(elapsedSec(sess.q, sess.clock, sess.isOT, game.ot));
+      elapsedEl.textContent = fmtElapsed(elapsedSec(sess.q, sess.clock, sess.isOT, game.ot, qSec));
     }
     renderQRows(sess);
     renderHeroLine(sess, pack);

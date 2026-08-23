@@ -7,6 +7,7 @@
   var BROADCAST_SCALE = 1;
   var DEBUG_REBOUND_LAB = false;
   var FLAVOR_LAB = false;
+  var THREE_ONLY_LAB = true;
 
   /* 主游戏在 nba-perfect-player.html 内联脚本提供，实验室页需自备 */
   function ensureLabRuntime() {
@@ -130,9 +131,12 @@
     if (!el) return;
     var a = typeof getTeamName === 'function' ? getTeamName(LAB_TEAM_A) : LAB_TEAM_A;
     var b = typeof getTeamName === 'function' ? getTeamName(LAB_TEAM_B) : LAB_TEAM_B;
+    var mode = THREE_ONLY_LAB
+      ? '三分专项（每回合外线出手，验线位/动画/记分）'
+      : (FLAVOR_LAB ? '高光动作演练（超远三分/颜射/隔扣）' : '常规局内');
     el.innerHTML =
       '<strong>局内模拟实验室</strong> · ' + a + ' vs ' + b +
-      ' · 高光动作演练（超远三分/颜射/隔扣） · 看完可点「再打一场」';
+      ' · ' + mode + ' · 看完可点「再打一场」';
   }
 
   function runLab(done) {
@@ -159,6 +163,7 @@
           broadcastScale: BROADCAST_SCALE,
           debugReboundLab: DEBUG_REBOUND_LAB,
           flavorLab: FLAVOR_LAB,
+          threeOnlyLab: THREE_ONLY_LAB,
           attrs: STATE.attrs,
           isPlayoff: false
         }
@@ -177,6 +182,7 @@
     broadcastScale: BROADCAST_SCALE,
     debugReboundLab: DEBUG_REBOUND_LAB,
     flavorLab: FLAVOR_LAB,
+    threeOnlyLab: THREE_ONLY_LAB,
     run: runLab,
     diversifyTeam: diversifyTeam,
     setupState: setupState

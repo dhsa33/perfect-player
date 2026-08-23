@@ -86,27 +86,40 @@
     var dx = a[0] - b[0], dy = a[1] - b[1];
     return Math.sqrt(dx * dx + dy * dy);
   }
-  function minThreeDistFromRim(y) {
-    var dy = Math.abs(25 - y);
-    if (dy >= (COURT_W / 2 - SIDELINE_3) - 0.5) return CORNER_3 - 0.15;
-    return THREE_R - 0.2;
+  function threeLineX(y) {
+    y = clamp(y, CORNER_Y_L, CORNER_Y_R);
+    var dy = Math.abs(y - RIM[1]);
+    var sidelineDy = COURT_W / 2 - SIDELINE_3;
+    if (dy >= sidelineDy - 0.45) return RIM[0] - cornerInset;
+    return RIM[0] - Math.sqrt(Math.max(0, THREE_R * THREE_R - dy * dy));
   }
-  function isThreeInput(input) {
-    var action = String((input && input.action) || '');
-    return (input && input.shot === 'threePT') ||
-      /^(spot|catch|cut|pull3|stepback|snatch|flare|pin|dho|trail|logo)$/.test(action);
+  function isInsideThree(xy) {
+    if (!xy) return false;
+    return xy[0] > threeLineX(xy[1]) - 0.12;
   }
   function pushOutsideThree(xy) {
     if (!xy) return xy;
-    var dx = xy[0] - RIM[0], dy = xy[1] - RIM[1];
-    var d = Math.sqrt(dx * dx + dy * dy) || 0.001;
-    var need = minThreeDistFromRim(xy[1]);
-    if (d >= need) return clone(xy);
-    var scale = need / d;
+    var margin = 0.42;
+    var lineX = threeLineX(xy[1]);
+    if (xy[0] <= lineX - margin) return clone(xy);
     return [
-      clamp(RIM[0] + dx * scale, 1.6, COURT_L - 1.6),
-      clamp(RIM[1] + dy * scale, 1.6, COURT_W - 1.6)
+      clamp(lineX - margin, 1.6, COURT_L - 1.6),
+      clamp(xy[1], 1.6, COURT_W - 1.6)
     ];
+  }
+  function isThreeInput(input) {
+    return !!(input && input.shot === 'threePT');
+  }
+  function fixShooterThreePos(m, act, shot) {
+    if (!m || !m.ball) return;
+    var id = m.ball.id;
+    if (act[id]) act[id] = pushOutsideThree(act[id]);
+    if (shot[id]) shot[id] = pushOutsideThree(shot[id]);
+  }
+  function trailThreeSpot(laneY, strong) {
+    if (Math.abs(laneY - 25) <= 2.5) return pushOutsideThree(clone(Z.top));
+    var ref = laneY < 25 ? sid(strong, 'wingL', 'wingR') : wid(strong, 'wingL', 'wingR');
+    return pushOutsideThree([ref[0], laneY]);
   }
   function toward(from, to, feet) {
     var dx = to[0] - from[0], dy = to[1] - from[1];
@@ -335,6 +348,7 @@
     var action = input.action || '';
     var branch = input.branch || '';
     var zone = shotZone(input);
+    if (isThreeInput(input)) zone = pushOutsideThree(zone);
     if (action === 'coast' || tactic === 'trans_coast') zone = clone(Z.rim);
     if (action === 'lob') zone = clone(Z.rim);
     var set = placeOff(r, tactic, strong);
@@ -407,14 +421,12 @@
       var runner = m.ball;
       var outlet = (m.passer && runner && m.passer.id !== runner.id) ? m.passer : null;
       var laneY = runner ? (idHash(runner.id) > 0.52 ? 31.5 : 18.5) : 25;
-      var isTrailThree = input.shot === 'threePT' && (action === 'trail' || branch === 'trail');
+      var isTrailThree = isThreeInput(input) && (action === 'trail' || branch === 'trail');
       var runnerSet = [TRANS_RUNNER_X_SET, laneY];
+      var finish = isTrailThree ? trailThreeSpot(laneY, strong) : clone(Z.rim);
       var runnerAct = isTrailThree
-        ? [TRANS_RUNNER_X_TRAIL_ACT, laneY]
+        ? away(finish, RIM, 1.0)
         : [TRANS_RUNNER_X_ACT, laneY];
-      var finish = isTrailThree
-        ? pushOutsideThree([MID[0] - 6, laneY])
-        : clone(Z.rim);
       var outletSpot = clone(DEF_BACK);
       var skipIds = {};
       ballCurve = null;
@@ -439,6 +451,7 @@
         skipIds[runner.id] = true;
       }
       layoutTransFill(skipIds);
+      if (isTrailThree) fixShooterThreePos(m, act, shot);
       noStitch = true;
       return { set: set, act: act, shot: shot, ballId: runner && runner.id, ballCurve: ballCurve, noStitch: noStitch };
     }
@@ -451,14 +464,21 @@
       put(act, m.ball, [sS[0], (start[1] + zone[1]) / 2]);
       put(shot, m.ball, zone);
     } else if (action === 'stepback' || action === 'snatch' || branch === 'step') {
-      put(act, m.ball, toward(zone, RIM, 2.4));
-      put(shot, m.ball, zone);
+      if (isThreeInput(input)) {
+        var threeSpot = pushOutsideThree(zone);
+        put(act, m.ball, away(threeSpot, RIM, 1.4));
+        put(shot, m.ball, threeSpot);
+      } else {
+        put(act, m.ball, toward(zone, RIM, 2.4));
+        put(shot, m.ball, zone);
+      }
     } else if (action === 'logo') {
       put(act, m.ball, toward(start, Z.logo, 5));
       put(shot, m.ball, pushOutsideThree(clone(Z.logo)));
     } else {
-      put(act, m.ball, toward(start, zone, 5));
-      put(shot, m.ball, zone);
+      var threeDest = isThreeInput(input) ? pushOutsideThree(zone) : zone;
+      put(act, m.ball, toward(start, threeDest, 5));
+      put(shot, m.ball, threeDest);
     }
 
     if (tactic === 'post') {
@@ -497,9 +517,7 @@
       else spaceOut(p);
     });
 
-    if (isThreeInput(input) && m.ball && shot[m.ball.id]) {
-      shot[m.ball.id] = pushOutsideThree(shot[m.ball.id]);
-    }
+    fixShooterThreePos(m, act, shot);
 
     return { set: set, act: act, shot: shot, ballId: m.ball && m.ball.id, ballCurve: ballCurve, noStitch: noStitch };
   }
@@ -752,7 +770,7 @@
     var shooterId = r.ball && r.ball.id;
     var passerId = r.passer && r.passer.id;
     var stealerId = r.stealer && r.stealer.id;
-    var three = input.shot === 'threePT' || /^(spot|catch|cut|pull3|stepback|snatch|flare|pin|dho|trail|logo)$/.test(action);
+    var three = input.shot === 'threePT';
     var drive = isDrive(action);
     var dunk = !!input.dunk || action === 'dunk' || action === 'lob' || action === 'putback';
     var lob = action === 'lob';
@@ -908,6 +926,7 @@
     separate([plan.set, def0], 3.15);
     separate([plan.act, defA], 3.15);
     separate([plan.shot, def1], 3.15);
+    if (isThreeInput(input)) fixShooterThreePos(r, plan.act, plan.shot);
     var offCtrl = [
       plan.set,
       lerpMap(plan.set, plan.act, 0.34),

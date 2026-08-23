@@ -1,7 +1,7 @@
 (function installPerfectPlayerAwardEngine() {
   'use strict';
 
-  var AWARD_ENGINE_VERSION = '2026.08.13-real-ballot-v1';
+  var AWARD_ENGINE_VERSION = '2026.08.23-mvp-seed65';
   var MAJOR_65_GAME_AWARDS = { mvp:true, dpoy:true, mip:true, allNBA:true, allDefense:true };
   var INDIVIDUAL_AWARD_CONFIG = {
     mvp: { ballotSize:5, points:[10,7,5,3,1], noise:5.2 },
@@ -199,10 +199,11 @@
     };
   }
 
-  function buildLeagueCandidates(teamContexts) {
+  function buildLeagueCandidates(teamContexts, asOfGame) {
     var seasonStart = currentAwardSeasonStart();
     var seasonKey = currentAwardSeasonKey();
     var history = (STATE.career && STATE.career.leagueAwardHistory) || {};
+    var gameCap = asOfGame == null ? 82 : n(asOfGame, 82);
     var candidates = [];
     (NBA2K_TEAMS || []).forEach(function(team) {
       var context = teamContexts[team] || { wins:0, losses:0, winPct:0.5, leagueRank:30, teamDefense:0.5 };
@@ -210,7 +211,7 @@
         if (!player || player._isUser) return;
         var role = getRotationRole(team, player);
         if (role.minutes < 10) return;
-        var games = leagueGamesFor(player, seasonKey);
+        var games = Math.min(gameCap, leagueGamesFor(player, seasonKey));
         var starts = role.starter
           ? Math.max(0, games - Math.floor(hash01(seasonKey + '|starts|' + candidateKey(player)) * 5))
           : Math.floor(hash01(seasonKey + '|bench-starts|' + candidateKey(player)) * Math.min(12, games * 0.18));
@@ -364,12 +365,27 @@
     return impact(candidate) - impact(candidate.prior);
   }
 
+  function conferenceSeed(team) {
+    if (typeof getConferenceSeed === 'function') return getConferenceSeed(team);
+    return 99;
+  }
+
   function eligibility(candidate, award) {
     if (!candidate) return { eligible:false, reason:'无有效赛季数据' };
     if (MAJOR_65_GAME_AWARDS[award]) {
       var eligibleGames = n(candidate.eligibleGames, candidate.minutes >= 20 ? candidate.games : 0);
-      if (eligibleGames < 65 && !(candidate.seasonEndingException && eligibleGames >= 62)) {
+      if (award === 'mvp') {
+        if (eligibleGames < 65) {
+          return { eligible:false, reason:'出勤不足（' + eligibleGames + '/65场）' };
+        }
+      } else if (eligibleGames < 65 && !(candidate.seasonEndingException && eligibleGames >= 62)) {
         return { eligible:false, reason:'出勤不足（' + eligibleGames + '/65场）' };
+      }
+    }
+    if (award === 'mvp') {
+      var confSeed = conferenceSeed(candidate.team);
+      if (!confSeed || confSeed > 5) {
+        return { eligible:false, reason:'球队未进分区前5（当前第' + confSeed + '）' };
       }
     }
     if ((award === 'mvp' || award === 'allNBA') && (candidate.minutes < 24 || impact(candidate) < 18)) {
@@ -649,27 +665,113 @@
     });
   }
 
-  function allStarRecord(allCandidates) {
-    var eligible = allCandidates.filter(function(candidate) { return candidate.games >= 40 && candidate.minutes >= 18; });
-    var scored = scoreCandidates(eligible, 'allStar');
+  function buildAllStarRoster(candidates) {
+    var eligible = candidates.filter(function(candidate) { return candidate.games >= 40 && candidate.minutes >= 18; });
+    scoreCandidates(eligible, 'allStar');
+    scoreCandidates(eligible, 'mvp');
     var byConference = { EAST:[], WEST:[] };
-    scored.forEach(function(candidate) {
+    eligible.forEach(function(candidate) {
       var conference = typeof getConference === 'function' ? getConference(candidate.team) : 'WEST';
       (byConference[conference] || byConference.WEST).push(candidate);
     });
-    var selected = byConference.EAST.slice(0, 12).concat(byConference.WEST.slice(0, 12));
+    function sortConf(list) {
+      list.sort(function(a, b) {
+        return n(b._awardScores && b._awardScores.allStar) - n(a._awardScores && a._awardScores.allStar)
+          || n(b.games) - n(a.games) || a.key.localeCompare(b.key);
+      });
+    }
+    sortConf(byConference.EAST);
+    sortConf(byConference.WEST);
+    return {
+      eligibleCount: eligible.length,
+      EAST: byConference.EAST.slice(0, 12),
+      WEST: byConference.WEST.slice(0, 12)
+    };
+  }
+
+  function slimAllStarCandidate(candidate, rank) {
+    if (!candidate) return null;
+    return {
+      key: candidate.key,
+      name: candidate.name || '',
+      nameEN: candidate.nameEN || '',
+      team: candidate.team || '',
+      pos: candidate.pos || '',
+      isUser: !!candidate.isUser,
+      games: n(candidate.games),
+      minutes: round1(candidate.minutes),
+      allStarScore: round1(candidate._awardScores && candidate._awardScores.allStar),
+      mvpScore: round1(candidate._awardScores && candidate._awardScores.mvp),
+      rank: rank
+    };
+  }
+
+  function allStarUserRankText(user, selectedUser, rank, eligibleGames) {
+    if (selectedUser) return '⭐ 入选';
+    if (user && n(eligibleGames, user.games) < 40) return '出勤不足';
+    if (rank > 0) return '分区第' + rank + '名';
+    return '未入围';
+  }
+
+  function allStarRecordFromPack(pack) {
+    if (!pack || !pack.roster) return null;
+    var user = pack.userMeta || {};
+    return {
+      act:'allStar',
+      label:'全明星',
+      winner: user.selected ? (typeof getHupuDisplayName === 'function' ? getHupuDisplayName() : user.name || '你') : user.userRank,
+      winnerEN:'',
+      team:'',
+      isUser: !!user.selected,
+      userRank: user.userRank || '未入围',
+      summary: pack.asOfGame
+        ? ('第' + pack.asOfGame + '场全明星周锁定 · 分区各12人')
+        : '分区各12人 · 综合个人表现、球队战绩与出勤'
+    };
+  }
+
+  function allStarRecord(allCandidates) {
+    var pack = buildAllStarRoster(allCandidates);
+    var selected = pack.EAST.concat(pack.WEST);
     var user = allCandidates.find(function(candidate) { return candidate.isUser; });
     var selectedUser = selected.find(function(candidate) { return candidate.isUser; });
     var rank = -1;
     if (user) {
       var conf = typeof getConference === 'function' ? getConference(user.team) : 'WEST';
-      rank = (byConference[conf] || []).findIndex(function(candidate) { return candidate.isUser; }) + 1;
+      var pool = conf === 'EAST' ? pack.EAST : pack.WEST;
+      rank = pool.findIndex(function(candidate) { return candidate.isUser; }) + 1;
+      if (rank <= 0) {
+        rank = eligibleRankInConference(user, allCandidates.filter(function(candidate) {
+          return candidate.games >= 40 && candidate.minutes >= 18;
+        }), conf);
+      }
     }
-    var userRank = selectedUser ? '⭐ 入选' : (user && user.games < 40 ? '出勤不足' : (rank > 0 ? '分区第' + rank + '名' : '未入围'));
+    var userRank = allStarUserRankText(user, selectedUser, rank, user && user.games);
     return {
       act:'allStar', label:'全明星', winner:selectedUser ? user.name : userRank, winnerEN:'', team:'',
       isUser:!!selectedUser, userRank:userRank, summary:'分区各12人 · 综合个人表现、球队战绩与出勤'
     };
+  }
+
+  function eligibleRankInConference(user, eligible, conf) {
+    if (!user) return -1;
+    var pool = eligible.filter(function(candidate) {
+      return (typeof getConference === 'function' ? getConference(candidate.team) : 'WEST') === conf;
+    });
+    scoreCandidates(pool, 'allStar');
+    pool.sort(function(a, b) {
+      return n(b._awardScores && b._awardScores.allStar) - n(a._awardScores && a._awardScores.allStar)
+        || n(b.games) - n(a.games) || a.key.localeCompare(b.key);
+    });
+    return pool.findIndex(function(candidate) { return candidate.isUser; }) + 1;
+  }
+
+  function buildAllCandidatesAsOf(asOfGame) {
+    asOfGame = n(asOfGame, 82);
+    var teamContexts = buildTeamContexts();
+    var leagueCandidates = buildLeagueCandidates(teamContexts, asOfGame);
+    var userCandidate = buildUserCandidate(teamContexts);
+    return leagueCandidates.concat(userCandidate ? [userCandidate] : []);
   }
 
   function storeLeagueAwardHistory(candidates) {
@@ -711,11 +813,15 @@
       var allDefense = listAwardRecord('allDefense', '最佳防守阵容', scoreCandidates(allCandidates, 'allDefense'), [5,5], [2,1], allCandidates);
       var allRookie = listAwardRecord('allRookie', '最佳新秀阵容', scoreCandidates(rookieCandidates, 'allRookie'), [5,5], [2,1], allCandidates);
 
+      var allStar = (STATE.season.allStar && STATE.season.allStar.locked)
+        ? allStarRecordFromPack(STATE.season.allStar)
+        : allStarRecord(allCandidates);
+
       var awards = [
         mvp.record,
         dpoy.record,
         mip.record,
-        allStarRecord(allCandidates),
+        allStar,
         roty.record,
         sixth.record,
         allNBA.record,
@@ -730,7 +836,7 @@
         version:AWARD_ENGINE_VERSION,
         season:seasonKey,
         voters:100,
-        eligibilityRule:'MVP/DPOY/MIP/最佳阵容/最佳防守阵容：65场（每场至少20分钟，最多两场可为15-19分钟；赛季报销例外为62场）',
+        eligibilityRule:'MVP：65场（每场至少20分钟，最多两场可为15-19分钟；大伤赛季不适用62场例外）且球队分区前5；DPOY/MIP/最佳阵容/最佳防守阵容：65场（大伤赛季可62场例外）',
         ballotPoints:{ mvp:[10,7,5,3,1], other:[5,3,1], allNBA:[5,3,1], allDefense:[2,1], allRookie:[2,1] },
         results:{
           mvp:serializeBallotResults(mvp.results, 10),
@@ -763,6 +869,12 @@
     scoreCandidates:scoreCandidates,
     runMediaBallot:runMediaBallot,
     runTeamBallot:runTeamBallot,
+    buildAllCandidatesAsOf:buildAllCandidatesAsOf,
+    buildAllStarRoster:buildAllStarRoster,
+    allStarRecordFromPack:allStarRecordFromPack,
+    slimAllStarCandidate:slimAllStarCandidate,
+    hash01:hash01,
+    currentAwardSeasonKey:currentAwardSeasonKey,
     calculate:calculateRealisticSeasonAwards
   };
   window.PERFECT_PLAYER_AWARD_ENGINE = api;

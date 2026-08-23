@@ -795,7 +795,7 @@
       return true;
     },
     choices: [
-      { label: '全程请教他的杀招', hint: '主技术明显提升，体能负荷上升', apply: function () {
+      { label: '全程请教他的杀招', hint: '偷师进步明显，体能负荷上升', apply: function () {
         var legend = bindStoryLegend();
         var attrs = {};
         attrs[legend.attr] = 2;
@@ -860,7 +860,7 @@
       return getBranchNode('legend') === 'legend_night';
     },
     choices: [
-      { label: '加练到他点头', hint: '主技术再升，体能负荷明显上升', apply: function () {
+      { label: '加练到他点头', hint: '偷师再进一步，体能负荷明显上升', apply: function () {
         var legend = getStoryLegend();
         var attrs = {};
         attrs[legend.attr] = 2;
@@ -1788,7 +1788,7 @@
         return getBranchNode('legend') !== 'start' || playerOvr() >= 82;
       },
       choices: [
-        { label: '接受并致敬', hint: '传奇声望提升，并偷一点他的技术', apply: function () {
+        { label: '接受并致敬', hint: '传奇声望提升，并偷师一点', apply: function () {
           bindStoryLegend();
           var legend = getStoryLegend();
           var attrs = {};
