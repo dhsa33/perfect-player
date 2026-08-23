@@ -2608,6 +2608,7 @@ function quickSimAllGames() {
   var gi = 0;
   function simNextWithDelay() {
     if (gi >= games.length) {
+      function finishRegularSeasonSim() {
       processAllRemainingDays();
       reconcileStandings();
       calcSeasonAwards();
@@ -2694,6 +2695,10 @@ function quickSimAllGames() {
       }
       trackExposureOnce(document.getElementById('simActions'), {act:"exposure",blk:"BMC099",pos:"T1",label:"赛季结果"});
       setTimeout(function() { maybeShowFirstSixtyWinCelebration(); }, 260);
+      return;
+      }
+      if (window.PP_ALLSTAR && PP_ALLSTAR.maybeShowWeekend(finishRegularSeasonSim, { exact: false })) return;
+      finishRegularSeasonSim();
       return;
     }
 
@@ -9066,10 +9071,11 @@ function checkSeasonBranchEvent(game, result, stats) {
     }
   }
   // 宿敌 / 德比 / 名宿 / 故乡 / 火炬 / 全明星：已开启的线每季保证推进一次
-  var storyArcs = ['rival', 'derby', 'legend', 'hometown', 'torch', 'allstar_story'];
+  var storyArcs = ['rival', 'derby', 'legend', 'hometown', 'torch'];
   if (!c.branchSeasonEvents._storyArc && totalGames > 0) {
     var storyStepPool = getBranchEventSource().filter(function(ev) {
       if (storyArcs.indexOf(ev.branch) < 0) return false;
+      if (ev.branch === 'allstar_story') return false;
       if (getEventPhases(ev).indexOf('season') < 0) return false;
       if (hasSeasonEventBeenSeen(ev, c)) return false;
       if (c.branchSeasonEvents[ev.branch]) return false;
@@ -9103,6 +9109,7 @@ function checkSeasonBranchEvent(game, result, stats) {
   if ((c.branchSeasonEvents._count || 0) >= maxRandomEvents) return null;
   var pool = getBranchEventSource().filter(function(ev) {
     if (getEventPhases(ev).indexOf('season') < 0) return false;
+    if (ev.branch === 'allstar_story') return false;
     if (c.branchSeasonEvents[ev.branch]) return false;
     // 日常见过后仍可进池（降权），长线剧情继续生涯去重
     if (!isDailySeasonEvent(ev) && hasSeasonEventBeenSeen(ev, c)) return false;
@@ -13721,17 +13728,14 @@ function renderTrainingCamp() {
   html += '</div>';
 
   var skillPts = 0;
-  var grantLine = '';
   if (typeof PP_SKILLS !== 'undefined') {
     PP_SKILLS.ensureSkillState();
     skillPts = PP_SKILLS.availableStylePoints();
-    grantLine = PP_SKILLS.formatGrantLine();
   }
   html += '<div style="margin:8px 0 10px;padding:9px 11px;background:linear-gradient(120deg,#fffaf2,#fff1e6);border:1.5px solid #ffd2b8;border-radius:10px;">';
   html += '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">';
   html += '<div style="min-width:0;">';
   html += '<div style="font-size:12px;font-weight:800;color:#2d1f0e;">⚡ 球风点 <span style="color:#ff6b35;font-size:18px;">' + skillPts + '</span></div>';
-  if (grantLine) html += '<div style="margin-top:3px;font-size:11px;color:#8a7a66;line-height:1.45;">' + grantLine + '</div>';
   html += '</div>';
   html += '<button type="button" class="btn btn-secondary btn-sm" onclick="if(window.PP_FX)PP_FX.openSkillPanel()">技能</button>';
   html += '</div></div>';

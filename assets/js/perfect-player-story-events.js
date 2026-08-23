@@ -1064,7 +1064,8 @@
     ],
     body: '全明星周末的第一夜往往比正赛更像表演，也更像一次被全世界看见的合作。',
     requires: function () {
-      return getBranchNode('allstar_story') === 'start' && hasCareerHonor('全明星') && gamesPlayed() >= 28 && gamesPlayed() <= 58;
+      if (!STATE.season || !STATE.season._allStarStoryActive) return false;
+      return getBranchNode('allstar_story') === 'start';
     },
     choices: [
       { label: '按他的节奏玩', hint: '护球和人气提升', apply: function () {
@@ -1095,7 +1096,7 @@
     ],
     body: '这是流量，也是一次没有必要的起跳。',
     requires: function () {
-      bindStoryLegend();
+      if (!STATE.season || !STATE.season._allStarStoryActive) return false;
       return getBranchNode('allstar_story') === 'allstar_skills';
     },
     choices: [
@@ -1124,7 +1125,10 @@
       '对面坐着你平时见不到的防守人。看台已经开始唱歌。'
     ],
     body: '全明星正赛的最后一节，会决定人们把你记得成竞争者还是表演者。',
-    requires: function () { return getBranchNode('allstar_story') === 'allstar_dunk'; },
+    requires: function () {
+      if (!STATE.season || !STATE.season._allStarStoryActive) return false;
+      return getBranchNode('allstar_story') === 'allstar_dunk';
+    },
     choices: [
       { label: '认真防守对面明星', hint: '外防和盖帽提升，人气下降', apply: function () {
         setBranchNode('allstar_story', 'allstar_done', { close: 'd' });

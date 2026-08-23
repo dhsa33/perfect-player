@@ -10,13 +10,13 @@
     ],
     career: [
       ['assets/js/perfect-player-skills.js?v=20260823-skill-grant', '球风技能'],
-      ['assets/js/perfect-player-enhancements.js?v=20260823-legacy-ui', '成就特效']
+      ['assets/js/perfect-player-enhancements.js?v=20260823-legacy-ui-v2', '成就特效']
     ],
     story: [
       ['assets/js/perfect-player-event-library.js?v=20260821-events-v3', '赛季事件'],
-      ['assets/js/perfect-player-story-events.js?v=20260823-story-v5', '生涯剧情'],
+      ['assets/js/perfect-player-story-events.js?v=20260823-story-v6', '生涯剧情'],
       ['assets/js/perfect-player-awards.js?v=20260823-allstar-v2', '荣誉评选'],
-      ['assets/js/perfect-player-allstar.js?v=20260823-allstar-v3', '全明星周末']
+      ['assets/js/perfect-player-allstar.js?v=20260823-allstar-v5', '全明星周末']
     ],
     live: [
       ['assets/js/perfect-player-live-court.js?v=20260823-court-v35', '俯瞰球场'],

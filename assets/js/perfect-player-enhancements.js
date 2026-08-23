@@ -754,18 +754,15 @@
     var skills = listSkills();
     var pts = 0;
     var earned = 0;
-    var grantLine = '';
     if (typeof PP_SKILLS !== 'undefined') {
       var st = PP_SKILLS.ensureSkillState();
       pts = st.points;
       earned = st.earned;
-      grantLine = PP_SKILLS.formatGrantLine(st.lastGrant);
     }
     var activeCount = skills.filter(function (s) { return s.activated || s.effective > 0; }).length;
     var lp = root.querySelector('.pp-lg-lp');
     if (lp) {
-      lp.innerHTML = '可用球风点 <b>' + pts + '</b> · 生涯累计 ' + earned +
-        (grantLine ? '<div style="margin-top:4px;font-size:12px;font-weight:600;opacity:.78;">' + grantLine + '</div>' : '');
+      lp.innerHTML = '可用球风点 <b>' + pts + '</b> · 生涯累计 ' + earned;
     }
     var progress = root.querySelector('.pp-ach-progress-txt');
     if (progress) progress.textContent = '已生效 ' + activeCount + ' / ' + skills.length;
