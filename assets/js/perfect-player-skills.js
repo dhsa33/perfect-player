@@ -10,7 +10,7 @@
     2: { mu: 1.09, sigma: 0.055, lo: 0.98, hi: 1.20 },
     3: { mu: 1.13, sigma: 0.07, lo: 0.99, hi: 1.28 }
   };
-  var SEASON_POINT_CAP = 15;
+  var SEASON_POINT_CAP = 12;
 
   var STYLE_SKILLS = [
     {
@@ -477,8 +477,8 @@
     var pts = 0;
     if (wins >= 1) pts += 1;
     if (maxRound >= 2) pts += 1;
-    if (champion) pts += 2;
-    return Math.min(4, pts);
+    if (champion) pts += 1;
+    return Math.min(3, pts);
   }
 
   function computeSeasonStyleGrant() {
@@ -496,12 +496,12 @@
     var bpg = gp ? (Number(ps.blk) || 0) / gp : 0;
 
     var appear = 0;
-    if (gp >= 20) appear += 2;
+    if (gp >= 20) appear += 1;
     if (gp >= 40) appear += 1;
     if (gp >= 60) appear += 1;
     if (gp >= 72) appear += 1;
 
-    var play = Math.min(4, scoringTier(ppg) + playmakingTier(apg) + blueCollarTier(rpg, spg, bpg));
+    var play = Math.min(3, scoringTier(ppg) + playmakingTier(apg) + blueCollarTier(rpg, spg, bpg));
 
     var labels = userAwardLabels();
     var highlight = 0;
@@ -513,7 +513,7 @@
     }
     highlight += honor;
     highlight += playoffHighlightPoints();
-    highlight = Math.min(6, highlight);
+    highlight = Math.min(5, highlight);
 
     var raw = appear + play + highlight;
     var total = Math.min(SEASON_POINT_CAP, raw);

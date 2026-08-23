@@ -9,7 +9,7 @@
       ['assets/js/perfect-player-hupu-extensions.js?v=20260822-boot-v16', '角色扩展']
     ],
     career: [
-      ['assets/js/perfect-player-skills.js?v=20260820-skill-no-slot', '球风技能'],
+      ['assets/js/perfect-player-skills.js?v=20260823-skill-grant', '球风技能'],
       ['assets/js/perfect-player-enhancements.js?v=20260823-legacy-ui', '成就特效']
     ],
     story: [
