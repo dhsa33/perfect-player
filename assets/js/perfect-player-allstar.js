@@ -923,6 +923,8 @@
         customPowerB: powerB,
         displayNameA: nameA,
         displayNameB: nameB,
+        allStarConfA: userInW ? 'WEST' : 'EAST',
+        allStarConfB: userInW ? 'EAST' : 'WEST',
         rosterSize: 12,
         userAllStarMins: userMins,
         quarterSec: 600,

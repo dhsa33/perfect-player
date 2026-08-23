@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="è">
+  <rect width="120" height="120" rx="20" fill="#004da8"/>
+  <circle cx="60" cy="60" r="46" fill="none" stroke="#ffffff" stroke-width="3" opacity="0.35"/>
+  <text x="60" y="52" text-anchor="middle" fill="#ffffff" font-family="Arial,Helvetica,sans-serif" font-size="20" font-weight="800">WEST</text>
+  <text x="60" y="78" text-anchor="middle" fill="#ffffff" font-family="Arial,Helvetica,sans-serif" font-size="14" font-weight="700">è</text>
+  <path d="M18 92 L38 58 L52 72 L68 48 L84 64 L102 38 L102 92 Z" fill="#ffffff" opacity="0.92"/>
+</svg>

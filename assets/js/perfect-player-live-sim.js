@@ -56,16 +56,22 @@
     return list[list.length - 1];
   }
   function teamName(t) { return (typeof getTeamName === 'function' ? getTeamName(t) : t) || t; }
-  function teamLogoHtml(code, size) {
-    var map = window.TEAM_LOGOS;
-    var url = map && code && map[code];
+  function teamLogoHtml(code, size, confCode) {
+    var url = null;
+    var conf = confCode || (code === 'EAST' || code === 'WEST' ? code : null);
+    if (conf && window.CONFERENCE_LOGOS && window.CONFERENCE_LOGOS[conf]) {
+      url = window.CONFERENCE_LOGOS[conf];
+    } else {
+      var map = window.TEAM_LOGOS;
+      url = map && code && map[code];
+    }
     if (!url) return '';
     size = size || 28;
-    return '<img class="pp-live-logo" src="' + esc(url) + '" width="' + size + '" height="' + size + '" alt="' + esc(code) + '">';
+    return '<img class="pp-live-logo" src="' + esc(url) + '" width="' + size + '" height="' + size + '" alt="' + esc(confCode || code) + '">';
   }
-  function teamBoardHtml(code, displayName) {
+  function teamBoardHtml(code, displayName, confCode) {
     var label = displayName || teamName(code);
-    return teamLogoHtml(code, 36) + '<span>' + esc(label) + '</span>';
+    return teamLogoHtml(code, 36, confCode) + '<span>' + esc(label) + '</span>';
   }
   function esc(s) {
     return String(s == null ? '' : s)
@@ -388,6 +394,8 @@
       bp.tgtA = clamp(Math.round(bp.pace * bp.efficiencyA + gauss(0, bp.varianceA)), 95, 145);
       bp.tgtB = clamp(Math.round(bp.pace * bp.efficiencyB + gauss(0, bp.varianceB)), 95, 145);
       bp.user = expectedUserLine(options.attrs || STATE.attrs || {}, bp, false);
+      if (options.allStarConfA) bp.allStarConfA = options.allStarConfA;
+      if (options.allStarConfB) bp.allStarConfB = options.allStarConfB;
     }
     if (options.debugReboundLab) bp._debugReboundLab = true;
     if (options.flavorLab) bp._flavorLab = true;
@@ -1909,7 +1917,7 @@
   function userHunger(game, ctx) {
     var bp = game.bp;
     var user = bp.rosterA.filter(function (p) { return p && p._isUser; })[0];
-    if (!user || !ctx.userOn) return 0;
+    if (!user || !ctx.userOn || !bp.user) return 0;
     var ln = lineOf(game, user);
     var frac = clamp(ln.mins / Math.max(4, bp.userMins), 0, 1.35);
     var gap = bp.user.fga * frac - ln.fga;
@@ -2355,8 +2363,16 @@
       clock: fmtClock(sec),
       elapsed: elapsedSec(q, sec, isOT, game.ot, bp._quarterSec),
       elapsedLabel: fmtElapsed(elapsedSec(q, sec, isOT, game.ot, bp._quarterSec)),
-      team: row.teamSide === 'B' ? teamName(game.bp.teamB) : (row.teamSide === 'A' ? teamName(game.bp.teamA) : ''),
-      teamCode: row.teamSide === 'B' ? game.bp.teamB : (row.teamSide === 'A' ? game.bp.teamA : ''),
+      team: row.teamSide === 'B'
+        ? (game.bp._allStarExhibition ? (game.bp.displayNameB || '西部') : teamName(game.bp.teamB))
+        : (row.teamSide === 'A'
+          ? (game.bp._allStarExhibition ? (game.bp.displayNameA || '东部') : teamName(game.bp.teamA))
+          : ''),
+      teamCode: row.teamSide === 'B'
+        ? (game.bp._allStarExhibition ? game.bp.allStarConfB : game.bp.teamB)
+        : (row.teamSide === 'A'
+          ? (game.bp._allStarExhibition ? game.bp.allStarConfA : game.bp.teamA)
+          : ''),
       teamSide: row.teamSide || '',
       tag: row.tag || '',
       text: row.text || '',
@@ -2962,9 +2978,9 @@
     overlay.innerHTML =
       '<div class="pp-live-card">' +
         '<div class="pp-live-board">' +
-          '<div class="pp-live-team" id="pp-live-name-a">' + teamBoardHtml(bp.teamA, bp.displayNameA) + '</div>' +
+          '<div class="pp-live-team" id="pp-live-name-a">' + teamBoardHtml(bp.teamA, bp.displayNameA, bp.allStarConfA) + '</div>' +
           '<div class="pp-live-score" id="pp-live-score">0-0</div>' +
-          '<div class="pp-live-team" id="pp-live-name-b">' + teamBoardHtml(bp.teamB, bp.displayNameB) + '</div>' +
+          '<div class="pp-live-team" id="pp-live-name-b">' + teamBoardHtml(bp.teamB, bp.displayNameB, bp.allStarConfB) + '</div>' +
         '</div>' +
         '<div class="pp-live-clockline">' +
           '<span><b id="pp-live-periodclock">第一节 12:00</b></span>' +
