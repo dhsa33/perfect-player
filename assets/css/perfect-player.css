@@ -126,6 +126,11 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);min-hei
 /* 自选球队弹窗 */
 .team-picker-overlay{position:fixed;inset:0;z-index:300;background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;padding:12px;animation:fadeIn .2s ease;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
 .team-picker-modal{background:var(--bg);border:2px solid var(--border);border-radius:var(--radius);width:100%;max-width:400px;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 8px 48px rgba(0,0,0,0.25);animation:slideUp .25s ease}
+#allstar-draft-modal .team-picker-modal,.allstar-draft-modal{max-width:560px;max-height:min(92vh,760px)}
+.allstar-draft-body{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.allstar-draft-actions{flex-shrink:0;padding:10px 14px 14px;border-top:1px solid var(--border);background:var(--bg)}
+.allstar-draft-teams{display:flex;gap:10px;padding:0 14px 8px}
+.allstar-pick-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
 .event-result-body{padding:14px 14px 8px;overflow-y:auto;-webkit-overflow-scrolling:touch}
 .event-attribute-summary{margin:2px 0 14px;padding:10px;border:1px solid rgba(255,107,53,.32);border-radius:10px;background:linear-gradient(135deg,rgba(255,107,53,.09),rgba(247,166,0,.05))}
 .event-attribute-title{font-size:11px;color:var(--orange);font-weight:800;margin-bottom:7px}

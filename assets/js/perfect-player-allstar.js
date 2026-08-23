@@ -576,12 +576,14 @@
     var userCaptain = pack.userMeta && pack.userMeta.isCaptain;
 
     var html = '<div class="team-picker-overlay" id="allstar-draft-modal">';
-    html += '<div class="team-picker-modal" style="max-width:560px;">';
+    html += '<div class="team-picker-modal allstar-draft-modal">';
     html += '<div class="team-picker-header"><span>⭐ 队长选秀</span></div>';
+    html += '<div class="allstar-draft-body">';
     html += '<div id="allstar-draft-status" style="padding:8px 14px;font-size:12px;color:var(--text-dim);line-height:1.55;"></div>';
-    html += '<div id="allstar-draft-teams" style="display:flex;gap:10px;padding:0 14px 8px;"></div>';
+    html += '<div id="allstar-draft-teams" class="allstar-draft-teams"></div>';
     html += '<div id="allstar-draft-pool" style="padding:0 14px 10px;"></div>';
-    html += '<div style="padding:0 14px 14px;" id="allstar-draft-actions"></div>';
+    html += '</div>';
+    html += '<div class="allstar-draft-actions" id="allstar-draft-actions"></div>';
     html += '</div></div>';
     document.body.insertAdjacentHTML('beforeend', html);
 
@@ -641,7 +643,7 @@
 
       if (isUserTurn) {
         var poolHtml = '<div style="font-size:11px;font-weight:700;margin-bottom:6px;">可选球员（按总评）</div>';
-        poolHtml += '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px;">';
+        poolHtml += '<div class="allstar-pick-grid">';
         var ranked = state.remainingSlim.map(function (slim, idx) {
           return { slim: slim, p: state.remaining[idx], idx: idx, ovr: ovrOf(state.remaining[idx]) };
         }).sort(function (a, b) { return b.ovr - a.ovr; });
@@ -759,14 +761,15 @@
     var eastName = captainLabel(pack.captains && pack.captains.EAST);
     var westName = captainLabel(pack.captains && pack.captains.WEST);
     var html = '<div class="team-picker-overlay" id="allstar-draft-modal">';
-    html += '<div class="team-picker-modal" style="max-width:520px;">';
+    html += '<div class="team-picker-modal allstar-draft-modal" style="max-width:520px;">';
     html += '<div class="team-picker-header"><span>⭐ 选秀完成</span></div>';
+    html += '<div class="allstar-draft-body">';
     html += '<div style="padding:8px 14px;font-size:12px;color:var(--text-dim);">先补满双方首发，再交替挑选替补。同NBA球队最多4人。</div>';
-    html += '<div style="display:flex;gap:10px;padding:8px 14px;">';
+    html += '<div style="display:flex;gap:10px;padding:0 14px 8px;">';
     html += renderDraftSlimColumn(eastName, draft.teamEast);
     html += renderDraftSlimColumn(westName, draft.teamWest);
-    html += '</div>';
-    html += '<div style="padding:0 14px 14px;"><button type="button" class="btn btn-primary btn-sm" style="width:100%;" id="allstar-draft-play">观看全明星正赛</button></div>';
+    html += '</div></div>';
+    html += '<div class="allstar-draft-actions"><button type="button" class="btn btn-primary btn-sm" style="width:100%;" id="allstar-draft-play">观看全明星正赛</button></div>';
     html += '</div></div>';
     document.body.insertAdjacentHTML('beforeend', html);
     var btn = document.getElementById('allstar-draft-play');
