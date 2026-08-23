@@ -550,7 +550,6 @@
     html += '<span style="font-family:var(--font-display);font-size:15px;font-weight:800;color:var(--orange);">' + card.ovr + '</span>';
     html += '</div>';
     html += '<div style="color:var(--text-dim);font-size:10px;margin-top:2px;">' + card.nat + ' · ' + (card.team || '—') + '</div>';
-    if (blocked) html += '<div style="color:var(--orange);font-size:10px;margin-top:2px;">该NBA队已满4人</div>';
     html += '</button>';
     return html;
   }
