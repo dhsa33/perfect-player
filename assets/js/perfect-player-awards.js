@@ -697,6 +697,7 @@
       nameEN: candidate.nameEN || '',
       team: candidate.team || '',
       pos: candidate.pos || '',
+      ovr: n(candidate.ovr, 50),
       isUser: !!candidate.isUser,
       games: n(candidate.games),
       minutes: round1(candidate.minutes),
@@ -873,6 +874,7 @@
     buildAllStarRoster:buildAllStarRoster,
     allStarRecordFromPack:allStarRecordFromPack,
     slimAllStarCandidate:slimAllStarCandidate,
+    candidateKey:candidateKey,
     hash01:hash01,
     currentAwardSeasonKey:currentAwardSeasonKey,
     calculate:calculateRealisticSeasonAwards

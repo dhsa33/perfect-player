@@ -4,7 +4,6 @@
 
   var AS_OF_GAME = 55;
   var MAX_PER_NBA_TEAM = 4;
-  var DRAFT_PICKS = 11;
   var STARTER_POS = ['PG', 'SG', 'SF', 'PF', 'C'];
   var BENCH_SIZE = 7;
   var POS_LABEL = { PG: '控卫', SG: '分卫', SF: '小前', PF: '大前', C: '中锋' };
@@ -120,6 +119,14 @@
     return slim.isUser ? '__USER__' : String(slim.key || slim.nameEN || slim.name || '').toLowerCase();
   }
 
+  function candidateKeyFor(p, team) {
+    var eng = engine();
+    if (eng && eng.candidateKey) return eng.candidateKey(p, team);
+    if (p && p._isUser) return '__USER__';
+    var identity = p && (p.nameEN || p.name || p.cname);
+    return 'player:' + String(identity || team || 'unknown').toLowerCase();
+  }
+
   function slimFromLive(p) {
     if (!p) return null;
     if (p._isUser) {
@@ -166,7 +173,6 @@
   function resolveSlimToLive(slim) {
     if (!slim) return null;
     if (slim.isUser) return buildUserLivePlayer();
-    var eng = engine();
     var wantKey = slimId(slim);
     var teams = window.NBA2K_TEAMS || Object.keys(window.NBA2K_DATA || {});
     for (var ti = 0; ti < teams.length; ti++) {
@@ -175,13 +181,16 @@
       for (var i = 0; i < list.length; i++) {
         var p = list[i];
         if (!p || p._isUser) continue;
-        var key = eng && eng.candidateKey ? eng.candidateKey(p, team) : ('player:' + String(p.nameEN || p.name || '').toLowerCase());
-        if (key === wantKey || slim.nameEN && (p.nameEN === slim.nameEN || p.name === slim.nameEN)) {
+        var key = candidateKeyFor(p, team);
+        if (key === wantKey
+          || (slim.nameEN && (p.nameEN === slim.nameEN || p.name === slim.nameEN))
+          || (slim.name && (p.cname === slim.name || p.name === slim.name))) {
           var live = Object.assign({}, p);
           live._nbaTeam = team;
           live._asKey = key;
           live._allStarScore = slim.allStarScore;
           live._mvpScore = slim.mvpScore;
+          if (slim.ovr != null) live._lineupOvr = n(slim.ovr, live.ovr);
           return live;
         }
       }
@@ -190,7 +199,7 @@
       name: slim.name || slim.nameEN || '球员',
       cname: slim.name || slim.nameEN || '球员',
       nameEN: slim.nameEN || '',
-      ovr: n(slim.ovr, 78),
+      ovr: n(slim.ovr, 75),
       pos: slim.pos || 'SF',
       FIN: 70, MID: 70, threePT: 70, PAS: 70, REB: 70, STL: 70, BLK: 70,
       SPD: 70, STR: 70, JMP: 70, HAN: 70, CLU: 70, ATH: 70, PDEF: 70, IDEF: 70,
@@ -330,12 +339,13 @@
   }
 
   function addPickToTeam(roster, player, phase, slot) {
-    if (phase === 'starters') {
+    if (phase === 'starters' && !startersComplete(roster)) {
       var pickSlot = slot || pickStarterSlotForPlayer(player, roster.starters);
       if (!pickSlot || roster.starters[pickSlot]) return null;
       roster.starters[pickSlot] = player;
       return { role: 'starter', slot: pickSlot };
     }
+    if (roster.bench.length >= BENCH_SIZE) return null;
     roster.bench.push(player);
     return { role: 'bench', slot: String(player.pos || '') };
   }
@@ -394,21 +404,23 @@
       var score = ovrOf(p) + n(slim && slim.allStarScore) * 0.25 + n(slim && slim.mvpScore) * 0.08 + rand() * 4;
       var t = nbaTeamOf(p) || (slim && slim.team);
       if (countNbaTeam(roster, t) >= MAX_PER_NBA_TEAM) score -= 500;
-      if (phase === 'starters') {
+      if (phase === 'starters' && !startersComplete(roster)) {
         var slot = pickStarterSlotForPlayer(p, roster.starters);
         if (!slot) score -= 400;
         else if (canPlaySlot(p, slot)) score += 14;
-      }
+      } else if (roster.bench.length >= BENCH_SIZE) score -= 500;
       if (score > bestScore) {
         bestScore = score;
         best = { p: p, slim: slim, idx: i };
       }
     }
     if (!best) return null;
+    var starterSlot = phase === 'starters' && !startersComplete(roster)
+      ? pickStarterSlotForPlayer(best.p, roster.starters) : null;
+    var meta = addPickToTeam(roster, best.p, phase, starterSlot);
+    if (!meta) return null;
     remaining.splice(best.idx, 1);
     slimRemaining.splice(best.idx, 1);
-    var meta = addPickToTeam(roster, best.p, phase);
-    if (!meta) return null;
     return { player: best.p, slim: best.slim, meta: meta };
   }
 
@@ -446,8 +458,13 @@
     return state.pickIndex % 2 === 0 ? 'WEST' : 'EAST';
   }
 
+  function teamDraftComplete(roster) {
+    return startersComplete(roster) && roster.bench.length >= BENCH_SIZE;
+  }
+
   function draftFinished(state) {
-    return state.pickIndex >= DRAFT_PICKS || state.remaining.length === 0;
+    if (!state.remaining.length) return true;
+    return teamDraftComplete(state.rosterE) && teamDraftComplete(state.rosterW);
   }
 
   function finalizeDraft(state) {
@@ -525,9 +542,6 @@
 
   function renderDraftPoolCard(slim, p, idx, side, roster, phase, blocked) {
     var card = playerCardLabel(p, slim);
-    var slots = phase === 'starters' ? validStarterSlotsForPlayer(p, roster.starters) : [];
-    var slotHint = phase === 'starters' && slots.length
-      ? '可落位 ' + slots.join('/') : (phase === 'bench' ? '替补' : '');
     var html = '<button type="button" class="btn btn-secondary btn-sm allstar-pick-btn" data-idx="' + idx + '"'
       + (blocked ? ' disabled' : '')
       + ' style="text-align:left;font-size:11px;padding:8px 10px;' + (blocked ? 'opacity:.45;' : '') + '">';
@@ -536,7 +550,6 @@
     html += '<span style="font-family:var(--font-display);font-size:15px;font-weight:800;color:var(--orange);">' + card.ovr + '</span>';
     html += '</div>';
     html += '<div style="color:var(--text-dim);font-size:10px;margin-top:2px;">' + card.nat + ' · ' + (card.team || '—') + '</div>';
-    if (slotHint) html += '<div style="font-size:10px;color:var(--text);margin-top:3px;">' + slotHint + '</div>';
     if (blocked) html += '<div style="color:var(--orange);font-size:10px;margin-top:2px;">该NBA队已满4人</div>';
     html += '</button>';
     return html;
@@ -635,6 +648,9 @@
         ranked.forEach(function (row) {
           var t = row.slim.team || nbaTeamOf(row.p);
           var blocked = countNbaTeam(roster, t) >= MAX_PER_NBA_TEAM;
+          if (!blocked && phase === 'starters' && !startersComplete(roster)
+            && !validStarterSlotsForPlayer(row.p, roster.starters).length) blocked = true;
+          if (!blocked && startersComplete(roster) && roster.bench.length >= BENCH_SIZE) blocked = true;
           poolHtml += renderDraftPoolCard(row.slim, row.p, row.idx, side, roster, phase, blocked);
         });
         poolHtml += '</div>';
@@ -705,8 +721,8 @@
       var pick = aiDraftPick(state.remaining, state.remainingSlim, roster, phase);
       if (pick) {
         state.picks.push({ side: side, slim: pick.slim, role: pick.meta && pick.meta.role, slot: pick.meta && pick.meta.slot });
+        state.pickIndex++;
       }
-      state.pickIndex++;
       render();
       if (!draftFinished(state) && !(userCaptain && state.userCaptainSide === pickSideForIndex(state))) {
         setTimeout(aiStep, 280);
