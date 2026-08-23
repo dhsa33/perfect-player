@@ -8,20 +8,35 @@
   var SKILL_MULT = {
     1: { mu: 1.05, sigma: 0.04, lo: 0.97, hi: 1.13 },
     2: { mu: 1.09, sigma: 0.055, lo: 0.98, hi: 1.20 },
-    3: { mu: 1.13, sigma: 0.07, lo: 0.99, hi: 1.28 }
+    3: { mu: 1.13, sigma: 0.07, lo: 0.99, hi: 1.28 },
+    4: { mu: 1.21, sigma: 0.085, lo: 1.00, hi: 1.36 }
   };
   var SEASON_POINT_CAP = 12;
+
+  /** 梦境挑战击败传奇队后可解锁第四级的球风技能 */
+  var LEGEND_TIER_SKILL_IDS = {
+    cold_arrow: true,
+    off_ball: true,
+    tempo_master: true,
+    pnr_maestro: true,
+    post_bully: true,
+    dunk_threat: true,
+    ice_ft: true,
+    clutch_heart: true,
+    mid_craftsman: true,
+    steal_instinct: true
+  };
 
   var STYLE_SKILLS = [
     {
       id: 'cold_arrow', icon: '🎯', name: '冷箭', group: '投射', max: 3,
       desc: '更多三分出手，投得更准，每晚仍有起伏。',
-      conflicts: ['post_bully'],
       reqs: [
         null,
         [{ key: 'threePT', min: 80 }],
         [{ key: 'threePT', min: 88 }],
-        [{ key: 'threePT', min: 93 }]
+        [{ key: 'threePT', min: 93 }],
+        [{ key: 'threePT', min: 96 }]
       ]
     },
     {
@@ -31,7 +46,8 @@
         null,
         [{ key: 'MID', min: 80 }],
         [{ key: 'MID', min: 86 }],
-        [{ key: 'MID', min: 92 }]
+        [{ key: 'MID', min: 92 }],
+        [{ key: 'MID', min: 96 }]
       ]
     },
     {
@@ -41,13 +57,13 @@
         null,
         [{ key: 'threePT', min: 75 }, { key: 'CLU', min: 70 }],
         [{ key: 'threePT', min: 82 }, { key: 'CLU', min: 76 }],
-        [{ key: 'threePT', min: 88 }, { key: 'CLU', min: 82 }]
+        [{ key: 'threePT', min: 88 }, { key: 'CLU', min: 82 }],
+        [{ key: 'threePT', min: 90 }, { key: 'CLU', min: 86 }]
       ]
     },
     {
       id: 'finisher', icon: '💥', name: '杀伤', group: '终结', max: 3,
       desc: '更容易造犯规走上罚球线，每晚仍有起伏。',
-      conflicts: ['perimeter_lock'],
       reqs: [
         null,
         [{ key: 'FIN', min: 80 }, { key: 'STR', min: 70 }],
@@ -62,18 +78,19 @@
         null,
         [{ key: 'DNK', min: 80 }, { key: 'ATH', min: 76 }],
         [{ key: 'DNK', min: 86 }, { key: 'ATH', min: 82 }],
-        [{ key: 'DNK', min: 92 }, { key: 'ATH', min: 88 }]
+        [{ key: 'DNK', min: 92 }, { key: 'ATH', min: 88 }],
+        [{ key: 'DNK', min: 96 }, { key: 'ATH', min: 92 }]
       ]
     },
     {
       id: 'post_bully', icon: '🏔️', name: '背身肉搏', group: '终结', max: 3,
-      desc: '提高内线出手，略微放慢回合。与冷箭、快攻推进互斥。',
-      conflicts: ['cold_arrow', 'fast_break'],
+      desc: '提高内线出手，略微放慢回合。',
       reqs: [
         null,
         [{ key: 'STR', min: 80 }, { key: 'IDEF', min: 70 }],
         [{ key: 'STR', min: 86 }, { key: 'IDEF', min: 76 }],
-        [{ key: 'STR', min: 92 }, { key: 'IDEF', min: 82 }]
+        [{ key: 'STR', min: 92 }, { key: 'IDEF', min: 82 }],
+        [{ key: 'STR', min: 96 }, { key: 'IDEF', min: 88 }]
       ]
     },
     {
@@ -83,7 +100,8 @@
         null,
         [{ key: 'PAS', min: 80 }, { key: 'HAN', min: 76 }],
         [{ key: 'PAS', min: 86 }, { key: 'HAN', min: 82 }],
-        [{ key: 'PAS', min: 92 }, { key: 'HAN', min: 88 }]
+        [{ key: 'PAS', min: 92 }, { key: 'HAN', min: 88 }],
+        [{ key: 'PAS', min: 96 }, { key: 'HAN', min: 92 }]
       ]
     },
     {
@@ -93,13 +111,13 @@
         null,
         [{ key: 'PAS', min: 78 }, { key: 'CLU', min: 75 }],
         [{ key: 'PAS', min: 84 }, { key: 'CLU', min: 81 }],
-        [{ key: 'PAS', min: 90 }, { key: 'CLU', min: 87 }]
+        [{ key: 'PAS', min: 90 }, { key: 'CLU', min: 87 }],
+        [{ key: 'PAS', min: 94 }, { key: 'CLU', min: 90 }]
       ]
     },
     {
       id: 'fast_break', icon: '⚡', name: '快攻推进', group: '组织', max: 3,
-      desc: '回合更快，更爱转换冲击篮下。与背身肉搏互斥。',
-      conflicts: ['post_bully'],
+      desc: '回合更快，更爱转换冲击篮下。',
       reqs: [
         null,
         [{ key: 'HAN', min: 80 }, { key: 'ATH', min: 76 }],
@@ -109,8 +127,7 @@
     },
     {
       id: 'perimeter_lock', icon: '🔒', name: '外线锁', group: '防守', max: 3,
-      desc: '提高抢断，并略微增强对位压迫。与杀伤互斥。',
-      conflicts: ['finisher'],
+      desc: '提高抢断，并略微增强对位压迫。',
       reqs: [
         null,
         [{ key: 'PDEF', min: 80 }],
@@ -135,7 +152,8 @@
         null,
         [{ key: 'PDEF', min: 78 }, { key: 'ATH', min: 75 }],
         [{ key: 'PDEF', min: 84 }, { key: 'ATH', min: 81 }],
-        [{ key: 'PDEF', min: 90 }, { key: 'ATH', min: 87 }]
+        [{ key: 'PDEF', min: 90 }, { key: 'ATH', min: 87 }],
+        [{ key: 'PDEF', min: 94 }, { key: 'ATH', min: 90 }]
       ]
     },
     {
@@ -165,7 +183,8 @@
         null,
         [{ key: 'CLU', min: 80 }],
         [{ key: 'CLU', min: 86 }],
-        [{ key: 'CLU', min: 92 }]
+        [{ key: 'CLU', min: 92 }],
+        [{ key: 'CLU', min: 96 }]
       ]
     },
     {
@@ -185,32 +204,13 @@
         null,
         [{ key: 'CLU', min: 78 }],
         [{ key: 'CLU', min: 84 }],
-        [{ key: 'CLU', min: 90 }]
+        [{ key: 'CLU', min: 90 }],
+        [{ key: 'CLU', min: 94 }]
       ]
     }
   ];
   var SKILL_MAP = {};
   STYLE_SKILLS.forEach(function (s) { SKILL_MAP[s.id] = s; });
-  var SKILL_MUTEX = {};
-  STYLE_SKILLS.forEach(function (s) {
-    (s.conflicts || []).forEach(function (other) {
-      SKILL_MUTEX[s.id] = SKILL_MUTEX[s.id] || [];
-      if (SKILL_MUTEX[s.id].indexOf(other) < 0) SKILL_MUTEX[s.id].push(other);
-      SKILL_MUTEX[other] = SKILL_MUTEX[other] || [];
-      if (SKILL_MUTEX[other].indexOf(s.id) < 0) SKILL_MUTEX[other].push(s.id);
-    });
-  });
-
-  function mutexConflictName(id) {
-    if (getPurchasedLevel(id) > 0) return '';
-    var others = SKILL_MUTEX[id] || [];
-    for (var i = 0; i < others.length; i++) {
-      if (getPurchasedLevel(others[i]) > 0) {
-        return (SKILL_MAP[others[i]] && SKILL_MAP[others[i]].name) || others[i];
-      }
-    }
-    return '';
-  }
 
   var PROFILE_LABELS = {
     leadership: '领导力',
@@ -281,10 +281,56 @@
     return true;
   }
 
+  function legendChallengeFlags() {
+    var c = liveCareer();
+    if (!c || !c.flags || !c.flags.legendChallenge) return null;
+    return c.flags.legendChallenge;
+  }
+
+  function isLegendTierUnlocked(id) {
+    if (!LEGEND_TIER_SKILL_IDS[id]) return false;
+    var f = legendChallengeFlags();
+    return !!(f && f.skillUnlocks && f.skillUnlocks[id]);
+  }
+
+  function getSkillMax(id) {
+    var def = SKILL_MAP[id];
+    if (!def) return 0;
+    if (isLegendTierUnlocked(id)) return 4;
+    return def.max || 3;
+  }
+
+  function syncLegendPurchasedFromUnlocks() {
+    var st = ensureSkillState();
+    Object.keys(LEGEND_TIER_SKILL_IDS).forEach(function (id) {
+      if (!isLegendTierUnlocked(id)) return;
+      if ((Number(st.purchased[id]) || 0) >= 3) st.purchased[id] = 4;
+    });
+  }
+
+  function grantLegendTierUnlock(id) {
+    if (!LEGEND_TIER_SKILL_IDS[id]) return false;
+    var c = liveCareer();
+    if (!c) return false;
+    c.flags = c.flags || {};
+    c.flags.legendChallenge = c.flags.legendChallenge || {};
+    c.flags.legendChallenge.skillUnlocks = c.flags.legendChallenge.skillUnlocks || {};
+    c.flags.legendChallenge.skillUnlocks[id] = true;
+    var st = ensureSkillState();
+    if ((Number(st.purchased[id]) || 0) >= 3) st.purchased[id] = 4;
+    return true;
+  }
+
+  function getSkillDisplayName(id) {
+    var def = SKILL_MAP[id];
+    return (def && def.name) || id;
+  }
+
   function maxAffordableByAttrs(def, attrs) {
     def = def || {};
+    var cap = getSkillMax(def.id);
     var max = 0;
-    for (var lv = 1; lv <= (def.max || 3); lv++) {
+    for (var lv = 1; lv <= cap; lv++) {
       if (!meetsReqs(def.reqs && def.reqs[lv], attrs)) break;
       max = lv;
     }
@@ -293,13 +339,16 @@
 
   function getPurchasedLevel(id) {
     var st = ensureSkillState();
-    return Math.max(0, Math.min(3, Number(st.purchased[id]) || 0));
+    var cap = getSkillMax(id);
+    return Math.max(0, Math.min(cap, Number(st.purchased[id]) || 0));
   }
 
   function getEffectiveSkillLevel(id) {
     var def = SKILL_MAP[id];
     if (!def) return 0;
-    return Math.min(getPurchasedLevel(id), maxAffordableByAttrs(def, liveAttrs()));
+    var purchased = Number(ensureSkillState().purchased[id]) || 0;
+    if (purchased >= 4) return purchased;
+    return Math.min(purchased, maxAffordableByAttrs(def, liveAttrs()));
   }
 
   function skillCost(nextLevel) {
@@ -312,20 +361,22 @@
 
   function inspectStyleSkill(def) {
     var attrs = liveAttrs();
-    var purchased = getPurchasedLevel(def.id);
-    var effective = Math.min(purchased, maxAffordableByAttrs(def, attrs));
+    var skillMax = getSkillMax(def.id);
+    var purchased = Number(ensureSkillState().purchased[def.id]) || 0;
+    var effective = getEffectiveSkillLevel(def.id);
     var next = purchased + 1;
     var retired = false;
     try { retired = !!(liveCareer() && liveCareer().retired); } catch (e) {}
+    var legendFreeFour = next === 4 && isLegendTierUnlocked(def.id);
     var nextReqs = def.reqs[next] || [];
-    var canAffordAttrs = !retired && next <= def.max && meetsReqs(nextReqs, attrs);
-    var cost = next <= def.max ? skillCost(next) : 0;
-    var mutexName = mutexConflictName(def.id);
-    var canBuy = !mutexName && canAffordAttrs && availableStylePoints() >= cost;
+    var canAffordAttrs = !retired && next <= skillMax && (legendFreeFour || meetsReqs(nextReqs, attrs));
+    var cost = next <= skillMax ? (legendFreeFour ? 0 : skillCost(next)) : 0;
+    var canBuy = canAffordAttrs && (legendFreeFour || availableStylePoints() >= cost);
     var conds = [];
     var showLv;
-    if (purchased > effective && purchased > 0) showLv = purchased;
-    else showLv = Math.min(def.max, Math.max(1, next <= def.max ? next : def.max));
+    if (purchased >= 4) showLv = 4;
+    else if (purchased > effective && purchased > 0) showLv = purchased;
+    else showLv = Math.min(skillMax, Math.max(1, next <= skillMax ? next : skillMax));
     (def.reqs[showLv] || []).forEach(function (req) {
       var cur = reqCurrent(req, attrs);
       conds.push({
@@ -333,22 +384,23 @@
         text: attrLabel(req.key) + ' ' + cur + ' / ' + req.min
       });
     });
-    if (mutexName) conds.push({ ok: false, text: '与「' + mutexName + '」互斥' });
     var status;
-    if (mutexName && purchased <= 0) status = '与「' + mutexName + '」互斥';
-    else if (purchased <= 0 && effective <= 0) status = canBuy ? '可激活' : (canAffordAttrs ? '球风点不足' : '未点亮');
+    if (purchased <= 0 && effective <= 0) status = canBuy ? '可激活' : (canAffordAttrs ? '球风点不足' : '未点亮');
+    else if (purchased >= 4) status = '满级';
     else if (effective < purchased) status = '降效 Lv.' + effective;
-    else if (purchased >= def.max) status = '满级';
+    else if (purchased >= skillMax) status = '满级';
     else if (canBuy) status = '可升级';
     else if (canAffordAttrs) status = '球风点不足';
     else status = '属性未达标';
     var EFFECT_TONE = {
       1: '这套打法开始起作用，变化还不夸张。',
       2: '这套打法已经明显更强，每晚仍有起伏。',
-      3: '这套打法已经很稳，偶尔还能爆发。'
+      3: '这套打法已经很稳，偶尔还能爆发。',
+      4: '这套打法已登峰造极，不再受属性波动影响。'
     };
     var effect;
-    if (effective > 0) effect = EFFECT_TONE[effective] || EFFECT_TONE[1];
+    if (effective >= 4) effect = EFFECT_TONE[4];
+    else if (effective > 0) effect = EFFECT_TONE[effective] || EFFECT_TONE[1];
     else if (purchased > 0) effect = '已购买，但当前条件不够，这套打法暂时休眠。';
     else effect = '激活后立即生效。';
     return {
@@ -357,7 +409,7 @@
       name: def.name,
       group: def.group,
       desc: def.desc,
-      max: def.max,
+      max: skillMax,
       purchased: purchased,
       level: effective,
       effective: effective,
@@ -382,16 +434,16 @@
     var def = SKILL_MAP[id];
     if (!def) return { ok: false, reason: '未知技能' };
     var st = ensureSkillState();
-    var purchased = getPurchasedLevel(id);
-    if (purchased >= def.max) return { ok: false, reason: '已满级' };
+    var skillMax = getSkillMax(id);
+    var purchased = Number(st.purchased[id]) || 0;
+    if (purchased >= skillMax) return { ok: false, reason: '已满级' };
     if (liveCareer() && liveCareer().retired) return { ok: false, reason: '生涯已结束' };
-    var mutexName = mutexConflictName(id);
-    if (mutexName) return { ok: false, reason: '与「' + mutexName + '」互斥' };
     var next = purchased + 1;
-    if (!meetsReqs(def.reqs[next], liveAttrs())) return { ok: false, reason: '属性未达标' };
-    var cost = skillCost(next);
-    if (st.points < cost) return { ok: false, reason: '球风点不足' };
-    st.points -= cost;
+    var legendFreeFour = next === 4 && isLegendTierUnlocked(id);
+    if (!legendFreeFour && !meetsReqs(def.reqs[next], liveAttrs())) return { ok: false, reason: '属性未达标' };
+    var cost = legendFreeFour ? 0 : skillCost(next);
+    if (!legendFreeFour && st.points < cost) return { ok: false, reason: '球风点不足' };
+    if (cost > 0) st.points -= cost;
     st.purchased[id] = next;
     return { ok: true, level: next, cost: cost, points: st.points };
   }
@@ -422,10 +474,12 @@
     var notes = [];
     if (!before) return notes;
     STYLE_SKILLS.forEach(function (s) {
+      var purchased = Number(ensureSkillState().purchased[s.id]) || 0;
+      if (purchased >= 4) return;
       var prev = Number(before[s.id]) || 0;
       var after = getEffectiveSkillLevel(s.id);
       if (after < prev) notes.push(s.name + ' Lv.' + prev + ' → Lv.' + after + '（属性回落，已购等级保留）');
-      else if (after > prev && getPurchasedLevel(s.id) >= after) notes.push(s.name + ' 恢复为 Lv.' + after);
+      else if (after > prev && purchased >= after) notes.push(s.name + ' 恢复为 Lv.' + after);
     });
     return notes;
   }
@@ -566,7 +620,13 @@
     grantSeasonStylePoints: grantSeasonStylePoints,
     computeSeasonStyleGrant: computeSeasonStyleGrant,
     formatGrantLine: formatGrantLine,
-    skillCost: skillCost
+    skillCost: skillCost,
+    getSkillMax: getSkillMax,
+    isLegendTierUnlocked: isLegendTierUnlocked,
+    grantLegendTierUnlock: grantLegendTierUnlock,
+    syncLegendPurchasedFromUnlocks: syncLegendPurchasedFromUnlocks,
+    getSkillDisplayName: getSkillDisplayName,
+    LEGEND_TIER_SKILL_IDS: LEGEND_TIER_SKILL_IDS
   };
   global.getEffectiveSkillLevel = getEffectiveSkillLevel;
   global.getStyleSkillMu = getStyleSkillMu;

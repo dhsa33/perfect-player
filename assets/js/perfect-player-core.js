@@ -2525,6 +2525,27 @@ function liveOrSkipUserPack(opponent, options, onPack) {
   };
   var canPrompt = window.PP_LIVE && typeof PP_LIVE.promptChoice === 'function';
   if (!canPrompt || options.forceSkip) { runSkip(); return false; }
+  var isLegend = options.isLegendChallenge || (typeof isLegendChallengeSeriesActive === 'function' && isLegendChallengeSeriesActive());
+  if (options.preferWatch) {
+    if (STATE.season) STATE.season._legendFirstGameWatch = false;
+    runWatch();
+    return true;
+  }
+  if (isLegend) {
+    if (STATE.season && STATE.season._skipLiveSeries) {
+      runSkip();
+      return false;
+    }
+    PP_LIVE.promptChoice({
+      kicker: '梦境挑战',
+      title: options.title || '观看本场？',
+      reason: options.reason || ('对阵 ' + getTeamName(opponent) + '。'),
+      allowSeriesSkip: true,
+      teamA: STATE.careerTeam,
+      teamB: opponent
+    }, runSkip, runWatch);
+    return true;
+  }
   if (options.isPlayoff) {
     if (typeof PP_LIVE.shouldOfferPlayoff === 'function' && !PP_LIVE.shouldOfferPlayoff()) { runSkip(); return false; }
     PP_LIVE.promptChoice({
@@ -6483,12 +6504,15 @@ function simOnePlayoffGame(round, seriesIdx, teamA, teamB, isMySeries, gameNum, 
   }
   
   const userDebuff = 1.0;
+  var legendImmune = typeof isLegendChallengeSeriesActive === 'function' && isLegendChallengeSeriesActive();
   
-  // ★ 跳过检查（禁赛优先于伤病）
+  // ★ 跳过检查（禁赛优先于伤病）；梦境传奇赛免疫禁赛/伤病
   const skipEv = STATE.season.events;
   var skipReason = null;
-  if (skipEv && skipEv.suspensionGamesLeft > 0) skipReason = 'suspension';
-  else if (skipEv && skipEv.injuryGamesLeft > 0) skipReason = 'injury';
+  if (!legendImmune) {
+    if (skipEv && skipEv.suspensionGamesLeft > 0) skipReason = 'suspension';
+    else if (skipEv && skipEv.injuryGamesLeft > 0) skipReason = 'injury';
+  }
   if (skipReason) {
     var runSkippedPlayoffGame = function() {
       if (skipReason === 'suspension') skipEv.suspensionGamesLeft--;
@@ -6580,19 +6604,21 @@ function simOnePlayoffGame(round, seriesIdx, teamA, teamB, isMySeries, gameNum, 
       var stats = pack.stats;
       gameEntry.myStats = stats;
       userGameStats.push(stats);
-      var po = STATE.season.playoffStats;
-      po.pts += stats.pts; po.reb += stats.reb; po.ast += stats.ast;
-      po.stl += stats.stl; po.blk += stats.blk; po.tov += stats.tov;
-      po.fgm += stats.fgm; po.fga += stats.fga;
-      po.ftm += stats.ftm; po.fta += stats.fta;
-      po.threeM += stats.threeM; po.threeA += stats.threeA;
-      po.mins = (po.mins || 0) + stats.mins;
-      po.games++;
+      if (!legendImmune) {
+        var po = STATE.season.playoffStats;
+        po.pts += stats.pts; po.reb += stats.reb; po.ast += stats.ast;
+        po.stl += stats.stl; po.blk += stats.blk; po.tov += stats.tov;
+        po.fgm += stats.fgm; po.fga += stats.fga;
+        po.ftm += stats.ftm; po.fta += stats.fta;
+        po.threeM += stats.threeM; po.threeA += stats.threeA;
+        po.mins = (po.mins || 0) + stats.mins;
+        po.games++;
+      }
       renderPlayoffGameBrief(gameEntry, teamA, teamB, true, roundName, gameNum + 1, 7, round, seriesIdx);
     }
     seriesGames.push(gameEntry);
     setTimeout(function() {
-      if (isMySeries) {
+      if (isMySeries && !legendImmune) {
         try {
           var poEvData = checkRandomEvents({ opponent: teamB, isWin: won, day: 0, simulated: true }, { won: won, scoreA: finalA, scoreB: finalB }, gameEntry.myStats || null);
           if (poEvData) {
@@ -6619,6 +6645,8 @@ function simOnePlayoffGame(round, seriesIdx, teamA, teamB, isMySeries, gameNum, 
   if (isMySeries) {
     liveOrSkipUserPack(teamB, {
       isPlayoff: true,
+      isLegendChallenge: legendImmune,
+      preferWatch: legendImmune && gameNum === 0 && !!(STATE.season && STATE.season._legendFirstGameWatch),
       seedBonus: seedBonus,
       probMultiplier: userDebuff,
       teamAHome: gameNum < 4,
@@ -6790,6 +6818,7 @@ function simPlayoffSeries(round, seriesIdx) {
         if (round === 3) {
           STATE.season.isChampion = true;
           STATE.season.playoffsDone = true;
+          if (typeof prepareLegendChallengeAfterChampion === 'function') prepareLegendChallengeAfterChampion();
           STATE.season.awards = STATE.season.awards || [];
           STATE.season.awards.push({ act: 'champion', label: '🏆 总冠军', winner: getHupuDisplayName(), winnerEN: '', team: STATE.careerTeam, isUser: true });
           var poStats = STATE.season.playoffStats || {};
@@ -6798,7 +6827,16 @@ function simPlayoffSeries(round, seriesIdx) {
           if (poStats.games > 0 && fmvpPpg >= fmvpNeed) {
             STATE.season.awards.push({ act: 'fmvp', label: '👑 总决赛MVP', winner: getHupuDisplayName(), winnerEN: '', team: STATE.careerTeam, isUser: true });
           }
-          setTimeout(function() { showChampionshipCelebration(showSeasonResults); }, 300);
+          setTimeout(function() {
+            showChampionshipCelebration(function() {
+              if (typeof prepareLegendChallengeAfterChampion === 'function') prepareLegendChallengeAfterChampion();
+              if (typeof maybeOfferLegendChallenge === 'function') {
+                maybeOfferLegendChallenge(showSeasonResults);
+              } else {
+                showSeasonResults();
+              }
+            });
+          }, 300);
           return;
         }
       }
@@ -6929,13 +6967,17 @@ function showChampionshipCelebration(onDone) {
     var delay = (Math.random() * 0.9).toFixed(2);
     sparks += '<span class="fw-dot" style="--a:' + angle + 'deg;--d:' + dist + 'px;left:' + left + '%;top:' + top + '%;animation-delay:' + delay + 's;"></span>';
   }
+  var continueLabel = '查看赛季总结';
+  if (typeof shouldOfferLegendChallengeAfterChampion === 'function' && shouldOfferLegendChallengeAfterChampion()) {
+    continueLabel = '继续';
+  }
   overlay.innerHTML =
     sparks +
     '<div class="champion-card">' +
       '<div class="champion-cup">🏆</div>' +
       '<div class="champion-title">总冠军</div>' +
       '<div class="champion-sub">' + pickChampionCelebrationCopy() + '</div>' +
-      '<button class="awards-next" id="championContinueBtn">查看赛季总结</button>' +
+      '<button class="awards-next" id="championContinueBtn">' + continueLabel + '</button>' +
     '</div>';
   document.body.appendChild(overlay);
   document.getElementById('championContinueBtn').onclick = function() {

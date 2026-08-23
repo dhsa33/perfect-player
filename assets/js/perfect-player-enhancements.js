@@ -103,6 +103,7 @@
 '.pp-skill-cond.on{color:#1f9e91;font-weight:700}',
 '.pp-skill-effect{margin-top:5px;font-size:11.5px;color:#2d1f0e;line-height:1.4;font-weight:600}',
 '.pp-skill-group{font-size:10px;color:#c48a00;font-weight:700;letter-spacing:.4px;margin-bottom:1px}',
+'.pp-skill-icon{width:46px;height:46px;flex:0 0 46px;display:flex;align-items:center;justify-content:center;font-size:24px;line-height:1}',
 '.pp-lg-pip.owned{background:rgba(255,107,53,.38)}',
 '.pp-skill-fab-badge{position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;padding:0 5px;',
 '  border-radius:9px;background:#f7a600;color:#2d1f0e;font-size:10px;font-weight:800;',
@@ -644,11 +645,9 @@
       btn = '<button class="pp-lg-buy pp-skill-buy" data-skill="' + skill.id + '"' + (skill.canBuy ? '' : ' disabled') + '>' +
         label + '</button>';
     }
+    var skillIcon = (active || maxed || down || skill.canBuy ? skill.icon : '🔒');
     return '<div class="' + cls + '">' +
-      '<div class="pp-ach-badge">' +
-        '<div class="pp-ach-badge-ring">' + achRingSVG(maxed ? 'epic' : (active ? 'rare' : 'common')) + '</div>' +
-        '<div class="pp-ach-badge-ic">' + (active || maxed || down || skill.canBuy ? skill.icon : '🔒') + '</div>' +
-      '</div>' +
+      '<div class="pp-skill-icon">' + skillIcon + '</div>' +
       '<div class="pp-ach-meta">' +
         (skill.group ? '<div class="pp-skill-group">' + skill.group + '</div>' : '') +
         '<div class="pp-ach-name">' + skill.name + ' <span class="pp-lg-lvl">' + lvlLabel + '</span></div>' +
@@ -772,7 +771,6 @@
       b.onclick = function () {
         var bought = PP_FX.buyStyleSkill(b.getAttribute('data-skill'));
         if (bought) {
-          PP_FX.burstFrom(b, { count: 14 });
           var name = '';
           try {
             var def = PP_SKILLS.STYLE_SKILLS.filter(function (s) { return s.id === b.getAttribute('data-skill'); })[0];
@@ -797,7 +795,6 @@
         '</div>' +
         '<div class="pp-lg-lp"></div>' +
         '<div class="pp-ach-progress"><div class="pp-ach-progress-txt"></div></div>' +
-        '<div class="pp-lg-hint">17 条球风技激活即生效。属性回落会降效但不退点。少量互斥：冷箭/快攻推进 ↔ 背身肉搏，外线锁 ↔ 杀伤。球风点本生涯有效，退役清零。</div>' +
         '<div class="pp-ach-grid"></div>' +
       '</div>';
     document.body.appendChild(overlay);

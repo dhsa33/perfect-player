@@ -409,8 +409,8 @@
       var stealSkip = {};
       if (m.ball) {
         put(set, m.ball, [TRANS_RUNNER_X_SET, idHash(m.ball.id) > 0.52 ? 31.5 : 18.5]);
-        put(act, m.ball, clone(Z.midc));
-        put(shot, m.ball, clone(Z.rim));
+      put(act, m.ball, clone(Z.midc));
+      put(shot, m.ball, clone(Z.rim));
         stealSkip[m.ball.id] = true;
       }
       layoutTransFill(stealSkip);
@@ -468,9 +468,9 @@
         var threeSpot = pushOutsideThree(zone);
         put(act, m.ball, away(threeSpot, RIM, 1.4));
         put(shot, m.ball, threeSpot);
-      } else {
+    } else {
         put(act, m.ball, toward(zone, RIM, 2.4));
-        put(shot, m.ball, zone);
+      put(shot, m.ball, zone);
       }
     } else if (action === 'logo') {
       put(act, m.ball, toward(start, Z.logo, 5));

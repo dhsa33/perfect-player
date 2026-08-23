@@ -298,6 +298,7 @@ function pickWeightedEvent(candidates) {
 }
 
 function checkRandomEvents(game, result, stats) {
+  if (typeof isLegendChallengeSeriesActive === 'function' && isLegendChallengeSeriesActive()) return null;
   var ev = STATE.season.events;
   if (!ev) return null;
   ev.triggeredIds = Array.isArray(ev.triggeredIds) ? ev.triggeredIds : [];

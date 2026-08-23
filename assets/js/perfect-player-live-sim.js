@@ -2951,6 +2951,8 @@
     };
   }
   PP_LIVE.promptChoice = promptChoice;
+  PP_LIVE.lineupsPreviewHtml = lineupsPreviewHtml;
+  PP_LIVE.injectLiveStyle = injectStyle;
 
   function playRowHtml(p) {
     if (!p) return '';
