@@ -2386,6 +2386,14 @@ function getConferenceSeed(team) {
   return idx >= 0 ? idx + 1 : 99;
 }
 
+/** 常规赛末段已无缘附加赛（种子 11+ 且赛程过半） */
+function isTeamPlayoffRaceEliminated(team) {
+  if (!STATE.season || STATE.season.isPlayoffs) return false;
+  var gp = (STATE.season.games && STATE.season.games.length) || 0;
+  if (gp < 60) return false;
+  return getConferenceSeed(team || STATE.careerTeam) > 10;
+}
+
 /** 获取同分区所有球队按种子排序的列表 */
 function getConferenceSorted(conf) {
   const teams = conf === 'EAST' ? SIM_CONFIG.CONFERENCE.EAST : SIM_CONFIG.CONFERENCE.WEST;
@@ -2671,7 +2679,10 @@ function quickSimAllGames() {
       if (skipReason) {
         var runSkippedRegularGame = function() {
           if (skipReason === 'suspension') ev.suspensionGamesLeft--;
-          else ev.injuryGamesLeft--;
+          else {
+            ev.injuryGamesLeft--;
+            if (ev.injuryGamesLeft === 0) ev.injuryReturnNextGame = true;
+          }
           var skipResult = simulateGameNew(STATE.careerTeam, g.opponent);
           g.simulated = true;
           g.result = skipResult;
@@ -2804,6 +2815,7 @@ function quickSimAllGames() {
           }
         } else {
           try { branchEv = checkSeasonBranchEvent(g, result, stats); } catch(ex) {}
+          tickInjuryReturnWindow(branchEv);
         }
 
         var dotEl = document.getElementById('gdot-' + gi);
@@ -6480,7 +6492,10 @@ function simOnePlayoffGame(round, seriesIdx, teamA, teamB, isMySeries, gameNum, 
   if (skipReason) {
     var runSkippedPlayoffGame = function() {
       if (skipReason === 'suspension') skipEv.suspensionGamesLeft--;
-      else skipEv.injuryGamesLeft--;
+      else {
+        skipEv.injuryGamesLeft--;
+        if (skipEv.injuryGamesLeft === 0) skipEv.injuryReturnNextGame = true;
+      }
       var skipResult = simulateGameNew(teamA, teamB, seedBonus, userDebuff);
       const skipWon = skipResult.won;
       const skipNewWinsA = winsA + (skipWon ? 1 : 0);
@@ -8845,6 +8860,89 @@ function getSeasonEventRepeatWeight(event, career) {
   return Math.max(floor, Math.pow(decay, n));
 }
 
+function getSeasonEventTopicKey(ev) {
+  if (!ev) return '';
+  return ev.topicId || String(ev.id || '').replace(/^pp_season_/, '');
+}
+
+function hasCareerPlayoffExperience(career) {
+  var c = career || STATE.career || {};
+  return (c.seasons || []).some(function (s) {
+    var pr = String(s && s.playoffResult || '');
+    if (!pr) return false;
+    if (pr.indexOf('未进') >= 0 || pr.indexOf('未晋级') >= 0) return false;
+    return true;
+  });
+}
+
+/** 曾打进季后赛且当季未夺冠（用于「上次季后赛手软」类台词） */
+function hasPriorPlayoffFailure(career) {
+  var c = career || STATE.career || {};
+  return (c.seasons || []).some(function (s) {
+    var pr = String(s && s.playoffResult || '');
+    if (!pr || pr.indexOf('未进') >= 0 || pr.indexOf('未晋级') >= 0) return false;
+    if (pr.indexOf('附加赛') >= 0 && pr.indexOf('淘汰') >= 0) return false;
+    if (pr.indexOf('总冠军') >= 0) return false;
+    return true;
+  });
+}
+
+var SEASON_EVENT_ROOKIE_TOPICS = ['rookie_wall', 'rookie_orientation', 'rookie_group_chat', 'rookie_number', 'jersey_sales', 'first_misquote'];
+var SEASON_EVENT_SOPHOMORE_TOPICS = ['sophomore_target'];
+var SEASON_EVENT_PLAYOFF_MEMORY_TOPICS = ['ft_whisper'];
+var SEASON_EVENT_MIN_CAREER_SEASON = {
+  gleague_callup: 3,
+  veteran_speech: 2,
+  load_manage_leak: 1
+};
+var SEASON_EVENT_CAREER_ONCE_TOPICS = ['rookie_wall', 'sophomore_target', 'closeout_ball', 'return_from_injury'];
+
+function isSeasonEventCareerEligible(ev, state, career) {
+  if (!ev || !state) return true;
+  var c = career || STATE.career || {};
+  var topic = getSeasonEventTopicKey(ev);
+  var seasonCount = c.seasonCount || 0;
+  var profile = c.profile || {};
+  if (SEASON_EVENT_ROOKIE_TOPICS.indexOf(topic) >= 0 && !state.isRookie) return false;
+  if (topic.indexOf('rookie_') === 0 && !state.isRookie) return false;
+  if (SEASON_EVENT_SOPHOMORE_TOPICS.indexOf(topic) >= 0 && !state.sophomore) return false;
+  if (topic.indexOf('veteran_') === 0 && topic !== 'veteran_note' && !state.veteran) return false;
+  if (SEASON_EVENT_PLAYOFF_MEMORY_TOPICS.indexOf(topic) >= 0 && !hasPriorPlayoffFailure(c)) return false;
+  if (topic === 'closeout_ball') {
+    if (!state.lost || !isTeamPlayoffRaceEliminated()) return false;
+  }
+  if (topic === 'load_manage_leak') {
+    var fame = Number(profile.fame) || 0;
+    var ovr = STATE.finalOVR || 0;
+    if (fame < 5 && ovr < 85 && seasonCount < 2) return false;
+  }
+  if (topic === 'you_poster' && (STATE.finalOVR || 0) < 84) return false;
+  if (topic === 'iso_clearout' && (STATE.finalOVR || 0) < 82) return false;
+  if (topic === 'return_from_injury' && !state.injuryReturn) return false;
+  var minSeason = SEASON_EVENT_MIN_CAREER_SEASON[topic];
+  if (minSeason != null && seasonCount < minSeason) return false;
+  if (ev.minCareerSeason != null && seasonCount < ev.minCareerSeason) return false;
+  if (ev.maxCareerSeason != null && seasonCount > ev.maxCareerSeason) return false;
+  if (SEASON_EVENT_CAREER_ONCE_TOPICS.indexOf(topic) >= 0 && getSeasonEventPlayCount(ev, c) > 0) return false;
+  return true;
+}
+
+function tickInjuryReturnWindow(branchEv) {
+  var ev = STATE.season && STATE.season.events;
+  if (!ev) return;
+  if (branchEv && branchEv.id === 'pp_season_return_from_injury') {
+    ev._injuryReturnWindow = 0;
+    ev.injuryReturnNextGame = false;
+    return;
+  }
+  if (ev.injuryReturnNextGame) {
+    ev.injuryReturnNextGame = false;
+    ev._injuryReturnWindow = 1;
+    return;
+  }
+  if ((Number(ev._injuryReturnWindow) || 0) > 0) ev._injuryReturnWindow--;
+}
+
 function getSeasonEventState(game, result, stats) {
   var season = STATE.season || {};
   var career = STATE.career || {};
@@ -8903,7 +9001,8 @@ function getSeasonEventState(game, result, stats) {
     sophomore: (career.seasonCount || 0) === 1,
     veteran: (career.seasonCount || 0) >= 4 || (career.currentAge || 0) >= 30,
     benchRole: gamesPlayed >= 15 && seasonPpg < 11 && (STATE.finalOVR || 80) < 87,
-    contractYear: Number.isFinite(contractYears) && contractYears <= 1
+    contractYear: Number.isFinite(contractYears) && contractYears <= 1,
+    injuryReturn: !!(season.events && (season.events.injuryReturnNextGame || (Number(season.events._injuryReturnWindow) || 0) > 0))
   };
 }
 
@@ -9088,6 +9187,7 @@ function checkSeasonBranchEvent(game, result, stats) {
     // 日常见过后仍可进池（降权），长线剧情继续生涯去重
     if (!isDailySeasonEvent(ev) && hasSeasonEventBeenSeen(ev, c)) return false;
     if (!isSeasonEventStateEligible(ev, eventState)) return false;
+    if (!isSeasonEventCareerEligible(ev, eventState, c)) return false;
     try { return !ev.requires || ev.requires({ game: game, result: result, stats: stats, state: eventState }); }
     catch(e) { return false; }
   });

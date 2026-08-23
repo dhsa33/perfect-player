@@ -14,7 +14,7 @@
     ],
     story: [
       ['assets/js/perfect-player-event-library.js?v=20260821-events-v3', '赛季事件'],
-      ['assets/js/perfect-player-story-events.js?v=20260823-story-v8', '生涯剧情'],
+      ['assets/js/perfect-player-story-events.js?v=20260823-story-v11', '生涯剧情'],
       ['assets/js/perfect-player-awards.js?v=20260823-allstar-v3', '荣誉评选'],
       ['assets/js/perfect-player-allstar.js?v=20260823-allstar-v18', '全明星周末']
     ],

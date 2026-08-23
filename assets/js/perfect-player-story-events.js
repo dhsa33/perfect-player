@@ -1548,6 +1548,7 @@
       scene: '擂台夜，你把一名全明星扣翻。他坐在地板上，镜头已经对准你的嘴。',
       body: '怒吼、拉他起来，或无表情走回防守，会变成三种完全不同的名场面。',
       extra: { stateContext: null },
+      requires: function () { return playerOvr() >= 84; },
       choices: [
         { label: '怒吼庆祝', hint: '人气和士气大涨，争议上升', profile: { fame: 2, controversy: 1 }, mods: { moraleBonus: 2 }, result: '你对着镜头拍胸口。这晚的集锦不需要再剪。<br><br>效果：人气+2；争议+1；士气+2。' },
         { label: '拉他起来', hint: '球迷支持和媒体信任提升', profile: { fanSupport: 1, mediaTrust: 1, lockerRoomTrust: 1 }, result: '你把他拉起来，拍了拍他的背。回放里这比扣篮更像你。<br><br>效果：球迷支持+1；媒体信任+1；更衣室信任+1。' },
@@ -1664,6 +1665,9 @@
       id: 'ft_whisper', weight: 10, title: '赛季事件：罚球线耳语',
       scene: '对面在你耳边说：你上次季后赛手软。裁判还没把球给你。',
       body: '回一句、用罚球回答，或告诉裁判，会改变你今晚的心跳。',
+      requires: function () {
+        return typeof hasPriorPlayoffFailure === 'function' && hasPriorPlayoffFailure();
+      },
       choices: [
         { label: '回一句更狠的', hint: '关键球提升，争议和波动上升', attrs: { CLU: 1 }, profile: { controversy: 1 }, mods: { formVariance: 1 }, result: '你把话还回去。罚球进了，呼吸却乱了一拍。<br><br>效果：关键球+1；争议+1；状态波动+1。' },
         { label: '不说话，连罚全中练习', hint: '关键球再升，负荷上升', attrs: { CLU: 2 }, mods: { staminaLoad: 1 }, result: '你把世界缩小到篮筐。两罚全中后，他不再说话。<br><br>效果：关键球+2；体能负荷+1。' },
@@ -1718,6 +1722,10 @@
       extra: { stateContext: null },
       scene: '名记爆料你下一场背靠背要轮休。你本人是从社交媒体知道的。',
       body: '要求打满、接受轮休，或公开澄清，会同时打动教练、球迷和膝盖。',
+      requires: function () {
+        var fame = (STATE.career && STATE.career.profile && STATE.career.profile.fame) || 0;
+        return fame >= 5 || playerOvr() >= 85 || seasonCount() >= 2;
+      },
       choices: [
         { label: '要求打满', hint: '耐力与球迷支持提升，伤病和教练关系变差', attrs: { STA: 1 }, profile: { coachTrust: -1, fanSupport: 1 }, mods: { injuryRiskBonus: 1 }, result: '你走进教练办公室：我能打。名单上你的名字没有被划掉。<br><br>效果：耐力+1；球迷支持+1；教练信任-1；伤病风险+1。' },
         { label: '接受轮休', hint: '伤病和负荷下降，球迷支持下降', profile: { fanSupport: -1 }, mods: { injuryRiskBonus: -2, staminaLoad: -2 }, result: '你坐在西装里看完一场。膝盖感谢你，主场不感谢。<br><br>效果：伤病风险-2；体能负荷-2；球迷支持-1。' },
@@ -1746,6 +1754,7 @@
       id: 'gleague_callup', weight: 9, title: '赛季事件：G 联赛队友上来',
       scene: '十年前的训练营对手以双向合同上来，教练要把你的替补分钟分给他。',
       body: '帮他熟悉体系、纯竞争，或请教练明确轮换。',
+      requires: function () { return seasonCount() >= 3; },
       choices: [
         { label: '帮他熟悉体系', hint: '传球和更衣室信任提升', attrs: { PAS: 1 }, profile: { lockerRoomTrust: 2 }, result: '你把防守轮转画在纸巾上。他第一次没站错位置时，冲你竖了拇指。<br><br>效果：传球+1；更衣室信任+2。' },
         { label: '纯竞争', hint: '运动能力提升，更衣室信任下降', attrs: { ATH: 1 }, profile: { lockerRoomTrust: -1 }, result: '你没有让分钟。训练赛你们谁也不说话。<br><br>效果：运动+1；更衣室信任-1。' },
@@ -1825,7 +1834,10 @@
       extra: { contextId: 'national' },
       scene: '淘汰夜，球滚到你脚边，对面已经在庆祝。摄像机等你决定这颗球的归属。',
       body: '交给对方核心、自己抱走，或放在中圈离开。',
-      requires: function () { return gamesPlayed() >= 70 || (STATE.season && STATE.season.isPlayoffs); },
+      requires: function (ctx) {
+        if (!ctx || !ctx.result || ctx.result.won) return false;
+        return typeof isTeamPlayoffRaceEliminated === 'function' && isTeamPlayoffRaceEliminated();
+      },
       choices: [
         { label: '把球交给对方核心', hint: '传奇声望和领导力提升', profile: { legacyBonus: 2, leadership: 1 }, result: '你把球递过去。他点了下头。这张图会比比分活得更久。<br><br>效果：传奇声望+2；领导力+1。' },
         { label: '自己抱走', hint: '争议上升，关键球提升', attrs: { CLU: 1 }, profile: { controversy: 2 }, result: '你把球夹在腋下走进通道。有人说小气，有人说这才像还没认输。<br><br>效果：关键球+1；争议+2。' },
@@ -1884,6 +1896,7 @@
       scene: '教练突然改成你单打，弱侧全清。控卫看了你一眼，又看了看战术板。',
       body: '执行、仍传空位，或叫暂停自己重画。',
       extra: { contextId: 'national' },
+      requires: function () { return playerOvr() >= 82; },
       choices: [
         { label: '执行单打', hint: '关键球和终结提升，默契下降', attrs: { CLU: 2, FIN: 1 }, mods: { teamChemistry: -1 }, result: '你把空间用完。球进了，弱侧有人举手却没等到。<br><br>效果：关键球+2；终结+1；球队默契-1。' },
         { label: '仍传空位', hint: '传球和关键球提升，教练信任下降', attrs: { PAS: 2, CLU: 1 }, profile: { coachTrust: -1 }, result: '你看见了角落。教练的战术被你改成了正确的球。<br><br>效果：传球+2；关键球+1；教练信任-1。' },
@@ -1896,9 +1909,10 @@
       scene: '你复出，对面第一下就试你的膝盖。队医在场边站起来。',
       body: '硬造犯规、拉开投篮，或告诉裁判和队长。',
       requires: function (ctx) {
-        var mods = STATE.career && STATE.career.nextSeasonMods || {};
-        var injured = STATE.season && STATE.season.events && STATE.season.events.injuryGamesLeft > 0;
-        return (Number(mods.injuryRiskBonus) || 0) >= 1 || injured || (ctx && ctx.state && ctx.state.injuryConcern);
+        var ev = STATE.season && STATE.season.events;
+        if (!ev || ev.injuryGamesLeft > 0) return false;
+        if (ctx && ctx.state && ctx.state.injuryReturn) return true;
+        return !!(ev.injuryReturnNextGame || (Number(ev._injuryReturnWindow) || 0) > 0);
       },
       choices: [
         { label: '下一回合硬造犯规', hint: '力量和终结提升，伤病风险再升', attrs: { STR: 1, FIN: 1 }, mods: { injuryRiskBonus: 1 }, result: '你把试探还回去。哨响了，膝盖也响了一下。<br><br>效果：力量+1；终结+1；伤病风险+1。' },
