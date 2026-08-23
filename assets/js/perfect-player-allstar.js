@@ -298,6 +298,10 @@
     return openStarterSlots(roster).length === 0;
   }
 
+  function draftPhaseForRoster(roster) {
+    return startersComplete(roster) ? 'bench' : 'starters';
+  }
+
   function draftPhase(state) {
     if (!startersComplete(state.rosterE) || !startersComplete(state.rosterW)) return 'starters';
     return 'bench';
@@ -339,7 +343,7 @@
   }
 
   function addPickToTeam(roster, player, phase, slot) {
-    if (phase === 'starters' && !startersComplete(roster)) {
+    if (!startersComplete(roster)) {
       var pickSlot = slot || pickStarterSlotForPlayer(player, roster.starters);
       if (!pickSlot || roster.starters[pickSlot]) return null;
       roster.starters[pickSlot] = player;
@@ -395,6 +399,7 @@
   }
 
   function aiDraftPick(remaining, slimRemaining, roster, phase) {
+    var rosterPhase = draftPhaseForRoster(roster);
     var best = null;
     var bestScore = -1e9;
     var i;
@@ -404,7 +409,7 @@
       var score = ovrOf(p) + n(slim && slim.allStarScore) * 0.25 + n(slim && slim.mvpScore) * 0.08 + rand() * 4;
       var t = nbaTeamOf(p) || (slim && slim.team);
       if (countNbaTeam(roster, t) >= MAX_PER_NBA_TEAM) score -= 500;
-      if (phase === 'starters' && !startersComplete(roster)) {
+      if (rosterPhase === 'starters') {
         var slot = pickStarterSlotForPlayer(p, roster.starters);
         if (!slot) score -= 400;
         else if (canPlaySlot(p, slot)) score += 14;
@@ -414,14 +419,39 @@
         best = { p: p, slim: slim, idx: i };
       }
     }
-    if (!best) return null;
-    var starterSlot = phase === 'starters' && !startersComplete(roster)
+    if (!best) return forceDraftPick(remaining, slimRemaining, roster);
+    var starterSlot = rosterPhase === 'starters'
       ? pickStarterSlotForPlayer(best.p, roster.starters) : null;
-    var meta = addPickToTeam(roster, best.p, phase, starterSlot);
-    if (!meta) return null;
+    var meta = addPickToTeam(roster, best.p, rosterPhase, starterSlot);
+    if (!meta) return forceDraftPick(remaining, slimRemaining, roster);
     remaining.splice(best.idx, 1);
     slimRemaining.splice(best.idx, 1);
     return { player: best.p, slim: best.slim, meta: meta };
+  }
+
+  function forceDraftPick(remaining, slimRemaining, roster) {
+    var i;
+    for (i = 0; i < remaining.length; i++) {
+      var p = remaining[i];
+      var slim = slimRemaining[i];
+      if (!startersComplete(roster)) {
+        var slot = pickStarterSlotForPlayer(p, roster.starters);
+        if (!slot) continue;
+        var meta = addPickToTeam(roster, p, 'starters', slot);
+        if (!meta) continue;
+        remaining.splice(i, 1);
+        slimRemaining.splice(i, 1);
+        return { player: p, slim: slim, meta: meta };
+      }
+      if (roster.bench.length < BENCH_SIZE) {
+        var benchMeta = addPickToTeam(roster, p, 'bench', null);
+        if (!benchMeta) continue;
+        remaining.splice(i, 1);
+        slimRemaining.splice(i, 1);
+        return { player: p, slim: slim, meta: benchMeta };
+      }
+    }
+    return null;
   }
 
   function initDraftState(pack) {
@@ -555,8 +585,8 @@
   }
 
   function draftStatusHtml(state, side, turnName, isUserTurn) {
-    var phase = draftPhase(state);
     var roster = rosterForSide(state, side);
+    var phase = draftPhaseForRoster(roster);
     var phaseLabel = phase === 'starters' ? '阶段一 · 挑选首发' : '阶段二 · 挑选替补';
     var need = phase === 'starters'
       ? renderNeedSlots(roster)
@@ -567,6 +597,18 @@
     return '<div style="margin-bottom:4px;">' + phaseLabel + '</div>'
       + '<div>' + turn + '</div>'
       + '<div style="margin-top:4px;font-size:11px;">本队' + need + '</div>';
+  }
+
+  function finishDraftSim(state) {
+    while (!draftFinished(state)) {
+      var side = pickSideForIndex(state);
+      var roster = rosterForSide(state, side);
+      var pick = aiDraftPick(state.remaining, state.remainingSlim, roster, null);
+      if (!pick) break;
+      state.picks.push({ side: side, slim: pick.slim, role: pick.meta && pick.meta.role, slot: pick.meta && pick.meta.slot });
+      state.pickIndex++;
+    }
+    return finalizeDraft(state);
   }
 
   function showDraftModal(pack, done) {
@@ -586,10 +628,28 @@
     html += '</div></div>';
     document.body.insertAdjacentHTML('beforeend', html);
 
+    function skipDraft() {
+      removeDraftModal();
+      var draft = state.pickIndex > 0 ? finishDraftSim(state) : simulateDraft(pack);
+      pack.draft = draft;
+      pack.phase = 'game';
+      if (STATE.season) STATE.season.allStar = pack;
+      playAllStarGame(pack, done);
+    }
+
+    function bindSkipButton() {
+      var skipBtn = document.getElementById('allstar-draft-skip');
+      if (skipBtn) skipBtn.onclick = skipDraft;
+    }
+
+    function skipActionsHtml() {
+      return '<button type="button" class="btn btn-secondary btn-sm" id="allstar-draft-skip" style="width:100%;">跳过选秀</button>';
+    }
+
     function commitUserPick(pickIdx, slot) {
       var side = pickSideForIndex(state);
       var roster = rosterForSide(state, side);
-      var phase = draftPhase(state);
+      var phase = draftPhaseForRoster(roster);
       var slim = state.remainingSlim[pickIdx];
       var player = state.remaining[pickIdx];
       var meta = addPickToTeam(roster, player, phase, slot);
@@ -636,8 +696,8 @@
       var side = pickSideForIndex(state);
       var turnName = side === 'EAST' ? eastName : westName;
       var isUserTurn = userCaptain && state.userCaptainSide === side;
-      var phase = draftPhase(state);
       var roster = rosterForSide(state, side);
+      var phase = draftPhaseForRoster(roster);
       statusEl.innerHTML = draftStatusHtml(state, side, turnName, isUserTurn);
 
       if (isUserTurn) {
@@ -669,7 +729,8 @@
           poolHtml += '</div></div>';
         }
         poolEl.innerHTML = poolHtml;
-        actionsEl.innerHTML = '';
+        actionsEl.innerHTML = skipActionsHtml();
+        bindSkipButton();
         poolEl.querySelectorAll('.allstar-pick-btn').forEach(function (btn) {
           if (btn.disabled) return;
           btn.onclick = function () {
@@ -702,8 +763,8 @@
         };
       } else {
         poolEl.innerHTML = '<div style="font-size:11px;color:var(--text-dim);">剩余 ' + state.remaining.length + ' 人 · ' + (phase === 'starters' ? '补首发' : '补替补') + '…</div>';
-        actionsEl.innerHTML = '';
-        setTimeout(aiStep, 320);
+        actionsEl.innerHTML = skipActionsHtml();
+        bindSkipButton();
       }
     }
 
@@ -718,8 +779,7 @@
         return;
       }
       var roster = rosterForSide(state, side);
-      var phase = draftPhase(state);
-      var pick = aiDraftPick(state.remaining, state.remainingSlim, roster, phase);
+      var pick = aiDraftPick(state.remaining, state.remainingSlim, roster, null);
       if (pick) {
         state.picks.push({ side: side, slim: pick.slim, role: pick.meta && pick.meta.role, slot: pick.meta && pick.meta.slot });
         state.pickIndex++;
@@ -731,6 +791,9 @@
     }
 
     render();
+    if (!userCaptain || state.userCaptainSide !== pickSideForIndex(state)) {
+      setTimeout(aiStep, 320);
+    }
   }
 
   function renderDraftSlimColumn(title, slims) {

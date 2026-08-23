@@ -7,7 +7,7 @@
   var BROADCAST_SCALE = 1;
   var DEBUG_REBOUND_LAB = false;
   var FLAVOR_LAB = false;
-  var THREE_ONLY_LAB = true;
+  var THREE_ONLY_LAB = false;
 
   /* 主游戏在 nba-perfect-player.html 内联脚本提供，实验室页需自备 */
   function ensureLabRuntime() {

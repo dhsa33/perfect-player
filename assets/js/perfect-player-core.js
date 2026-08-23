@@ -2,6 +2,8 @@
    BuildPlayer - 核心游戏逻辑
    ============================================================ */
 
+window.PP_DEBUG = false;
+
 // ==================== 游戏状态 ====================
 const STATE = {
   mode: null,           // 'current' | 'legend'
@@ -225,6 +227,7 @@ function backToSeason() {
 
 /** 从 storage 读取上次保存的球员数据并输出到控制台 */
 function logSavedPlayerData() {
+  if (!window.PP_DEBUG) return;
   Storage.waitForReady().then(function() {
     Storage.getValue('players').then(function(raw) {
       if (raw == null) { console.log('📦 暂无保存的球员数据'); return; }
@@ -242,6 +245,7 @@ setTimeout(logSavedPlayerData, 500);
 
 /** 验证 ColorboxAI.storage 读写回路 */
 function verifyStorage() {
+  if (!window.PP_DEBUG) return;
   Storage.waitForReady().then(function(){
     Storage.setValue({ _ping: 'pong' }).then(function(){
       Storage.getValue('_ping').then(function(v){
@@ -17528,7 +17532,7 @@ function assignFreeAgents() {
   if (!STATE._leagueChanges) STATE._leagueChanges = {};
   if (!STATE._leagueChanges.freeSignings) STATE._leagueChanges.freeSignings = [];
 
-  console.log('[FA] 自由球员分配:', pool.length, '人');
+  if (window.PP_DEBUG) console.log('[FA] 自由球员分配:', pool.length, '人');
 
   pool.sort(function(a, b) { return b.ovr - a.ovr; });
   var st = STATE._prevStandings;
@@ -17542,13 +17546,13 @@ function assignFreeAgents() {
   var starSignedTeams = {};
 
   pool.forEach(function(fa) {
-    if (!fa._origTeam) console.log('[FA] 无_origTeam:', (fa.cname||fa.name), 'ovr:', fa.ovr);
+    if (!fa._origTeam && window.PP_DEBUG) console.log('[FA] 无_origTeam:', (fa.cname||fa.name), 'ovr:', fa.ovr);
     var pos = (fa.pos || 'SF').split('/')[0].trim();
     for (var ti = 0; ti < teams.length; ti++) {
       var t = teams[ti];
-      if (t === fa._origTeam) { console.log('[FA] 跳过回原队:', (fa.cname||fa.name), fa._origTeam); continue; }
+      if (t === fa._origTeam) { if (window.PP_DEBUG) console.log('[FA] 跳过回原队:', (fa.cname||fa.name), fa._origTeam); continue; }
       if (fa.ovr > 86) {
-        if (starSignedTeams[t]) { console.log('[FA] 该队已签球星，跳过:', (fa.cname||fa.name), t); continue; }
+        if (starSignedTeams[t]) { if (window.PP_DEBUG) console.log('[FA] 该队已签球星，跳过:', (fa.cname||fa.name), t); continue; }
         var hasStar = false;
         (NBA2K_DATA[t] || []).forEach(function(p) {
           if (p !== fa && !p._isUser && canPlayPosition(p.pos || '', pos) && p.ovr >= 84) hasStar = true;
@@ -17577,7 +17581,7 @@ function assignFreeAgents() {
     // fallback
     for (var fi = 0; fi < teams.length; fi++) {
       var fb = teams[fi];
-      if (fb === fa._origTeam) { console.log('[FA] fallback跳过回原队:', (fa.cname||fa.name), fa._origTeam); continue; }
+      if (fb === fa._origTeam) { if (window.PP_DEBUG) console.log('[FA] fallback跳过回原队:', (fa.cname||fa.name), fa._origTeam); continue; }
       if (fa.ovr > 86) {
         if (starSignedTeams[fb]) continue;
         var hasStarFB = false;
@@ -17732,7 +17736,7 @@ function processTrades() {
     needs[t] = weakest;
   });
 
-  console.log('[Trade] 需求:', JSON.stringify(needs));
+  if (window.PP_DEBUG) console.log('[Trade] 需求:', JSON.stringify(needs));
 
   var tradedPlayers = new Set();
   var tradedTeams = new Set();
@@ -17767,7 +17771,7 @@ function processTrades() {
 
       if (playerForA && playerForB) {
         var diff = Math.abs(playerForA.ovr - playerForB.ovr);
-        console.log('[Trade] 配对:', a, needA, 'vs', b, needB, '候选人:', (playerForA.cname||playerForA.name), playerForA.ovr, (playerForB.cname||playerForB.name), playerForB.ovr, 'diff:', diff);
+        if (window.PP_DEBUG) console.log('[Trade] 配对:', a, needA, 'vs', b, needB, '候选人:', (playerForA.cname||playerForA.name), playerForA.ovr, (playerForB.cname||playerForB.name), playerForB.ovr, 'diff:', diff);
         if (diff <= 8) {
           tradedPlayers.add(playerForA);
           tradedPlayers.add(playerForB);
