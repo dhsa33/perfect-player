@@ -14,7 +14,6 @@ const STATE = {
   usedPlayers: [],      // 已选球员名列表
   buildRoster: [],      // 建球员阶段先选中的13人
   buildPhase: 'recruit', // recruit | lottery | done
-  _mustLockAfterSpin: false, // 已展示球员未选定人时禁用随机球队
   
   // Build phase state
   buildStep: 'select',  // 'select' | 'spin' | 'pick'
@@ -316,7 +315,7 @@ function initGame() {
   Object.assign(STATE, {
     mode: null, position: null,
     attrs: {}, attrSlots: {}, lockedCount: 0,
-    usedPlayers: [], buildRoster: [], buildPhase: 'recruit', _mustLockAfterSpin: false,
+    usedPlayers: [], buildRoster: [], buildPhase: 'recruit',
     buildStep: 'select', noPlayerSelected: true,
     currentTeam: null, currentRoster: [],
     _shownThisTeam: [], _rerollsLeft: 999, _mockAdRerollsLeft: 999, _teamsVisited: [], _drawPlayers: [],
@@ -681,7 +680,7 @@ function getRerollButtonHtml() {
   var hasTeam = !!STATE.currentTeam;
   return '<button class="btn btn-sm slot-btn" onclick="rerollTeamPlayers()"' +
     (hasTeam ? '' : ' disabled style="opacity:0.3;"') +
-    '>👥 更换球员 (∞)</button>';
+    '>👥 更换球员</button>';
 }
 
 function updateSlotButtons() {
@@ -689,11 +688,10 @@ function updateSlotButtons() {
   if (!slotArea) return;
   
   const hasTeam = !!STATE.currentTeam;
-  const canSpin = !STATE._mustLockAfterSpin && !_slotSpinning && STATE.buildPhase !== 'lottery';
+  const canSpin = !_slotSpinning && STATE.buildPhase !== 'lottery';
   
   // Rebuild only the actions area, keep reel intact
   const actionsEl = slotArea.querySelector('.br-slot-actions');
-  const warnEl = slotArea.querySelector('.br-slot-warn');
   if (actionsEl) {
     actionsEl.innerHTML = `
       <button class="btn btn-sm slot-btn" onclick="pullHandle()"
@@ -704,14 +702,11 @@ function updateSlotButtons() {
       ${getRerollButtonHtml()}
     `;
   }
-  if (warnEl) {
-    warnEl.textContent = STATE._mustLockAfterSpin ? '⚠️ 先选择一名球员才能再次随机' : '';
-  }
 }
 
 function buildSlotHTML(itemsHtml) {
   const hasTeam = !!STATE.currentTeam;
-  const canSpin = !STATE._mustLockAfterSpin && !_slotSpinning && STATE.buildPhase !== 'lottery';
+  const canSpin = !_slotSpinning && STATE.buildPhase !== 'lottery';
   return `
     <div class="br-slot-area">
       <div class="br-slot-label">🎰 随机选队</div>
@@ -730,7 +725,6 @@ function buildSlotHTML(itemsHtml) {
         </button>
         ${getRerollButtonHtml()}
       </div>
-      <div class="br-slot-warn" style="font-size:10px;color:var(--orange);margin-top:6px;min-height:16px;">${STATE._mustLockAfterSpin ? '⚠️ 先选择一名球员才能再次随机' : ''}</div>
     </div>
   `;
 }
@@ -739,7 +733,7 @@ let _slotSpinning = false;
 
 function pullHandle() {
   trackEvent({act:"click",blk:"BMC098",pos:"TC3",label:"随机球队-建球员"});
-  if (_slotSpinning || STATE._mustLockAfterSpin || STATE.buildPhase === 'lottery') return;
+  if (_slotSpinning || STATE.buildPhase === 'lottery') return;
   
   // Visual: flash the reel to show it's spinning
   const reel = document.getElementById('slot-reel');
@@ -817,7 +811,6 @@ function spinSlotMachine() {
     }
     STATE.selectedPlayer = null;
     STATE._shownThisTeam = [];
-    STATE._mustLockAfterSpin = true;
     _slotSpinning = false;
     
     renderLeftAttrs();
@@ -988,7 +981,6 @@ function recruitBuildPlayer(player) {
   STATE.buildRoster.push(snapshotBuildPlayer(player, STATE.currentTeam));
   STATE.usedPlayers.push(player.name);
   STATE.selectedPlayer = null;
-  STATE._mustLockAfterSpin = false;
   renderLeftAttrs();
   renderProgress();
 
