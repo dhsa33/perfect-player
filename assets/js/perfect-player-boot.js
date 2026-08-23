@@ -20,7 +20,7 @@
     ],
     live: [
       ['assets/js/perfect-player-live-court.js?v=20260823-court-v36', '俯瞰球场'],
-      ['assets/js/perfect-player-live-sim.js?v=20260823-live-sim-v61', '文字直播']
+      ['assets/js/perfect-player-live-sim.js?v=20260823-live-sim-v62', '文字直播']
     ]
   };
 

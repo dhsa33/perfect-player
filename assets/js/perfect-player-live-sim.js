@@ -387,6 +387,7 @@
       bp.defPressure = 0;
       bp.tgtA = clamp(Math.round(bp.pace * bp.efficiencyA + gauss(0, bp.varianceA)), 95, 145);
       bp.tgtB = clamp(Math.round(bp.pace * bp.efficiencyB + gauss(0, bp.varianceB)), 95, 145);
+      bp.user = expectedUserLine(options.attrs || STATE.attrs || {}, bp, false);
     }
     if (options.debugReboundLab) bp._debugReboundLab = true;
     if (options.flavorLab) bp._flavorLab = true;
