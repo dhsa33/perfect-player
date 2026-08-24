@@ -39,7 +39,11 @@
   }
 
   function currentAwardSeasonStart() {
-    return 2026 + n(STATE && STATE.career && STATE.career.seasonCount, 0);
+    var base = 2026;
+    if (STATE && STATE.draftMode === 'historical' && STATE.eraStart) {
+      base = parseInt(STATE.eraStart, 10) || 2026;
+    }
+    return base + n(STATE && STATE.career && STATE.career.seasonCount, 0);
   }
 
   function currentAwardSeasonKey() {
@@ -221,7 +225,7 @@
           key:key,
           player:player,
           name:player.cname || player.nameEN || player.name,
-          nameEN:player.nameEN || player.name || '',
+          nameEN: (typeof eraAwardEnglishName === 'function' ? eraAwardEnglishName(player) : (player.nameEN || player.nameEn || '')) || player.nameEN || '',
           team:team,
           pos:stats.pos,
           ovr:n(player.ovr, 50),

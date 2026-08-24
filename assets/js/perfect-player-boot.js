@@ -6,7 +6,7 @@
 
   var GROUPS = {
     create: [
-      ['assets/js/perfect-player-hupu-extensions.js?v=20260823-boot-v18', '角色扩展']
+      ['assets/js/perfect-player-hupu-extensions.js?v=20260824-no-legend-line-v1', '角色扩展']
     ],
     career: [
       ['assets/js/perfect-player-skills.js?v=20260824-skill-coexist', '球风技能'],
@@ -14,10 +14,12 @@
     ],
     story: [
       ['assets/js/perfect-player-event-library.js?v=20260821-events-v3', '赛季事件'],
-      ['assets/js/perfect-player-story-events.js?v=20260823-story-v11', '生涯剧情'],
+      ['assets/js/perfect-player-story-events.js?v=20260824-no-legend-line-v1', '生涯剧情'],
+      ['assets/js/perfect-player-hupu-life-events.js?v=20260824-life-v1', '读书品牌'],
+      ['assets/js/perfect-player-legend-story.js?v=20260824-offseason-type-v1', '传奇剧情'],
       ['assets/js/perfect-player-legend-challenge.js?v=20260824-legend-v11', '传奇挑战'],
-      ['assets/js/perfect-player-awards.js?v=20260823-allstar-v3', '荣誉评选'],
-      ['assets/js/perfect-player-allstar.js?v=20260823-allstar-v18', '全明星周末']
+      ['assets/js/perfect-player-awards.js?v=20260824-award-hs-v1', '荣誉评选'],
+      ['assets/js/perfect-player-allstar.js?v=20260824-captain-y4', '全明星周末']
     ],
     live: [
       ['assets/js/perfect-player-live-court.js?v=20260823-court-v36', '俯瞰球场'],

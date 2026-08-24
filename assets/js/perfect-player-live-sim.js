@@ -326,7 +326,11 @@
     }
     var averageAthletic = ((Number(powerA.athletic) || 60) + (Number(powerB.athletic) || 60)) / 2;
     var averageDepth = ((Number(powerA.depth) || 60) + (Number(powerB.depth) || 60)) / 2;
-    var pace = clamp(Math.round(99.4 + (averageAthletic - baseline.athletic) * 0.08 + (averageDepth - baseline.depth) * 0.02 + gauss(0, 2.8)), 90, 109);
+    // 年代化基线：历史模式按当年 pace/效率（与快模拟同源），现代保持 99.4/1.154。
+    var eraB = (typeof getEraGameBaselines === 'function') ? getEraGameBaselines() : { active: false, paceCenter: 99.4, effBase: 1.154 };
+    var paceLo = eraB.active ? Math.round(eraB.paceCenter - 9) : 90;
+    var paceHi = eraB.active ? Math.round(eraB.paceCenter + 9) : 109;
+    var pace = clamp(Math.round(eraB.paceCenter + (averageAthletic - baseline.athletic) * 0.08 + (averageDepth - baseline.depth) * 0.02 + gauss(0, 2.8)), paceLo, paceHi);
     if (!options.neutralState && (teamA === STATE.careerTeam || teamB === STATE.careerTeam) && typeof getStyleSkillMu === 'function') {
       var paceAdj = 0;
       var tempoMu = getStyleSkillMu('tempo_master');
@@ -335,15 +339,15 @@
       if (tempoMu > 1) paceAdj += (tempoMu - 1) * 8;
       if (breakMu > 1) paceAdj += (breakMu - 1) * 10;
       if (postMu > 1) paceAdj -= (postMu - 1) * 8;
-      if (paceAdj) pace = clamp(Math.round(pace + paceAdj), 90, 109);
+      if (paceAdj) pace = clamp(Math.round(pace + paceAdj), paceLo, paceHi);
     }
     var edgeA = ((powerA.offense - baseline.offense) + modA.offense) - ((powerB.defense - baseline.defense) + modB.defense);
     var edgeB = ((powerB.offense - baseline.offense) + modB.offense) - ((powerA.defense - baseline.defense) + modA.defense);
     var depthEdge = ((Number(powerA.depth) || 60) - (Number(powerB.depth) || 60)) * 0.00075;
     var seedPts = (Number(options.seedBonus) || 0) * 0.65;
     var injuryPts = options.probMultiplier == null ? 0 : (Number(options.probMultiplier) - 1) * 28;
-    var efficiencyA = clamp(1.154 + edgeA * 0.0034 + depthEdge + homeA - fatigueA * 0.012 + seedPts / pace + injuryPts / pace, 0.91, 1.36);
-    var efficiencyB = clamp(1.154 + edgeB * 0.0034 - depthEdge + homeB - fatigueB * 0.012 - seedPts / pace, 0.91, 1.36);
+    var efficiencyA = clamp(eraB.effBase + edgeA * 0.0034 + depthEdge + homeA - fatigueA * 0.012 + seedPts / pace + injuryPts / pace, 0.91, 1.36);
+    var efficiencyB = clamp(eraB.effBase + edgeB * 0.0034 - depthEdge + homeB - fatigueB * 0.012 - seedPts / pace, 0.91, 1.36);
     var lineupA = options.customLineupA || (typeof calcTeamLineup === 'function' ? calcTeamLineup(teamA) : { starters: {}, bench: [], isUserStarter: false });
     var lineupB = options.customLineupB || (typeof calcTeamLineup === 'function' ? calcTeamLineup(teamB) : { starters: {}, bench: [], isUserStarter: false });
     var rosterSize = Math.max(10, Math.min(12, Number(options.rosterSize) || 10));
@@ -370,8 +374,9 @@
       varianceB: clamp(6.4 + (modB.variance || 0), 4.6, 10),
       styles: rollStyles()
     };
-    bp.tgtA = clamp(Math.round(bp.pace * bp.efficiencyA + gauss(0, bp.varianceA)), 80, 155);
-    bp.tgtB = clamp(Math.round(bp.pace * bp.efficiencyB + gauss(0, bp.varianceB)), 80, 155);
+    var _tgtFloor = eraB.active ? 65 : 80;
+    bp.tgtA = clamp(Math.round(bp.pace * bp.efficiencyA + gauss(0, bp.varianceA)), _tgtFloor, 155);
+    bp.tgtB = clamp(Math.round(bp.pace * bp.efficiencyB + gauss(0, bp.varianceB)), _tgtFloor, 155);
     if (!options.allStarExhibition) {
       bp.user = expectedUserLine(options.attrs || STATE.attrs || {}, bp, bp.isPlayoff);
       bp.userMins = bp.user.mins;
@@ -2892,6 +2897,9 @@
         '<span class="pp-live-lu-name' + (me ? ' is-me' : '') + '">' + esc(name) + (me ? ' ★' : '') + '</span>' +
         '<span class="pp-live-lu-ovr">' + ovr + '</span>' +
       '</div>';
+    }
+    if (!html) {
+      html = '<div class="pp-live-lu-row" style="color:var(--text-dim);font-size:11px;">该队本赛季不在联盟</div>';
     }
     return html;
   }

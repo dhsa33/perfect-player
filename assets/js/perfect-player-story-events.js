@@ -109,6 +109,14 @@
     return STATE.career.flags;
   }
 
+  /** 历史年代开局：关闭现役向「名宿线」及相关名宿对比（科比/佩贾等尚未入行） */
+  function isHistoricalCareerMode() {
+    if (window.PP_ERA_MODE && typeof PP_ERA_MODE.isHistoricalActive === 'function') {
+      return !!PP_ERA_MODE.isHistoricalActive();
+    }
+    return !!(STATE && STATE.draftMode === 'historical' && STATE.eraStart);
+  }
+
   function playerPos() {
     return STATE.position || STATE.finalPosition || 'SF';
   }
@@ -789,6 +797,7 @@
     ],
     body: '{名宿}从{名宿城市}飞过来。这不是商业活动，是一次一对一的交代。',
     requires: function () {
+      if (isHistoricalCareerMode()) return false;
       if (getBranchNode('legend') !== 'start') return false;
       if (seasonCount() < 1 || playerOvr() < 80) return false;
       if (!currentCareerTeam()) return false;
@@ -828,6 +837,7 @@
     ],
     body: '你可以认真，可以抢镜，也可以把时间还给{名宿}的家人。',
     requires: function () {
+      if (isHistoricalCareerMode()) return false;
       bindStoryLegend();
       return getBranchNode('legend') === 'legend_dinner';
     },
@@ -857,6 +867,7 @@
     ],
     body: '{名宿}还在等你把上次餐桌上的东西练出来。',
     requires: function () {
+      if (isHistoricalCareerMode()) return false;
       bindStoryLegend();
       return getBranchNode('legend') === 'legend_night';
     },
@@ -1700,6 +1711,7 @@
       scene: '主持人说你是「穷版的{名宿}」。现场有人笑，摄像机没有关。',
       body: '接受致敬、反驳“我是我”，或幽默接梗，都会改写你和名宿的关系。',
       requires: function () {
+        if (isHistoricalCareerMode()) return false;
         bindStoryLegend();
         if (!currentCareerTeam()) return false;
         return getBranchNode('legend') !== 'start' || playerOvr() >= 82;
@@ -1878,7 +1890,11 @@
       extra: { contextId: 'home' },
       scene: '球馆升起{队史名宿}的球衣。聚光灯先打在屋顶，再擦过你的肩。',
       body: '穿致敬配色、赛后看他的防守录像，或只聊商业。',
-      requires: function () { bindTeamRafterStar(); return gamesPlayed() >= 12; },
+      requires: function () {
+        if (isHistoricalCareerMode()) return false;
+        bindTeamRafterStar();
+        return gamesPlayed() >= 12;
+      },
       choices: [
         { label: '整场只穿致敬配色', hint: '传奇声望和球迷支持提升', profile: { legacyBonus: 1, fanSupport: 1 }, result: '你把颜色穿成一句没有说出口的谢谢。屋顶上是{队史名宿}，看台上是这座城。<br><br>效果：传奇声望+1；球迷支持+1。' },
         { label: '赛后反复看他的防守录像', hint: '外防或内防提升', apply: function () {

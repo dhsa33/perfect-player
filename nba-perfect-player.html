@@ -35,12 +35,12 @@ html.pp-booting #app{visibility:hidden}
   40%{content:"28%"}50%{content:"32%"}62%{content:"36%"}75%{content:"40%"}88%{content:"44%"}100%{content:"48%"}
 }
   </style>
-  <link rel="preload" href="assets/js/perfect-player-boot.js?v=20260823-boot-v18" as="script">
-  <script defer src="assets/js/perfect-player-boot.js?v=20260823-boot-v18"></script>
-  <link rel="stylesheet" href="assets/css/perfect-player.css?v=20260823-allstar-draft-ui">
+  <link rel="preload" href="assets/js/perfect-player-boot.js?v=20260824-award-hs-v1" as="script">
+  <script defer src="assets/js/perfect-player-boot.js?v=20260824-award-hs-v1"></script>
+  <link rel="stylesheet" href="assets/css/perfect-player.css?v=20260824-hs-quote-v1">
 
 
-<link href="assets/css/perfect-player-premium.css" rel="stylesheet">
+<link href="assets/css/perfect-player-premium.css?v=20260824-career-align-v1" rel="stylesheet">
 </head>
 <body>
 
@@ -492,8 +492,94 @@ function _hsGetNormIndex() {
   }
   return _hsNormIndex;
 }
+function _hsStripEraId(name) {
+  var s = String(name || '').trim();
+  s = s.replace(/^(EraRole_\d{4}_[A-Z]{2,3}_\d+_)/i, '');
+  s = s.replace(/^(Era\d{4}_)/i, '');
+  if (/^[A-Z][a-z]+[A-Z]/.test(s) && s.indexOf(' ') < 0) {
+    s = s.replace(/([a-z])([A-Z])/g, '$1 $2');
+  }
+  return s;
+}
+function _hsEraLocalPhotoUrls(player, lookupName) {
+  var names = [];
+  function pushName(n) {
+    n = String(n || '').trim();
+    if (!n || names.indexOf(n) >= 0) return;
+    names.push(n);
+    var stripped = _hsStripEraId(n);
+    if (stripped && stripped !== n && names.indexOf(stripped) < 0) names.push(stripped);
+  }
+  function nameVariants(n) {
+    n = String(n || '').trim();
+    if (!n) return [];
+    var vars = [];
+    function add(x) {
+      x = String(x || '').trim();
+      if (!x) return;
+      if (vars.indexOf(x) < 0) vars.push(x);
+    }
+
+    // baseline
+    add(n);
+
+    // remove common suffixes (Jr./Sr./II/III/IV)
+    var parts = n.replace(/,/g, '').split(/\s+/).filter(Boolean);
+    function isSuffix(tok) {
+      tok = String(tok || '').replace(/\./g, '').toLowerCase();
+      return tok === 'jr' || tok === 'sr' || tok === 'ii' || tok === 'iii' || tok === 'iv';
+    }
+    while (parts.length > 0 && isSuffix(parts[parts.length - 1])) parts.pop();
+    var base = parts.join(' ');
+    if (base && base !== n) add(base);
+
+    // remove single-letter middle initials like "Joe C. Meriweather" -> "Joe Meriweather"
+    if (parts.length >= 3) {
+      var filtered = [];
+      for (var i = 0; i < parts.length; i++) {
+        var p = String(parts[i] || '');
+        var pp = p.replace(/\./g, '');
+        if (pp.length <= 1) continue;
+        filtered.push(p);
+      }
+      if (filtered.length >= 2) {
+        var midStripped = filtered.join(' ');
+        if (midStripped && midStripped !== n) add(midStripped);
+      }
+    }
+    return vars;
+  }
+  if (player && typeof player === 'object') {
+    pushName(player.nameEN);
+    pushName(player.nameEn);
+    pushName(player.name);
+    pushName(player.cname);
+  }
+  pushName(lookupName);
+  var urls = [];
+  names.forEach(function(n) {
+    var vars = nameVariants(n);
+    for (var vi = 0; vi < vars.length; vi++) {
+      var key = _hsNormKey(vars[vi]);
+      if (!key) continue;
+      if (key.indexOf('era') === 0 && /era\d{4}/.test(key)) {
+        key = _hsNormKey(_hsStripEraId(vars[vi]));
+      }
+      if (!key || key.length < 4) continue;
+      ['jpg', 'png'].forEach(function(ext) {
+        var u = 'assets/images/Player/hupu-era/' + key + '.' + ext;
+        if (urls.indexOf(u) < 0) urls.push(u);
+      });
+    }
+  });
+  return urls;
+}
 function _hsPlayerLookupName(player) {
   if (player && typeof player === 'object') {
+    var internal = String(player.name || '');
+    if (/^Era\d{4}_/.test(internal) || /^EraRole_/.test(internal)) {
+      return player.nameEN || player.nameEn || player.cname || internal;
+    }
     return player.name || player.nameEn || player.nameEN || player.cname || '';
   }
   return String(player || '');
@@ -546,8 +632,20 @@ function attachOfficialPlayerHeadshots() {
   });
 }
 /** 无照片球员的兜底头像：用姓名首字母生成彩色 SVG，比灰圈更体面。 */
-function _hsInitialsAvatar(name, displaySize) {
+function _hsCssBgUrl(url) {
+  // 必须用单引号：头像 style 会塞进 HTML 的 style="..." 里，
+  // url("...") 会把属性截断成 background-image:url( ，页面只剩空圈。
+  var safe = String(url || '').replace(/\\/g, '\\\\').replace(/'/g, '%27');
+  return "url('" + safe + "')";
+}
+function _hsInitialsDataUri(name) {
+  name = String(name || '?');
   var parts = String(name || '?').trim().split(/[\s\-]+/).filter(Boolean);
+  // Era1984_JoeMeriweather → 取可读英文名末段
+  if (parts.length === 1 && /^(Era\d{4}_|EraRole_|Rookie_|Draft)/i.test(parts[0])) {
+    var stripped = parts[0].replace(/^(Era\d{4}_|EraRole_\d{4}_[A-Z]{2,3}_\d+_)/i, '');
+    parts = stripped ? [stripped] : parts;
+  }
   var initials = parts.length >= 2
     ? (parts[0].charAt(0) + parts[parts.length - 1].charAt(0))
     : (parts[0] || '?').slice(0, 2);
@@ -561,8 +659,12 @@ function _hsInitialsAvatar(name, displaySize) {
     '<rect width="64" height="64" fill="url(#g)"/>' +
     '<text x="32" y="33" font-family="Fredoka,Arial,sans-serif" font-size="26" font-weight="700" ' +
     'fill="#fff" text-anchor="middle" dominant-baseline="central">' + initials + '</text></svg>';
-  var uri = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
-  return 'background-image:url("' + uri + '");background-size:cover;background-position:center;background-repeat:no-repeat;width:' + displaySize + 'px;height:' + displaySize + 'px;';
+  return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+}
+
+function _hsInitialsAvatar(name, displaySize) {
+  var uri = _hsInitialsDataUri(name);
+  return 'background-image:' + _hsCssBgUrl(uri) + ';background-size:cover;background-position:center;background-repeat:no-repeat;width:' + displaySize + 'px;height:' + displaySize + 'px;';
 }
 /** 获取球员头像样式（本地缓存 → NBA CDN → 归一化匹配 → 首字母兜底） */
 function getPlayerHeadshotStyle(playerName, displaySize) {
@@ -587,6 +689,10 @@ function getPlayerHeadshotStyle(playerName, displaySize) {
     namedPhoto = window.PERFECT_PLAYER_PHOTO_BY_NAME[lookupName] || (playerRecord && window.PERFECT_PLAYER_PHOTO_BY_NAME[playerRecord.cname]) || '';
   }
   var localPhoto = (playerRecord && (playerRecord.photoLocal || playerRecord._photoLocal)) || '';
+  var eraPhoto = (playerRecord && (playerRecord.photoUrl || playerRecord._photoUrl)) || '';
+  if (!eraPhoto && typeof window.getHupuPlayerPhotoUrl === 'function') {
+    eraPhoto = window.getHupuPlayerPhotoUrl(playerRecord || lookupName) || '';
+  }
   var pid = getOfficialPlayerHeadshotId(playerRecord || lookupName);
   var remote = pid ? _hsOfficialRemotePath(pid) : '';
   var urls = [];
@@ -595,12 +701,23 @@ function getPlayerHeadshotStyle(playerName, displaySize) {
   }
   pushUrl(namedPhoto);
   pushUrl(localPhoto);
+  var eraLocals = _hsEraLocalPhotoUrls(playerRecord, lookupName);
+  eraLocals.forEach(pushUrl);
+  if (!eraLocals.length) pushUrl(eraPhoto);
   if (pid) pushUrl(_hsOfficialLocalPath(pid));
   pushUrl(remote);
+  // 外链/本地都失败时，用首字母层垫底，避免灰圈空头像
+  var initialsName = lookupName || (playerRecord && (playerRecord.nameEN || playerRecord.cname)) || '?';
+  var initialsStyle = _hsInitialsAvatar(initialsName, displaySize);
+  // 永远把首字母 SVG dataURI 作为最后一层兜底（不依赖正则从 style 字符串里再提取）
+  try {
+    var initialsUri = _hsInitialsDataUri(initialsName);
+    if (initialsUri) pushUrl(initialsUri);
+  } catch (e) {}
   if (urls.length) {
-    return 'background-image:url(' + urls.join('),url(') + ');background-size:cover;background-position:center top;background-repeat:no-repeat;width:' + displaySize + 'px;height:' + displaySize + 'px;';
+    return 'background-image:' + urls.map(_hsCssBgUrl).join(',') + ';background-size:cover;background-position:center top;background-repeat:no-repeat;width:' + displaySize + 'px;height:' + displaySize + 'px;';
   }
-  return _hsInitialsAvatar(lookupName, displaySize);
+  return initialsStyle;
 }
 </script>
 <script src="assets/js/hupu/script-01-2678-5hu3djrc-upload-1783494754597-12.js"></script>
@@ -830,7 +947,9 @@ var Storage = {
   });
 })();
 </script>
-<script src="assets/js/perfect-player-core.js?v=20260824-core-v26"></script>
+<script src="assets/js/perfect-player-core.js?v=20260824-era-expand-v1"></script>
+<script src="assets/js/perfect-player-era-mode.js?v=20260824-era-expand-v1"></script>
+<script src="assets/js/perfect-player-era-draft.js?v=20260824-era-expand-v1"></script>
 
 <!-- ====== 随机事件系统 — EVENT REGISTRY ====== -->
 <script src="assets/js/perfect-player-event-runtime.js?v=20260823-legend-v1"></script>

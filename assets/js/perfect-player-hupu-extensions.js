@@ -516,7 +516,11 @@
       { label:'坦承会失望', hint:'真实地表达竞争心', apply:function() { addProfileDelta('mediaTrust', 2); addSeasonMod('mediaPressure', -1, -10, 10); return '你说会失望，但第二天仍会训练。面试官第一次放下笔，和你认真握手。<br><br>效果：媒体信任+2；媒体压力-1。'; } },
       { label:'回答顺位不重要', hint:'强调长期职业目标', apply:function() { addProfileDelta('coachTrust', 1); changeDraftStock(1); return '你把话题拉回比赛和成长。球队认为你的注意力没有被榜单绑住。<br><br>效果：教练信任+1；预测顺位上升。'; } }
     ]},
-    { id:'legend_phone_call', stage:'pre', title:'名宿来电', scene:'一位退役名宿看过你的录像，主动打来电话。他说球队正在讨论你，但他只愿意帮你传一句话。', choices:[
+    { id:'legend_phone_call', stage:'pre', title:'名宿来电', scene:'一位退役名宿看过你的录像，主动打来电话。他说球队正在讨论你，但他只愿意帮你传一句话。', when:function() {
+      if (window.PP_ERA_MODE && PP_ERA_MODE.isHistoricalActive && PP_ERA_MODE.isHistoricalActive()) return false;
+      if (STATE && STATE.draftMode === 'historical') return false;
+      return true;
+    }, choices:[
       { label:'请他谈篮球能力', hint:'让评价回到球场', apply:function() { changeDraftStock(1); addProfileDelta('coachTrust', 1); return '他在管理层会议上讲了你读防守的细节。那不是夸奖，更像一份专业担保。<br><br>效果：教练信任+1；预测顺位上升。'; } },
       { label:'请他谈个人性格', hint:'让球队相信你的长期价值', apply:function() { addProfileDelta('lockerRoomTrust', 1); addProfileDelta('mediaTrust', 1); return '他没有谈数据，只说你愿意听、也愿意承担。球队把这句话写进了最终报告。<br><br>效果：更衣室信任+1；媒体信任+1。'; } }
     ]},

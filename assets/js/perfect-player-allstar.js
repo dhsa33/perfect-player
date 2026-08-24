@@ -41,20 +41,39 @@
     return mvp;
   }
 
+  /** 生涯前 3 年不可担任全明星队长（第 4 赛季起才有资格） */
+  function userCanBeAllStarCaptain() {
+    var seasonNum = n(STATE && STATE.career && STATE.career.seasonCount, 0) + 1;
+    return seasonNum > 3;
+  }
+
   function electCaptain(conference, roster12, userConference, seasonKey) {
     var top3 = roster12.slice(0, 3);
     if (!top3.length) return { method: 'empty', captain: null };
+    var canUserCaptain = userCanBeAllStarCaptain();
+
+    function lotteryPool() {
+      var pool = top3.filter(function (c) {
+        return c && (canUserCaptain || !c.isUser);
+      });
+      if (pool.length) return pool;
+      return roster12.filter(function (c) {
+        return c && (canUserCaptain || !c.isUser);
+      }).slice(0, 3);
+    }
 
     function lotteryPick() {
+      var pool = lotteryPool();
+      if (!pool.length) return top3[0];
       var r = engine().hash01(seasonKey + '|allstar-captain|' + conference);
-      if (r < 0.6) return top3[0];
-      if (r < 0.9) return top3[1] || top3[0];
-      return top3[2] || top3[top3.length - 1];
+      if (r < 0.6) return pool[0];
+      if (r < 0.9) return pool[1] || pool[0];
+      return pool[2] || pool[pool.length - 1];
     }
 
     if (userConference && conference === userConference) {
       var user = roster12.filter(function (c) { return c && c.isUser; })[0];
-      if (user) {
+      if (user && canUserCaptain) {
         var pop = popularityCoeff();
         var ranked = roster12.map(function (c) {
           return { c: c, score: captainMvpScore(c, c.isUser ? pop : 1) };
