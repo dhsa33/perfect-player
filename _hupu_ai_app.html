@@ -9990,6 +9990,17 @@ function calcTeamLineup(team) {
       .slice(0, 4);
 
     if (candidates.length === 0) {
+      const fallback = allPlayers
+        .map((p, i) => ({ player: p, idx: i, ovr: parseInt(p.ovr) || 0 }))
+        .filter(({ idx }) => !curAssigned.has(idx))
+        .sort((a, b) => b.ovr - a.ovr)[0];
+      if (fallback) {
+        const nextStarters = Object.assign({}, curStarters);
+        const nextAssigned = new Set(Array.from(curAssigned));
+        nextStarters[pos] = fallback.player;
+        nextAssigned.add(fallback.idx);
+        fillBestSmall(posList, posIdx + 1, nextStarters, nextAssigned, curScore + fallback.ovr, best);
+      }
       return fillBestSmall(posList, posIdx + 1, curStarters, curAssigned, curScore, best);
     }
 

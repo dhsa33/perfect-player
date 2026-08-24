@@ -152,7 +152,14 @@ function getNextSeasonMods() {
 
 function clearSeasonModsForNewOffseason() {
   if (!STATE.career) return;
-  STATE.career.nextSeasonMods = { injuryRiskBonus: 0, formVariance: 0, teamChemistry: 0, moraleBonus: 0, mediaPressure: 0, staminaLoad: 0 };
+  var old = STATE.career.nextSeasonMods || {};
+  var carryKeys = ['injuryRiskBonus', 'staminaLoad'];
+  var newMods = { injuryRiskBonus: 0, formVariance: 0, teamChemistry: 0, moraleBonus: 0, mediaPressure: 0, staminaLoad: 0 };
+  carryKeys.forEach(function(k) {
+    var v = old[k] || 0;
+    if (v < 0) newMods[k] = Math.round(v * 0.5 * 2) / 2;
+  });
+  STATE.career.nextSeasonMods = newMods;
   refreshPlayerStateStripLive();
 }
 
@@ -4320,6 +4327,17 @@ function calcTeamLineup(team) {
       .slice(0, 4);
 
     if (candidates.length === 0) {
+      const fallback = allPlayers
+        .map((p, i) => ({ player: p, idx: i, ovr: parseInt(p._lineupOvr != null ? p._lineupOvr : p.ovr) || 0 }))
+        .filter(({ idx }) => !curAssigned.has(idx))
+        .sort((a, b) => b.ovr - a.ovr)[0];
+      if (fallback) {
+        const nextStarters = Object.assign({}, curStarters);
+        const nextAssigned = new Set(Array.from(curAssigned));
+        nextStarters[pos] = fallback.player;
+        nextAssigned.add(fallback.idx);
+        fillBestSmall(posList, posIdx + 1, nextStarters, nextAssigned, curScore + fallback.ovr, best);
+      }
       return fillBestSmall(posList, posIdx + 1, curStarters, curAssigned, curScore, best);
     }
 

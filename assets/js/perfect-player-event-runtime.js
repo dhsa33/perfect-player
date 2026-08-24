@@ -233,8 +233,8 @@ function getAgeBasedInjuryRate() {
 }
 
 function getSeasonInjuryEventRate() {
-  var ev = STATE.season && STATE.season.events;
-  var bonus = ev && ev.injuryRiskBonus ? ev.injuryRiskBonus : 0;
+  var mods = (typeof getNextSeasonMods === 'function') ? getNextSeasonMods() : {};
+  var bonus = mods.injuryRiskBonus || 0;
   var rate = Math.max(0, Math.min(12, getAgeBasedInjuryRate() + bonus));
   if (typeof getStyleSkillMu === 'function') {
     var ironMu = getStyleSkillMu('iron_man');
@@ -250,8 +250,8 @@ function getMajorInjuryEventRate() {
   else if (age >= 36) base = 1.6;
   else if (age >= 32) base = 1.1;
   else if (age >= 26) base = 0.7;
-  var ev = STATE.season && STATE.season.events;
-  var bonus = ev && ev.injuryRiskBonus ? ev.injuryRiskBonus : 0;
+  var mods = (typeof getNextSeasonMods === 'function') ? getNextSeasonMods() : {};
+  var bonus = mods.injuryRiskBonus || 0;
   var rate = Math.max(0.15, Math.min(3, base + bonus * 0.08));
   if (typeof getStyleSkillMu === 'function') {
     var ironMu = getStyleSkillMu('iron_man');

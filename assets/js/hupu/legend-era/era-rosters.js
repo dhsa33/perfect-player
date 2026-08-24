@@ -1079,7 +1079,18 @@ function isEraTeamActive(team) {
 function getEraTeamPool() {
   if (!STATE || STATE.draftMode !== 'historical' || !STATE.eraStart) return (typeof NBA2K_TEAMS !== 'undefined') ? NBA2K_TEAMS.slice() : [];
   var sc = (STATE.career && STATE.career.seasonCount) || 0;
-  return getEraActiveTeams(String(STATE.eraStart), sc);
+  return getEraActiveTeams(String(STATE.eraStart), sc).filter(function(t) { return (typeof NBA2K_DATA !== 'undefined' && NBA2K_DATA[t] || []).length > 0; });
+}
+
+/** 按真实出生年计算球员在某时代的开局年龄（无出生数据返回 null，走 OVR 档位兜底） */
+function eraPlayerAgeByDraft(era, nameEN) {
+  if (!nameEN) return null;
+  var births = (typeof ERA_HISTORICAL_BIRTHS !== 'undefined') ? ERA_HISTORICAL_BIRTHS : null;
+  if (!births) return null;
+  var birth = births[nameEN];
+  if (birth == null) return null;
+  var age = (parseInt(era, 10) || 0) - (parseInt(birth, 10) || 0);
+  return age >= 17 && age <= 50 ? age : null;
 }
 
 /** 该队在当前时代的加盟年份（无：原创队） */
