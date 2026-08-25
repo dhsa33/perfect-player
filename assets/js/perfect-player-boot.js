@@ -6,24 +6,24 @@
 
   var GROUPS = {
     create: [
-      ['assets/js/perfect-player-hupu-extensions.js?v=20260824-no-legend-line-v1', '角色扩展']
+      ['assets/js/perfect-player-hupu-extensions.min.js?v=20260824-no-legend-line-v1', '角色扩展']
     ],
     career: [
-      ['assets/js/perfect-player-skills.js?v=20260824-skill-coexist', '球风技能'],
-      ['assets/js/perfect-player-enhancements.js?v=20260824-skill-icon', '成就特效']
+      ['assets/js/perfect-player-skills.min.js?v=20260824-skill-coexist', '球风技能'],
+      ['assets/js/perfect-player-enhancements.min.js?v=20260824-skill-icon', '成就特效']
     ],
     story: [
-      ['assets/js/perfect-player-event-library.js?v=20260821-events-v3', '赛季事件'],
-      ['assets/js/perfect-player-story-events.js?v=20260824-no-legend-line-v1', '生涯剧情'],
-      ['assets/js/perfect-player-hupu-life-events.js?v=20260824-life-v1', '读书品牌'],
-      ['assets/js/perfect-player-legend-story.js?v=20260824-offseason-type-v1', '传奇剧情'],
-      ['assets/js/perfect-player-legend-challenge.js?v=20260824-legend-v11', '传奇挑战'],
-      ['assets/js/perfect-player-awards.js?v=20260824-award-hs-v1', '荣誉评选'],
-      ['assets/js/perfect-player-allstar.js?v=20260824-captain-y4', '全明星周末']
+      ['assets/js/perfect-player-event-library.min.js?v=20260821-events-v3', '赛季事件'],
+      ['assets/js/perfect-player-story-events.min.js?v=20260824-no-legend-line-v1', '生涯剧情'],
+      ['assets/js/perfect-player-hupu-life-events.min.js?v=20260824-life-v1', '读书品牌'],
+      ['assets/js/perfect-player-legend-story.min.js?v=20260824-offseason-type-v1', '传奇剧情'],
+      ['assets/js/perfect-player-legend-challenge.min.js?v=20260824-legend-v11', '传奇挑战'],
+      ['assets/js/perfect-player-awards.min.js?v=20260824-award-hs-v1', '荣誉评选'],
+      ['assets/js/perfect-player-allstar.min.js?v=20260824-captain-y4', '全明星周末']
     ],
     live: [
-      ['assets/js/perfect-player-live-court.js?v=20260823-court-v36', '俯瞰球场'],
-      ['assets/js/perfect-player-live-sim.js?v=20260824-live-sim-v64', '文字直播']
+      ['assets/js/perfect-player-live-court.min.js?v=20260823-court-v36', '俯瞰球场'],
+      ['assets/js/perfect-player-live-sim.min.js?v=20260824-live-sim-v64', '文字直播']
     ]
   };
 
@@ -63,6 +63,57 @@
     return inflight[src];
   }
 
+  // ── 国内加速：github.io 环境下优先走 jsDelivr 镜像（fetch+全局执行，超时回退源站） ──
+  var MIRRORS = location.hostname.indexOf('github.io') >= 0
+    ? ['https://cdn.jsdelivr.net/gh/dhsa33/perfect-player@main/',
+       'https://fastly.jsdelivr.net/gh/dhsa33/perfect-player@main/']
+    : [];
+  var _mirrorDead = {};
+
+  function fetchExec(url, timeoutMs) {
+    return new Promise(function (resolve, reject) {
+      var ctrl = ('AbortController' in self) ? new AbortController() : null;
+      var timer = setTimeout(function () {
+        if (ctrl) ctrl.abort();
+        reject(new Error('timeout: ' + url));
+      }, timeoutMs || 8000);
+      fetch(url, ctrl ? { signal: ctrl.signal } : undefined).then(function (r) {
+        if (!r.ok) throw new Error('http ' + r.status + ': ' + url);
+        return r.text();
+      }).then(function (code) {
+        clearTimeout(timer);
+        (0, eval)(code);
+        resolve(true);
+      }).catch(function (err) {
+        clearTimeout(timer);
+        reject(err);
+      });
+    });
+  }
+
+  function loadScriptSmart(src) {
+    if (loaded[src]) return Promise.resolve(true);
+    if (inflight[src]) return inflight[src];
+    var path = src.replace(/^https?:\/\/[^/]+\//, '');
+    var candidates = [];
+    MIRRORS.forEach(function (m) { if (!_mirrorDead[m]) candidates.push(m + path); });
+    candidates.push(src);
+    inflight[src] = (async function () {
+      for (var i = 0; i < candidates.length; i++) {
+        var isMirror = i < candidates.length - 1;
+        try {
+          await fetchExec(candidates[i], isMirror ? 3500 : 12000);
+          loaded[src] = true;
+          return true;
+        } catch (e) {
+          if (isMirror) _mirrorDead[candidates[i].slice(0, candidates[i].indexOf(path))] = true;
+        }
+      }
+      return false;
+    })();
+    return inflight[src];
+  }
+
   function ensureGroup(name) {
     var files = GROUPS[name];
     if (!files) return Promise.resolve();
@@ -70,10 +121,10 @@
     var work;
     if (name === 'career') {
       work = files.reduce(function (p, item) {
-        return p.then(function () { return loadScript(item[0]); });
+        return p.then(function () { return loadScriptSmart(item[0]); });
       }, Promise.resolve());
     } else {
-      work = Promise.all(files.map(function (item) { return loadScript(item[0]); }));
+      work = Promise.all(files.map(function (item) { return loadScriptSmart(item[0]); }));
     }
     groupWork[name] = work.then(function () {
       groupReady[name] = true;

@@ -7,9 +7,9 @@
   'use strict';
 
   var ERA_STATIC_SCRIPTS = {
-    '1984': 'assets/js/hupu/legend-era/legend-era-1984-static.js',
-    '1996': 'assets/js/hupu/legend-era/legend-era-1996-static.js',
-    '2003': 'assets/js/hupu/legend-era/legend-era-2003-static.js'
+    '1984': 'assets/js/hupu/legend-era/legend-era-1984-static.min.js',
+    '1996': 'assets/js/hupu/legend-era/legend-era-1996-static.min.js',
+    '2003': 'assets/js/hupu/legend-era/legend-era-2003-static.min.js'
   };
 
   var ERA_LABELS = {
@@ -50,26 +50,53 @@
   var _draftDepsPromise = null;
   var _leagueDepsPromise = null;
 
-  function loadScriptOnce(src) {
+  var _eraLoaded = {};
+  var ERA_MIRRORS = location.hostname.indexOf('github.io') >= 0
+    ? ['https://cdn.jsdelivr.net/gh/dhsa33/perfect-player@main/',
+       'https://fastly.jsdelivr.net/gh/dhsa33/perfect-player@main/']
+    : [];
+  var _eraMirrorDead = {};
+
+  function eraFetchExec(url, timeoutMs) {
     return new Promise(function (resolve, reject) {
-      var existing = document.querySelector('script[data-pp-src="' + src + '"]');
-      if (existing) {
-        if (existing.getAttribute('data-pp-loaded') === '1') resolve(true);
-        else existing.addEventListener('load', function () { resolve(true); });
-        existing.addEventListener('error', function () { reject(new Error('failed: ' + src)); });
-        return;
-      }
-      var s = document.createElement('script');
-      s.src = src;
-      s.async = true;
-      s.setAttribute('data-pp-src', src);
-      s.onload = function () {
-        s.setAttribute('data-pp-loaded', '1');
+      var ctrl = ('AbortController' in self) ? new AbortController() : null;
+      var timer = setTimeout(function () {
+        if (ctrl) ctrl.abort();
+        reject(new Error('timeout: ' + url));
+      }, timeoutMs || 8000);
+      fetch(url, ctrl ? { signal: ctrl.signal } : undefined).then(function (r) {
+        if (!r.ok) throw new Error('http ' + r.status + ': ' + url);
+        return r.text();
+      }).then(function (code) {
+        clearTimeout(timer);
+        (0, eval)(code);
         resolve(true);
-      };
-      s.onerror = function () { reject(new Error('failed: ' + src)); };
-      document.head.appendChild(s);
+      }).catch(function (err) {
+        clearTimeout(timer);
+        reject(err);
+      });
     });
+  }
+
+  function loadScriptOnce(src) {
+    if (_eraLoaded[src]) return Promise.resolve(true);
+    var path = src.replace(/^https?:\/\/[^/]+\//, '');
+    var candidates = [];
+    ERA_MIRRORS.forEach(function (m) { if (!_eraMirrorDead[m]) candidates.push(m + path); });
+    candidates.push(src);
+    return (async function () {
+      for (var i = 0; i < candidates.length; i++) {
+        var isMirror = i < candidates.length - 1;
+        try {
+          await eraFetchExec(candidates[i], isMirror ? 3500 : 12000);
+          _eraLoaded[src] = true;
+          return true;
+        } catch (e) {
+          if (isMirror) _eraMirrorDead[candidates[i].slice(0, candidates[i].indexOf(path))] = true;
+        }
+      }
+      throw new Error('failed: ' + src);
+    })();
   }
 
   function loadEraDraftDeps() {
@@ -78,9 +105,9 @@
     }
     if (_draftDepsPromise) return _draftDepsPromise;
     _draftDepsPromise = Promise.all([
-      loadScriptOnce('assets/js/hupu/legend-era/era-config.js?v=20260824-era-draft'),
-      loadScriptOnce('assets/js/hupu/legend-era/draft-classes.js?v=20260824-era-draft'),
-      loadScriptOnce('assets/js/perfect-player-era-draft.js?v=20260824-hupu-era-local-v1')
+      loadScriptOnce('assets/js/hupu/legend-era/era-config.min.js?v=20260824-era-draft'),
+      loadScriptOnce('assets/js/hupu/legend-era/draft-classes.min.js?v=20260824-era-draft'),
+      loadScriptOnce('assets/js/perfect-player-era-draft.min.js?v=20260824-hupu-era-local-v1')
     ]).then(function () { return true; });
     return _draftDepsPromise;
   }
@@ -92,9 +119,10 @@
     }
     if (_leagueDepsPromise) return _leagueDepsPromise;
     _leagueDepsPromise = Promise.all([
-      loadScriptOnce('assets/js/hupu/legend-era/historical-players.js?v=20260824-era-align-v1'),
-      loadScriptOnce('assets/js/hupu/legend-era/era-bench-pools.js?v=20260824-era-align-v1'),
-      loadScriptOnce('assets/js/hupu/legend-era/era-rosters.js?v=20260824-era-align-v1')
+      loadScriptOnce('assets/js/hupu/legend-era/historical-players.min.js?v=20260824-era-align-v1'),
+      loadScriptOnce('assets/js/hupu/legend-era/era-bench-pools.min.js?v=20260824-era-align-v1'),
+      loadScriptOnce('assets/js/hupu/legend-era/era-historical-births.min.js?v=20260824-era-align-v1'),
+      loadScriptOnce('assets/js/hupu/legend-era/era-rosters.min.js?v=20260824-era-align-v1')
     ]).then(function () { return true; });
     return _leagueDepsPromise;
   }
@@ -291,7 +319,7 @@
     if (_photoLoadPromise) return _photoLoadPromise;
     _photoLoadPromise = new Promise(function (resolve, reject) {
       var s = document.createElement('script');
-      s.src = 'assets/js/hupu/legend-era/hupu-player-photos.js?v=20260824-era-photos';
+      s.src = 'assets/js/hupu/legend-era/hupu-player-photos.min.js?v=20260824-era-photos';
       s.async = true;
       s.onload = function () {
         _photoCompactIndex = null;

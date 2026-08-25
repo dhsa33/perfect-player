@@ -5,10 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Perfect Player · 完美球员</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8F%80%3C/text%3E%3C/svg%3E">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:ital,wght@0,400;0,600;0,700;0,800;1,400&family=Noto+Sans+SC:wght@400;500;700;900&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
-  <noscript><link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:ital,wght@0,400;0,600;0,700;0,800;1,400&family=Noto+Sans+SC:wght@400;500;700;900&display=swap" rel="stylesheet"></noscript>
+  <link rel="preload" href="assets/fonts/fredoka-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="assets/fonts/nunito-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link href="assets/css/fonts.css" rel="stylesheet">
   <style id="pp-boot-css">
 html.pp-booting,html.pp-booting body{background:#faf5eb}
 html.pp-booting #app{visibility:hidden}
@@ -35,12 +34,12 @@ html.pp-booting #app{visibility:hidden}
   40%{content:"28%"}50%{content:"32%"}62%{content:"36%"}75%{content:"40%"}88%{content:"44%"}100%{content:"48%"}
 }
   </style>
-  <link rel="preload" href="assets/js/perfect-player-boot.js?v=20260824-award-hs-v1" as="script">
-  <script defer src="assets/js/perfect-player-boot.js?v=20260824-award-hs-v1"></script>
-  <link rel="stylesheet" href="assets/css/perfect-player.css?v=20260824-hs-quote-v1">
+  <link rel="preload" href="assets/js/perfect-player-boot.min.js?v=20260825-1325" as="script">
+  <script defer src="assets/js/perfect-player-boot.min.js?v=20260825-1325"></script>
+  <link rel="stylesheet" href="assets/css/perfect-player.css?v=20260825-1325">
 
 
-<link href="assets/css/perfect-player-premium.css?v=20260824-career-align-v1" rel="stylesheet">
+<link href="assets/css/perfect-player-premium.css?v=20260825-1325" rel="stylesheet">
 </head>
 <body>
 
@@ -370,7 +369,7 @@ html.pp-booting #app{visibility:hidden}
   </div>
 </div>
 
-<script src="assets/js/hupu/script-00-2678-58zyeprc-upload-1783508428855-12.js"></script>
+<script src="assets/js/hupu/script-00-2678-58zyeprc-upload-1783508428855-12.min.js"></script>
 <script>
 // ── 头像模式切换 ──
 // sprite → 使用 sprite 贴图（默认）
@@ -720,12 +719,12 @@ function getPlayerHeadshotStyle(playerName, displaySize) {
   return initialsStyle;
 }
 </script>
-<script src="assets/js/hupu/script-01-2678-5hu3djrc-upload-1783494754597-12.js"></script>
-<script src="assets/js/current-player-ratings-2026.js"></script>
-<script src="assets/js/hupu/script-02-2678-gd4jvxrc-upload-1783494754597-15.js"></script>
-<script src="assets/js/hupu/script-03-2678-456sfprc-upload-1783494754597-18.js"></script>
-<script src="assets/js/hupu/script-04-2678-mdo4zerc-upload-1783494754597-21.js"></script>
-<script src="assets/js/hupu/script-05-2678-qlg35lrc-upload-1783494754597-24.js"></script>
+<script src="assets/js/hupu/script-01-2678-5hu3djrc-upload-1783494754597-12.min.js"></script>
+<script src="assets/js/current-player-ratings-2026.min.js"></script>
+<script src="assets/js/hupu/script-02-2678-gd4jvxrc-upload-1783494754597-15.min.js"></script>
+<script src="assets/js/hupu/script-03-2678-456sfprc-upload-1783494754597-18.min.js"></script>
+<script src="assets/js/hupu/script-04-2678-mdo4zerc-upload-1783494754597-21.min.js"></script>
+<script src="assets/js/hupu/script-05-2678-qlg35lrc-upload-1783494754597-24.min.js"></script>
 <script>
 // ── 中文名修正 ──
 (function fixPlayerCN() {
@@ -931,7 +930,7 @@ var Storage = {
 </script>
 <script>
 (function () {
-  var AGE_URL = 'assets/data/player-ages.json?v=20260821-phase-a';
+  var AGE_URL = 'assets/data/player-ages.json?v=20260825-1325';
   var prev = window.PERFECT_PLAYER_DATA_READY || Promise.resolve();
   window.PERFECT_PLAYER_DATA_READY = prev.then(function () {
     return fetch(AGE_URL, { credentials: 'same-origin' })
@@ -947,14 +946,14 @@ var Storage = {
   });
 })();
 </script>
-<script src="assets/js/perfect-player-core.js?v=20260824-era-expand-v1"></script>
-<script src="assets/js/perfect-player-era-mode.js?v=20260824-era-expand-v1"></script>
-<script src="assets/js/perfect-player-era-draft.js?v=20260824-era-expand-v1"></script>
+<script src="assets/js/perfect-player-core.min.js?v=20260825-1325"></script>
+<script src="assets/js/perfect-player-era-mode.min.js?v=20260825-1325"></script>
+<script src="assets/js/perfect-player-era-draft.min.js?v=20260825-1325"></script>
 
 <!-- ====== 随机事件系统 — EVENT REGISTRY ====== -->
-<script src="assets/js/perfect-player-event-runtime.js?v=20260823-legend-v1"></script>
+<script src="assets/js/perfect-player-event-runtime.min.js?v=20260825-1325"></script>
 
-<script src="assets/js/perfect-player-poster.js?v=20260821-phase-a"></script>
+<script src="assets/js/perfect-player-poster.min.js?v=20260825-1325"></script>
 
 
 <!-- ====== 自选球队（本地，无激励视频）====== -->
@@ -1026,6 +1025,13 @@ async function watchAdToReroll() {
 })();
 </script>
 
+<script>
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === '127.0.0.1' || location.hostname === 'localhost')) {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('sw.js').catch(function () {});
+  });
+}
+</script>
 
 </body>
 </html>
