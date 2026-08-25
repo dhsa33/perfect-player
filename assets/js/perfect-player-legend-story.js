@@ -1280,7 +1280,7 @@ const LEGEND_STORY_EVENTS = [
         setBranchNode('legend_story_2003', 'ring_chase', { legacy: 'rings' });
         setLegendStoryFlag('legacy_rings', true);
         addLegendStoryScore('dynasty', 4); addLegendStoryScore('classRivalry', 1);
-        addProfileDelta('leadership', 2); addProfileDelta('fanSupport', 1); addSeasonMod('chemistryBonus', 1, -10, 10);
+        addProfileDelta('leadership', 2); addProfileDelta('fanSupport', 1); addSeasonMod('teamChemistry', 1, -10, 10);
         return '你看了一眼镜头，说自己不想只做一张漂亮的新秀卡。数据会被刷新，集锦会被剪短，但冠军旗帜会一直挂在屋顶。<br><br>这句话很快传回更衣室。老队友没有多说，只是在训练结束后多留你打了两组战术。<br><br>效果：领导力+2，球迷支持+1；下赛季化学反应略升；传奇剧情分数：王朝线+4，同届竞争+1。';
       }},
       { label: '我要证明自己是最完整的球员', hint: '个人传奇线加深，媒体会持续比较你和同届球星', apply: function() {
@@ -1371,14 +1371,14 @@ const LEGEND_STORY_EVENTS = [
         setLegendStoryFlag('franchise_core', true);
         setBranchNode('legend_story_2003', 'franchise_core', { teamRole: 'core' });
         addLegendStoryScore('dynasty', 2); addLegendStoryScore('individualLegend', 2);
-        addAttrDelta('PAS', 1); addAttrDelta('CLU', 1); addProfileDelta('leadership', 2); addSeasonMod('fatigueBonus', 1, -10, 10); STATE.finalOVR = calcOVR(STATE.attrs);
+        addAttrDelta('PAS', 1); addAttrDelta('CLU', 1); addProfileDelta('leadership', 2); addSeasonMod('staminaLoad', 1, -10, 10); STATE.finalOVR = calcOVR(STATE.attrs);
         return '你没有把战术纸还回去。下一场开始，你主动要了更多高位发起和关键回合。失误也会变多，但每一次错误都像在把球队的方向盘往你手里推。<br><br>效果：传球+1，关键球+1，领导力+2；下赛季疲劳压力略升；传奇剧情分数：王朝线+2，个人传奇+2。';
       }},
       { label: '先把队友拉进体系', hint: '化学反应和更衣室提高，个人声望增长较慢', apply: function() {
         setLegendStoryFlag('franchise_connector', true);
         setBranchNode('legend_story_2003', 'franchise_connector', { teamRole: 'connector' });
         addLegendStoryScore('lockerRoom', 3); addLegendStoryScore('dynasty', 1);
-        addAttrDelta('PAS', 1); addProfileDelta('lockerRoomTrust', 3); addProfileDelta('coachTrust', 1); addSeasonMod('chemistryBonus', 2, -10, 10); STATE.finalOVR = calcOVR(STATE.attrs);
+        addAttrDelta('PAS', 1); addProfileDelta('lockerRoomTrust', 3); addProfileDelta('coachTrust', 1); addSeasonMod('teamChemistry', 2, -10, 10); STATE.finalOVR = calcOVR(STATE.attrs);
         return '你告诉教练，可以给你更多球权，但第一步应该是让所有人知道自己会在哪里接到球。接下来几周，你训练后留下来和替补一起跑第二套战术。<br><br>效果：传球+1，更衣室信任+3，教练信任+1；下赛季化学反应提升；传奇剧情分数：更衣室+3，王朝线+1。';
       }}
     ]
@@ -1408,7 +1408,7 @@ const LEGEND_STORY_EVENTS = [
         setLegendStoryFlag('next_wave_done', true);
         setBranchNode('legend_story_2003', 'era_builder', { nextWave: 'builder' });
         addLegendStoryScore('dynasty', 2); addLegendStoryScore('nationalIcon', 1);
-        addProfileDelta('leadership', 3); addProfileDelta('mediaTrust', 2); addSeasonMod('chemistryBonus', 1, -10, 10);
+        addProfileDelta('leadership', 3); addProfileDelta('mediaTrust', 2); addSeasonMod('teamChemistry', 1, -10, 10);
         return '你没有在采访里贬低年轻人。你说每一届都会带来新的问题，而伟大的球员应该学会回答更多问题。<br><br>这句话让媒体开始用另一种方式描述你：不只是 2003 届的一员，而是一个时代的组织者。<br><br>效果：领导力+3，媒体信任+2；下赛季化学反应略升；传奇剧情分数：王朝线+2，全国偶像+1。';
       }}
     ]
@@ -1580,7 +1580,7 @@ const LEGEND_STORY_EVENTS = [
       { label: '要求保留年轻队友', hint: '更衣室稳定，补强节奏更谨慎', apply: function() {
         setLegendStoryFlag('protect_young_core', true);
         addLegendStoryScore('lockerRoom', 2); addLegendStoryScore('dynasty', 1);
-        addProfileDelta('lockerRoomTrust', 2); addSeasonMod('chemistryBonus', 1, -10, 10);
+        addProfileDelta('lockerRoomTrust', 2); addSeasonMod('teamChemistry', 1, -10, 10);
         return '你没有只问谁会来，也问谁不能走。几个年轻队友后来听说这句话，训练时没有提，却把每个回合都跑得更认真。<br><br>效果：更衣室信任+2，下赛季化学反应略升；传奇剧情分数：更衣室+2，王朝线+1。';
       }}
     ]
