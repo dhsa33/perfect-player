@@ -333,9 +333,33 @@
     trainer_dispute: [0, 1]
   };
 
+  // 个别事件的效果覆盖：模板与剧情主题矛盾时单独修正（利他/成熟选项不应吃负面默契）
+  var effectOverrides = {
+    // 压哨球归属：把得分留给队友（慷慨）不该降默契
+    buzzer_review: [
+      { profile:{ leadership:1, coachTrust:1 }, mods:{ formVariance:-1 } },
+      { profile:{ lockerRoomTrust:2 }, mods:{ teamChemistry:1 } }
+    ],
+    // 队友生日安排：两个选项都是善意
+    birthday_game: [
+      { profile:{ lockerRoomTrust:2 }, mods:{ teamChemistry:1 } },
+      { profile:{ lockerRoomTrust:1, leadership:1 }, mods:{ teamChemistry:1 } }
+    ],
+    // 暂停翻译跟不上：两个选项都是帮忙
+    translation_huddle: [
+      { profile:{ lockerRoomTrust:2 }, mods:{ teamChemistry:1 } },
+      { profile:{ coachTrust:1, lockerRoomTrust:1 }, mods:{} }
+    ],
+    // 双向合同升上：让柜子（善意）与按流程（中性）
+    two_way_callup: [
+      { profile:{ lockerRoomTrust:2 }, mods:{ teamChemistry:1 } },
+      { profile:{ coachTrust:1 }, mods:{} }
+    ]
+  };
+
   var definitions = catalog.map(function (row) {
     var family = row[5] || 'lead';
-    var pair = effects[family] || effects.lead;
+    var pair = effectOverrides[row[0]] || effects[family] || effects.lead;
     var tps = extraTp[row[0]] || [pair[0].tp || 0, pair[1].tp || 0];
     return {
       id: 'unique_' + row[0],

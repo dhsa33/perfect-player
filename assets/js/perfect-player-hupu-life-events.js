@@ -8,7 +8,7 @@ const READING_BOOKS = [
   { key: 'public_opinion', title: '《舆论的力量》', weight: 14, scene: '这本书把“被所有人注视”写得比球场更累。读到一半，你关掉了手机推送，第一次觉得那些解说词只是背景音。', effects: ['媒体好感+1', '媒体压力-2'], apply: function() { addProfileDelta('mediaTrust', 1); addSeasonMod('mediaPressure', -2, -10, 10); } },
   { key: 'alive', title: '《活着》', weight: 9, scene: '福贵的一生比任何一场失利都沉。合上书时你愣了很久，然后给家里打了个电话：我很好，只是突然想听听你的声音。', effects: ['媒体压力-2', '忠诚+1', '状态波动-1'], apply: function() { addSeasonMod('mediaPressure', -2, -10, 10); addProfileDelta('loyalty', 1); addSeasonMod('formVariance', -1, -10, 10); } },
   { key: 'old_man_and_sea', title: '《老人与海》', weight: 9, scene: '圣地亚哥和那条大鱼搏斗了三天三夜。你想起自己上一次加时赛，也是这样一个人扛着，没有放弃。', effects: ['关键球+1', '状态波动-1'], apply: function() { addAttrDelta('CLU', 1); STATE.finalOVR = calcOVR(STATE.attrs); addSeasonMod('formVariance', -1, -10, 10); } },
-  { key: 'thinking_fast_slow', title: '《思考，快与慢》', weight: 13, scene: '书里说，人在疲惫时更容易相信第一个跳出来的答案。你开始复盘自己的每一次勉强出手，发现很多球根本不该投。', effects: ['传球+1', '媒体好感+1'], apply: function() { addAttrDelta('PAS', 1); STATE.finalOVR = calcOVR(STATE.attrs); addProfileDelta('mediaTrust', 1); } },
+  { key: 'thinking_fast_slow', title: '《思考，快与慢》', weight: 13, scene: '书里说，人在疲惫时更容易相信第一个跳出来的答案。你开始复盘自己的每一次勉强出手，发现很多球根本不该投。', effects: ['状态波动-1', '媒体好感+1'], apply: function() { addSeasonMod('formVariance', -1, -10, 10); addProfileDelta('mediaTrust', 1); } },
   { key: 'silent_majority', title: '《沉默的大多数》', weight: 13, scene: '王小波说，沉默不是没有态度，是不想和噪音共用一套语言。你合上书，把发布会要说的话删到只剩两句。', effects: ['媒体压力-2', '媒体好感+1'], apply: function() { addSeasonMod('mediaPressure', -2, -10, 10); addProfileDelta('mediaTrust', 1); } },
   { key: 'three_body', title: '《三体》', weight: 5, scene: '你读到“降维打击”时笑了。第二天训练，你把对手的战术想象成二维平面，忽然觉得一切都没那么可怕。', effects: ['关键球+1', '人气+1'], apply: function() { addAttrDelta('CLU', 1); STATE.finalOVR = calcOVR(STATE.attrs); addProfileDelta('fame', 1); } },
   { key: 'dragon_hero', title: '《天龙八部》', weight: 8, scene: '你最喜欢扫地僧。他不出手，不是因为不会，而是因为没必要。你决定下一场也试着少说、多做、深藏不露。', effects: ['状态波动-1', '更衣室信任+1', '媒体压力-1'], apply: function() { addSeasonMod('formVariance', -1, -10, 10); addProfileDelta('lockerRoomTrust', 1); addSeasonMod('mediaPressure', -1, -10, 10); } }
@@ -137,7 +137,7 @@ function isHennessyEligible() {
         addProfileDelta('mediaTrust', 1);
         return '你第一次没有在深夜刷评论，睡了最近最完整的一觉。<br><br>效果：状态波动-1；媒体好感+1。';
       }},
-      { label: '合上书，回训练馆加练', hint: '把情绪变成汗水', apply: function() {
+      { label: '合上书，回训练馆加练', hint: '把情绪变成汗水（若读过《老人与海》或《三体》，则改为状态收敛）', apply: function() {
         var f = STATE.career.flags || {};
         var already = f.readingBook === 'old_man_and_sea' || f.readingBook === 'three_body';
         if (already) {
@@ -288,7 +288,8 @@ function isHennessyEligible() {
           return '你在最后一镜加了一句自己的台词。导演愣了一下，然后笑了。<br><br>效果：人气+2；商业价值+2；争议+1。';
         }
         addProfileDelta('mediaTrust', -1);
-        return '你在最后一镜加了一句自己的台词。导演没接话，重拍了三遍才通过。<br><br>效果：媒体好感-1。';
+        addProfileDelta('businessValue', -1);
+        return '你在最后一镜加了一句自己的台词。导演没接话，重拍了三遍才通过，品牌方对"不可控"三个字很敏感。<br><br>效果：媒体好感-1；商业价值-1。';
       }},
       { label: '低调一条过', hint: '效率最高，话题度低', apply: function() {
         setBranchNode('brand', 'shoot_efficient', { shoot: 'efficient' });

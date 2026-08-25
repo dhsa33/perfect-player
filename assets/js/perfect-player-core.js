@@ -10207,13 +10207,13 @@ const BRANCH_EVENTS = [
           '陪练不断换成更高、更壮、更快的防守者。你被断、被撞、被盖，但慢慢开始知道该用哪个角度进入身体。'
         ], { primary: '控球', secondary: '终结' });
       }},
-      { label: '冲击防守突破', hint: '提升外防与抢断', apply: function() {
+      { label: '冲击防守突破', hint: '提升外防与横移', apply: function() {
         advanceBranch('skill_training', 1, { lastFocus: 'defense' });
-        return applyTrainingOutcome('PDEF', 'STL', 'defensePity', [
+        return applyTrainingOutcome('PDEF', 'ATH', 'defensePity', [
           '你花了一周只练横移和追防。教练不让你赌博式抢断，只要求你每次都把持球人赶到最难受的位置。',
           '录像课里，你反复看联盟顶级侧翼如何提前半步卡住路线。第二天训练，你开始在对手启动前就移动脚步。',
           '防守训练没有漂亮镜头，只有一次次被过后的重来。你慢慢学会用身体角度，而不是手，去夺走对手的舒服空间。'
-        ], { primary: '外防', secondary: '抢断' });
+        ], { primary: '外防', secondary: '横移' });
       }},
       { label: '冲击身体终结', hint: '提升力量与终结', apply: function() {
         advanceBranch('skill_training', 1, { lastFocus: 'strength' });
@@ -11288,10 +11288,10 @@ const STAGED_BRANCH_EVENTS = [
         setBranchNode('training', 'skill_first', { lastFocus: 'handle' });
         return applyTrainingOutcome('HAN', 'FIN', 'handlePity', ['训练师在半场摆满障碍物，让你每次突破前都必须先读出协防位置。'], { primary: '控球', secondary: '终结' });
       }},
-      { label: '防守专项', hint: '外防/抢断', apply: function() {
+      { label: '防守专项', hint: '外防/横移', apply: function() {
         getBranchState('skill_training').lastFocus = 'defense';
         setBranchNode('training', 'skill_first', { lastFocus: 'defense' });
-        return applyTrainingOutcome('PDEF', 'STL', 'defensePity', ['你花了一周只练横移和追防。教练不让你赌博式抢断，只要求你夺走对手的舒服空间。'], { primary: '外防', secondary: '抢断' });
+        return applyTrainingOutcome('PDEF', 'ATH', 'defensePity', ['你花了一周只练横移和追防。教练不让你赌博式抢断，只要求你夺走对手的舒服空间。'], { primary: '外防', secondary: '横移' });
       }},
       { label: '身体终结专项', hint: '力量/终结', apply: function() {
         getBranchState('skill_training').lastFocus = 'strength';
@@ -11454,7 +11454,7 @@ const STAGED_BRANCH_EVENTS = [
         var focus = b.lastFocus || 'shooting';
         setBranchNode('training', 'skill_deep', { identityPath: focus });
         if (focus === 'handle') return applyTrainingOutcome('HAN', 'FIN', 'handlePity', ['你决定不换方向，把上个夏天没吃透的动作继续磨下去。'], { primary: '控球', secondary: '终结' });
-        if (focus === 'defense') return applyTrainingOutcome('PDEF', 'STL', 'defensePity', ['你继续把自己锁在防守训练里，一次次重来脚步角度。'], { primary: '外防', secondary: '抢断' });
+        if (focus === 'defense') return applyTrainingOutcome('PDEF', 'ATH', 'defensePity', ['你继续把自己锁在防守训练里，一次次重来脚步角度。'], { primary: '外防', secondary: '横移' });
         if (focus === 'strength') return applyTrainingOutcome('STR', 'FIN', 'strengthPity', ['你继续泡在力量房里，把对抗终结当成每天最后一课。'], { primary: '力量', secondary: '终结' });
         if (focus === 'playmaking') return applyTrainingOutcome('PAS', 'CLU', 'playmakingPity', ['你把战术选择继续拆细，逼自己在第三选择里找到赢球答案。'], { primary: '传球', secondary: '关键球' });
         return applyTrainingOutcome('threePT', 'MID', 'shootingPity', ['你继续投，投到训练师不再看命中率，只看你的动作是否完全一样。'], { primary: '三分', secondary: '中投' });

@@ -3,9 +3,10 @@
 
   if (typeof STAGED_BRANCH_EVENTS === 'undefined') return;
 
-  var MOD_BOUNDS = {
+  var   MOD_BOUNDS = {
     injuryRiskBonus: [-4, 8], formVariance: [-10, 10], teamChemistry: [-10, 10],
-    moraleBonus: [-10, 10], mediaPressure: [-10, 10], staminaLoad: [-10, 10]
+    moraleBonus: [-10, 10], mediaPressure: [-10, 10], staminaLoad: [-10, 10],
+    chemistryBonus: [-6, 6], fatigueBonus: [-6, 6]
   };
 
   var DERBY_MAP = {
