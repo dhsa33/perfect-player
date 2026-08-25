@@ -19154,12 +19154,13 @@ function evolveLeague() {
       var volatility = gene.v;
       var ageFactor = 0;
       if (age <= 22) ageFactor = 1 + rngNext() * 1.5;
-      else if (age <= 28) ageFactor = (rngNext() - 0.5) * 1.5;
+      else if (age <= 28) ageFactor = -0.3 + rngNext() * 1.1;
       else if (age <= 33) ageFactor = -1 - rngNext() * 1.5;
       else ageFactor = -2 - rngNext() * 2;
       var volFactor = (rngNext() - 0.5) * volatility * 0.6;
       var randFactor = (rngNext() - 0.5) * 1.5;
-      var change = ageFactor * 0.5 + volFactor * 0.3 + randFactor * 0.2;
+      var ageMult = age <= 22 ? 0.65 : 0.5;
+      var change = ageFactor * ageMult + volFactor * 0.3 + randFactor * 0.2;
       if (isMvpStar(p) && age <= 26) change += 0.6 + rngNext() * 0.8; // 重点新秀成长加速
       change = Math.round(change * 2) / 2;
       var newOvr = Math.max(55, Math.min(99, p.ovr + change));

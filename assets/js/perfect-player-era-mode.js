@@ -478,6 +478,16 @@
     NBA2K_TEAMS.forEach(function (t) {
       if (active.indexOf(t) >= 0 && pack.rosters[t]) {
         NBA2K_DATA[t] = cloneLeagueData(pack.rosters[t]);
+        if (typeof eraPlayerAgeByDraft === 'function') {
+          (NBA2K_DATA[t] || []).forEach(function (p) {
+            if (!p || p._isUser) return;
+            var correctAge = eraPlayerAgeByDraft(era, p.nameEN || p.name || '');
+            if (correctAge == null && (parseInt(p.ovr, 10) || 0) >= 80) correctAge = 28;
+            if (correctAge != null && Math.abs((p._age || correctAge) - correctAge) > 1) {
+              p._age = correctAge;
+            }
+          });
+        }
       } else {
         NBA2K_DATA[t] = [];
       }
