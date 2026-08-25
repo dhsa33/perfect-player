@@ -715,7 +715,7 @@ function getPlayerHeadshotStyle(playerName, displaySize) {
     if (initialsUri) pushUrl(initialsUri);
   } catch (e) {}
   if (urls.length) {
-    return 'background-image:' + urls.map(_hsCssBgUrl).join(',') + ';background-size:cover;background-position:center top;background-repeat:no-repeat;width:' + displaySize + 'px;height:' + displaySize + 'px;';
+    return 'background-image:' + _hsCssBgUrl(urls[0]) + ';background-size:cover;background-position:center top;background-repeat:no-repeat;width:' + displaySize + 'px;height:' + displaySize + 'px;';
   }
   return initialsStyle;
 }
