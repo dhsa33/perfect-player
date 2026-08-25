@@ -18,9 +18,9 @@ function isReadingPressureEligible() {
   var mods = STATE.career.nextSeasonMods || {};
   var profile = STATE.career.profile || {};
   if ((mods.mediaPressure || 0) >= 2) return true;
-  if ((profile.controversy || 0) >= 3) return true;
+  if ((profile.controversy || 0) >= 2) return true;
   if ((mods.formVariance || 0) >= 2) return true;
-  try { return getMentalPressure() >= 6; } catch(e) { return false; }
+  try { return getMentalPressure() >= 5; } catch(e) { return false; }
 }
 
 function pickReadingBook() {
